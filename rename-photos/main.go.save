@@ -1,0 +1,288 @@
+// rename-photos looks for groups of related photos in a directory tree, and
+// and renames them to match my naming standards.
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+var prefixRE = regexp.MustCompile(`^[0-9]{2,3}[-_ ]`)
+var allDigitsRE = regexp.MustCompile(`^[0-9]*$`)
+
+func main() {
+	if len(os.Args) > 2 {
+		fmt.Fprintf(os.Stderr, "usage: rename-photos [directory]\n")
+		os.Exit(2)
+	}
+	if len(os.Args) == 2 {
+		if err := os.Chdir(os.Args[1]); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			os.Exit(1)
+		}
+	}
+	basenames, paths := getGroups()
+	for _, basename := range basenames {
+		renamePhotos(basename, paths[basename])
+	}
+}
+
+func getGroups() (names []string, paths map[string][]string) {
+	paths = make(map[string][]string)
+	filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		name := filepath.Base(path)
+		name = strings.ReplaceAll(name, "_original", "")
+	RETRY:
+		if idx := strings.LastIndexByte(name, '.'); idx > 0 {
+			ext := name[idx+1:]
+			switch ext {
+			case "xmp":
+				name = name[:idx]
+				goto RETRY
+			case "dng", "gif", "jpg", "m4v", "mkv", "mov", "mp4", "png", "tif", "wav":
+				name = name[:idx]
+			default:
+				return nil
+			}
+		} else {
+			return nil
+		}
+		name = prefixRE.ReplaceAllLiteralString(name, "")
+		if strings.HasPrefix(name, "LRE_") {
+			name = name[4:]
+		}
+		if idx := strings.IndexByte(name, '.'); idx > 0 {
+			name = name[:idx]
+		}
+		paths[name] = append(paths[name], path)
+		return nil
+	})
+	names = make([]string, 0, len(paths))
+	for name := range paths {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	j := 0
+	for _, n := range names {
+		if j > 0 && len(names[j-1]) > 4 && strings.HasPrefix(n, names[j-1]) && !allDigitsRE.MatchString(n[len(names[j-1]):]) {
+			paths[names[j-1]] = append(paths[names[j-1]], paths[n]...)
+		} else {
+			names[j] = n
+			j++
+		}
+	}
+	names = names[:j]
+	for _, plist := range paths {
+		sort.Strings(plist)
+	}
+	return names, paths
+}
+
+func renamePhotos(basename string, paths []string) {
+	var images = readImages(paths)
+	var remaining = make(map[string]bool)
+	for _, path := range paths {
+		remaining[path] = true
+	}
+	var newNames = map[string]string{}
+	var original = chooseOriginal(basename, paths)
+	newNames[original] = basename + canonExt(original)
+	delete(remaining, original)
+	if remaining[original+".xmp"] {
+		newNames[original+".xmp"] = basename + canonExt(original) + ".xmp"
+		delete(remaining, original+".xmp")
+	}
+	var seq = 1
+	for _, path := range paths {
+		if remaining[path] && sameImage(images[path], images[original]) {
+			newNames[path] = fmt.Sprintf("%s.md%d%s", basename, seq, canonExt(path))
+			delete(remaining, path)
+			if remaining[path+".xmp"] {
+				newNames[path+".xmp"] = fmt.Sprintf("%s.md%d%s.xmp", basename, seq, canonExt(path))
+				delete(remaining, path+".xmp")
+			}
+			seq++
+		}
+	}
+	var scan = bufio.NewScanner(os.Stdin)
+	for {
+		var found string
+		for _, path := range paths {
+			if remaining[path] && !strings.HasSuffix(path, ".xmp") {
+				found = path
+				break
+			}
+		}
+		if found == "" {
+			break
+		}
+		fmt.Printf("What variant tag expresses the relationship of\n   %s\n", found)
+		fmt.Printf("to %s (the original)", original)
+	RETRY:
+		fmt.Print("? ")
+		if !scan.Scan() {
+			goto RETRY
+		}
+		variant := scan.Text()
+		if variant == "" {
+			goto RETRY
+		}
+		newNames[found] = fmt.Sprintf("%s.%s%s", basename, variant, canonExt(found))
+		delete(remaining, found)
+		if remaining[found+".xmp"] {
+			newNames[found+".xmp"] = fmt.Sprintf("%s.%s%s.xmp", basename, variant, canonExt(found))
+			delete(remaining, found+".xmp")
+		}
+		var seq = 1
+		for _, path := range paths {
+			if remaining[path] && sameImage(images[path], images[found]) {
+				newNames[path] = fmt.Sprintf("%s.%s.md%d%s", basename, variant, seq, canonExt(path))
+				delete(remaining, path)
+				if remaining[path+".xmp"] {
+					newNames[path+".xmp"] = fmt.Sprintf("%s.%s.md%d%s.xmp", basename, variant, seq, canonExt(path))
+					delete(remaining, path+".xmp")
+				}
+				seq++
+			}
+		}
+	}
+	for path := range remaining {
+		newNames[path] = fmt.Sprintf("%s.md%d.xmp", basename, seq)
+		seq++
+	}
+	fmt.Println("Renames:")
+	maxlen := 0
+	for _, path := range paths {
+		if (len(path)) > maxlen {
+			maxlen = len(path)
+		}
+	}
+	for _, path := range paths {
+		if newNames[path] == path {
+			fmt.Printf("%-*s => (no change)\n", maxlen, path)
+		} else {
+			fmt.Printf("%-*s => %s\n", maxlen, path, newNames[path])
+		}
+	}
+RETRY2:
+	fmt.Print("Confirm (y/n)? ")
+	if !scan.Scan() {
+		goto RETRY2
+	}
+	for path, np := range newNames {
+		if path == np {
+			delete(newNames, path)
+		}
+	}
+	for len(newNames) != 0 {
+		progress := false
+		for op, np := range newNames {
+			if newNames[np] != "" {
+				continue
+			}
+			if err := os.Rename(op, np); err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: rename %s -> %s: %s\n", op, np, err)
+				os.Exit(1)
+			}
+			delete(newNames, op)
+			progress = true
+		}
+		if !progress {
+			fmt.Fprintf(os.Stderr, "ERROR: unable to swap names; rename not completed\n")
+			break
+		}
+	}
+}
+
+func canonExt(path string) string {
+	ext := strings.ToLower(filepath.Ext(path))
+	if strings.HasSuffix(ext, "_original") {
+		ext = ext[:len(ext)-9]
+	}
+	switch ext {
+	case "jpeg":
+		ext = "jpg"
+	}
+	return ext
+}
+
+func readImages(paths []string) (imgs map[string]image.Image) {
+	imgs = make(map[string]image.Image)
+	for _, path := range paths {
+		if fh, err := os.Open(path); err == nil {
+			if img, _, err := image.Decode(fh); err == nil {
+				imgs[path] = img
+			}
+			fh.Close()
+		}
+	}
+	return imgs
+}
+
+func chooseOriginal(basename string, paths []string) string {
+	fmt.Printf("\n=== %s ===\n", basename)
+	var count = 0
+	var found = ""
+	for _, path := range paths {
+		if !strings.HasSuffix(path, ".xmp") {
+			count++
+			found = path
+		}
+	}
+	if count == 1 {
+		return found
+	}
+	fmt.Println("Which of these is the original?")
+	for i, path := range paths {
+		if !strings.HasSuffix(path, ".xmp") {
+			fmt.Printf("%2d  %s\n", i+1, path)
+		}
+	}
+	scan := bufio.NewScanner(os.Stdin)
+RETRY:
+	fmt.Print("? ")
+	if !scan.Scan() {
+		fmt.Println()
+		goto RETRY
+	}
+	num, _ := strconv.Atoi(scan.Text())
+	if num < 1 || num > len(paths) || strings.HasSuffix(paths[num-1], ".xmp") {
+		goto RETRY
+	}
+	return paths[num-1]
+}
+
+func sameImage(a, b image.Image) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	ab := a.Bounds()
+	bb := b.Bounds()
+	if !ab.Eq(bb) {
+		return false
+	}
+	for x := ab.Min.X; x < ab.Max.X; x++ {
+		for y := ab.Min.Y; y < ab.Max.Y; y++ {
+			ar, ag, ab, aa := a.At(x, y).RGBA()
+			br, bg, bb, ba := b.At(x, y).RGBA()
+			if ar != br || ag != bg || ab != bb || aa != ba {
+				return false
+			}
+		}
+	}
+	return true
+}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 var start = []byte{
@@ -32,8 +33,8 @@ var start = []byte{
 
 func TestRewriteIPTC(t *testing.T) {
 	iptc := Parse(start, 0)
-	iptc.SetKeywords([]string{"new1", "new2"})
-	iptc.SetObjectName("me")
+	iptc.Keywords = []*metadata.String{metadata.NewString("new1"), metadata.NewString("new2")}
+	iptc.ObjectName = metadata.NewString("me")
 	out := iptc.Render()
 	if !bytes.Equal(out, rewriteIPTCExpected) {
 		t.Error("wrong output")

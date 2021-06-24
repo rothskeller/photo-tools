@@ -1,7 +1,6 @@
 package iptc
 
 import (
-	"bytes"
 	"strings"
 	"unicode/utf8"
 )
@@ -11,35 +10,25 @@ const MaxObjectNameLen = 64
 
 const idObjectName uint16 = 0x0205
 
-// ObjectName returns the IPTC ObjectName tag, if any.
-func (p *IPTC) ObjectName() string {
+func (p *IPTC) getObjectName() {
 	if dset := p.findDSet(idObjectName); dset != nil {
 		if utf8.Valid(dset.data) {
-			return strings.TrimSpace(string(dset.data))
+			if objname := strings.TrimSpace(string(dset.data)); objname != "" {
+				p.ObjectName.SetMaxLength(MaxObjectNameLen)
+				p.ObjectName.Parse(objname)
+			}
+		} else {
+			p.log("ignoring non-UTF8 Object Name")
 		}
-		p.problems = append(p.problems, "ignoring non-UTF8 IPTC Object Name")
 	}
-	return ""
 }
 
-// SetObjectName sets the IPTC ObjectName.
-func (p *IPTC) SetObjectName(name string) {
-	if p == nil {
-		return
-	}
-	if name == "" {
+func (p *IPTC) setObjectName() {
+	if p.ObjectName.Empty() {
 		p.deleteDSet(idObjectName)
 		return
 	}
-	dset := p.findDSet(idObjectName)
-	encoded := []byte(applyMax(name, MaxObjectNameLen))
-	if dset != nil {
-		if !bytes.Equal(encoded, dset.data) {
-			dset.data = encoded
-			p.dirty = true
-		}
-	} else {
-		p.dsets = append(p.dsets, &dsett{0, idObjectName, encoded})
-		p.dirty = true
-	}
+	p.ObjectName.SetMaxLength(MaxObjectNameLen)
+	encoded := []byte(p.ObjectName.String())
+	p.setDSet(idObjectName, encoded)
 }

@@ -1,105 +1,48 @@
 package xmp
 
 import (
+	"reflect"
+
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/dc"
-	"trimmer.io/go-xmp/xmp"
 )
 
-// DCCreator returns the list of Creators from the XMP.
-func (p *XMP) DCCreator() []string {
-	if p == nil || p.doc == nil {
-		return nil
-	}
-	if model := dc.FindModel(p.doc); model != nil {
-		return model.Creator
-	}
-	return nil
-}
+func (p *XMP) getDC() {
+	var model *dc.DublinCore
 
-// SetDCCreator sets the list of Creators in the XMP.
-func (p *XMP) SetDCCreator(v []string) {
-	model, err := dc.MakeModel(p.doc)
-	if err != nil {
-		p.log("XMP dc.MakeModel: %s", err)
+	if p != nil && p.doc != nil {
+		model = dc.FindModel(p.doc)
+	}
+	if model == nil {
 		return
 	}
-	model.Creator = v
+	p.DCCreator = xmpStringsToMetadata(model.Creator)
+	p.DCDescription = xmpAltStringToMetadata(model.Description)
+	p.DCSubject = xmpStringsToMetadata(model.Subject)
+	p.DCTitle = xmpAltStringToMetadata(model.Title)
 }
 
-// DCDescription returns the Descriptions from the XMP, as an ordered list of
-// alternatives, each of which is a [language, value] pair.  The first one is
-// the default.
-func (p *XMP) DCDescription() (descs [][]string) {
-	if p == nil || p.doc == nil {
-		return nil
+func (p *XMP) setDC() {
+	var (
+		model *dc.DublinCore
+		err   error
+	)
+	if model, err = dc.MakeModel(p.doc); err != nil {
+		panic(err)
 	}
-	if model := dc.FindModel(p.doc); model != nil {
-		for _, alt := range model.Description {
-			descs = append(descs, []string{alt.Lang, alt.Value})
-		}
-		return descs
+	if creator := metadataToXMPStrings(p.DCCreator); !reflect.DeepEqual(creator, model.Creator) {
+		model.Creator = creator
+		p.dirty = true
 	}
-	return nil
-}
-
-// SetDCDescription sets the Descriptions in the XMP.  Note that it sets the
-// default language and removes any other language alternatives.
-func (p *XMP) SetDCDescription(v string) {
-	model, err := dc.MakeModel(p.doc)
-	if err != nil {
-		p.log("XMP dc.MakeModel: %s", err)
-		return
+	if desc := metadataToXMPAltString(p.DCDescription); !reflect.DeepEqual(desc, model.Description) {
+		model.Description = desc
+		p.dirty = true
 	}
-	if v != "" {
-		model.Description = xmp.NewAltString(v)
-	} else {
-		model.Description = nil
+	if subj := metadataToXMPStrings(p.DCSubject); !reflect.DeepEqual(subj, model.Subject) {
+		model.Subject = subj
+		p.dirty = true
 	}
-}
-
-// DCSubject returns the list of Subjects from the XMP.
-func (p *XMP) DCSubject() []string {
-	if p == nil || p.doc == nil {
-		return nil
+	if title := metadataToXMPAltString(p.DCTitle); !reflect.DeepEqual(title, model.Title) {
+		model.Title = title
+		p.dirty = true
 	}
-	if model := dc.FindModel(p.doc); model != nil {
-		return model.Subject
-	}
-	return nil
-}
-
-// SetDCSubject sets the list of Subjects in the XMP.
-func (p *XMP) SetDCSubject(v []string) {
-	model, err := dc.MakeModel(p.doc)
-	if err != nil {
-		p.log("XMP dc.MakeModel: %s", err)
-		return
-	}
-	model.Subject = v
-}
-
-// DCTitle returns the Title from the XMP.  It returns a list of alternatives,
-// each of which is a [language, value] pair.  The first one is the default.
-func (p *XMP) DCTitle() (titles [][]string) {
-	if p == nil || p.doc == nil {
-		return nil
-	}
-	if model := dc.FindModel(p.doc); model != nil {
-		for _, alt := range model.Title {
-			titles = append(titles, []string{alt.Lang, alt.Value})
-		}
-		return titles
-	}
-	return nil
-}
-
-// SetDCTitle sets the Title in the XMP.  Note that it sets the default language
-// and removes any other language alternatives.
-func (p *XMP) SetDCTitle(v string) {
-	model, err := dc.MakeModel(p.doc)
-	if err != nil {
-		p.log("XMP dc.MakeModel: %s", err)
-		return
-	}
-	model.Title = xmp.NewAltString(v)
 }

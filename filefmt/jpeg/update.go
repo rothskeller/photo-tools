@@ -27,6 +27,9 @@ func (h *JPEG) SaveMetadata() (err error) {
 	if len(h.problems) != 0 {
 		panic("JPEG UpdateMetadata after parse failures")
 	}
+	if !h.exif.Dirty() && !h.iptc.Dirty() && !h.xmp.Dirty() {
+		return nil
+	}
 	if h.xmp == nil {
 		h.xmp = xmp.New()
 	}

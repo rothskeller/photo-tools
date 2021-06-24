@@ -56,13 +56,10 @@ func (h *JPEG) log(f string, a ...interface{}) {
 }
 
 // Problems returns the accumulated set of problems encountered.
-func (h *JPEG) Problems() []string {
-	if len(h.problems) != 0 {
-		return h.problems
-	}
-	// More problems may have been found since the initial read.
-	h.problems = append(h.problems, h.exif.Problems()...)
-	h.problems = append(h.problems, h.iptc.Problems()...)
-	h.problems = append(h.problems, h.xmp.Problems()...)
-	return h.problems
+func (h *JPEG) Problems() (problems []string) {
+	problems = append(problems, h.problems...)
+	problems = append(problems, h.exif.Problems...)
+	problems = append(problems, h.iptc.Problems...)
+	problems = append(problems, h.xmp.Problems...)
+	return problems
 }

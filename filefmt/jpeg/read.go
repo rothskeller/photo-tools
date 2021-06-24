@@ -14,7 +14,7 @@ import (
 
 // ReadMetadata reads the metadata from a JPEG file.  It returns a list of
 // problems found while reading.
-func (h *JPEG) ReadMetadata() []string {
+func (h *JPEG) ReadMetadata() {
 	var (
 		fh     *os.File
 		in     *OffsetReader
@@ -26,7 +26,7 @@ func (h *JPEG) ReadMetadata() []string {
 	// Open the file and get name and modification time.
 	if fh, err = os.Open(h.path); err != nil {
 		h.problems = []string{err.Error()}
-		return h.problems
+		return
 	}
 	defer fh.Close()
 
@@ -36,7 +36,7 @@ func (h *JPEG) ReadMetadata() []string {
 	for {
 		mstart := in.Offset()
 		marker, size, ok = h.readMarker(in)
-		if marker == 0x00 || marker == 0xDA { // EOF or image data segment
+		if marker == 0x00 || marker == 0xDA || !ok { // EOF or image data segment
 			break
 		}
 		if size == 0 { // non-segment marker
@@ -45,7 +45,7 @@ func (h *JPEG) ReadMetadata() []string {
 		buf := make([]byte, size)
 		if _, err = io.ReadFull(in, buf); err != nil {
 			h.problems = []string{err.Error()}
-			return h.problems
+			return
 		}
 		switch marker {
 		case 0xE1: // APP1 segment, with EXIF or XMP metadata
@@ -62,15 +62,6 @@ func (h *JPEG) ReadMetadata() []string {
 			}
 		}
 	}
-	if !ok { // readMarker said the file was corrupt
-		return h.problems
-	}
-
-	// Merge in problems found by the metadata handlers.
-	h.problems = append(h.problems, h.exif.Problems()...)
-	h.problems = append(h.problems, h.iptc.Problems()...)
-	h.problems = append(h.problems, h.xmp.Problems()...)
-	return h.problems
 }
 
 // readMarker reads a marker from the JPEG file, including the size of the

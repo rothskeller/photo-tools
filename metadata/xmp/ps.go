@@ -4,27 +4,28 @@ import (
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/ps"
 )
 
-// PSDateCreated returns the creation date from the XMP.
-func (p *XMP) PSDateCreated() string {
-	if p == nil || p.doc == nil {
-		return ""
-	}
-	if model := ps.FindModel(p.doc); model != nil {
-		if model.DateCreated != "" && !dateRE.MatchString(model.DateCreated) {
-			p.log("PSDateCreated: invalid value: %q", model.DateCreated)
-			return ""
-		}
-		return canonicalDate(model.DateCreated)
-	}
-	return ""
-}
+func (p *XMP) getPS() {
+	var model *ps.PhotoshopInfo
 
-// SetPSDateCreated sets the creation date in the XMP.
-func (p *XMP) SetPSDateCreated(v string) {
-	model, err := ps.MakeModel(p.doc)
-	if err != nil {
-		p.log("XMP ps.MakeModel: %s", err)
+	if p != nil && p.doc != nil {
+		model = ps.FindModel(p.doc)
+	}
+	if model == nil {
 		return
 	}
-	model.DateCreated = v
+	p.PSDateCreated = p.xmpDateTimeToMetadata(model.DateCreated)
+}
+
+func (p *XMP) setPS() {
+	var (
+		model *ps.PhotoshopInfo
+		err   error
+	)
+	if model, err = ps.MakeModel(p.doc); err != nil {
+		panic(err)
+	}
+	if dc := p.PSDateCreated.String(); dc != model.DateCreated {
+		model.DateCreated = dc
+		p.dirty = true
+	}
 }

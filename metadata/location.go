@@ -1,112 +1,204 @@
 package metadata
 
-import "strings"
+import (
+	"errors"
+	"strings"
+)
 
 // A Location is the textual description of a location.
 type Location struct {
-	CountryCode string
-	CountryName string
-	State       string
-	City        string
-	Sublocation string
+	countryCode *String
+	countryName *String
+	state       *String
+	city        *String
+	sublocation *String
 }
 
-// ParseLocation parses a string into a Location.  It returns nil if the string
-// cannot be parsed (which is different from a pointer to an empty structure,
-// which means the location is unknown/empty).
-func ParseLocation(s string) (l *Location) {
-	l = new(Location)
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return l
+// ErrParseLocation is the error returned when a string cannot be parsed into a
+// Location value.
+var ErrParseLocation = errors.New("invalid Location value")
+
+// Parse sets the value from the input string.  It returns ErrParseLocation if
+// the input string is invalid.
+func (loc *Location) Parse(val string) error {
+	*loc = Location{}
+	if val == "" {
+		return nil
 	}
-	parts := strings.Split(s, "/")
+	parts := strings.Split(val, "/")
 	switch len(parts) {
-	case 4:
-		l.Sublocation = strings.TrimSpace(parts[3])
-		fallthrough
-	case 3:
-		l.City = strings.TrimSpace(parts[2])
-		fallthrough
-	case 2:
-		l.State = strings.TrimSpace(parts[1])
 	case 1:
 		break
+	case 2:
+		loc.state = NewString(strings.TrimSpace(parts[1]))
+	case 3:
+		loc.state = NewString(strings.TrimSpace(parts[1]))
+		loc.city = NewString(strings.TrimSpace(parts[2]))
+	case 4:
+		loc.state = NewString(strings.TrimSpace(parts[1]))
+		loc.city = NewString(strings.TrimSpace(parts[2]))
+		loc.sublocation = NewString(strings.TrimSpace(parts[3]))
 	default:
-		return nil
+		return ErrParseLocation
 	}
 	cparts := strings.SplitN(parts[0], " ", 2)
-	if l.CountryName = countryCodes[cparts[0]]; l.CountryCode == "" {
-		return nil
+	if cname := countryCodes[cparts[0]]; cname != "" {
+		loc.countryName = NewString(cname)
+	} else {
+		return ErrParseLocation
 	}
-	l.CountryCode = cparts[0]
+	loc.countryCode = NewString(cparts[0])
 	if len(cparts) > 1 {
 		if cname := strings.TrimSpace(cparts[1]); cname != "" {
-			l.CountryName = cname
+			loc.countryName = NewString(cname)
 		}
 	}
-	if l.CountryCode == "USA" {
-		if sname := stateCodes[l.State]; sname != "" {
-			l.State = sname
+	if loc.countryCode.String() == "USA" {
+		if sname := stateCodes[loc.state.String()]; sname != "" {
+			loc.state = NewString(sname)
 		}
 	}
-	return l
+	return nil
 }
 
-func (l *Location) String() string {
+// String returns the value in string form, suitable for input to Parse.
+func (loc *Location) String() string {
 	var sb strings.Builder
 
-	if l == nil || l.CountryCode == "" {
+	if loc.Empty() {
 		return ""
 	}
-	sb.WriteString(l.CountryCode)
-	if l.CountryName != "" {
+	sb.WriteString(loc.countryCode.String())
+	if !loc.countryName.Empty() {
 		sb.WriteByte(' ')
-		sb.WriteString(l.CountryName)
+		sb.WriteString(loc.countryName.String())
 	}
-	if l.State != "" || l.City != "" || l.Sublocation != "" {
+	if !loc.state.Empty() || !loc.city.Empty() || !loc.sublocation.Empty() {
 		sb.WriteString(" /")
 	}
-	if l.State != "" {
+	if !loc.state.Empty() {
 		sb.WriteByte(' ')
-		sb.WriteString(l.State)
+		sb.WriteString(loc.state.String())
 	}
-	if l.State != "" && (l.City != "" || l.Sublocation != "") {
+	if !loc.state.Empty() && (!loc.city.Empty() || !loc.sublocation.Empty()) {
 		sb.WriteByte(' ')
 	}
-	if l.City != "" || l.Sublocation != "" {
+	if !loc.city.Empty() || !loc.sublocation.Empty() {
 		sb.WriteByte('/')
 	}
-	if l.City != "" {
+	if !loc.city.Empty() {
 		sb.WriteByte(' ')
-		sb.WriteString(l.City)
+		sb.WriteString(loc.city.String())
 	}
-	if l.City != "" && l.Sublocation != "" {
+	if !loc.city.Empty() && !loc.sublocation.Empty() {
 		sb.WriteByte(' ')
 	}
-	if l.Sublocation != "" {
+	if !loc.sublocation.Empty() {
 		sb.WriteString("/ ")
-		sb.WriteString(l.Sublocation)
+		sb.WriteString(loc.sublocation.String())
 	}
 	return sb.String()
 }
 
-// Valid returns whether the location contains any valid data.
-func (l *Location) Valid() bool {
-	return l != nil && l.CountryCode != ""
+// ParseComponents fills in the supplied components of the Location.  It returns
+// ErrParseLocation if they are invalid.
+func (loc *Location) ParseComponents(countryCode, countryName, state, city, sublocation *String) error {
+	*loc = Location{}
+	if countryCode.Empty() {
+		if !countryName.Empty() || !state.Empty() || !city.Empty() || !sublocation.Empty() {
+			return ErrParseLocation
+		}
+		return nil
+	}
+	if cname := countryCodes[countryCode.String()]; cname != "" {
+		loc.countryName = NewString(cname)
+	} else {
+		return ErrParseLocation
+	}
+	loc.countryCode = countryCode
+	if !countryName.Empty() {
+		loc.countryName = countryName
+	}
+	loc.state, loc.city, loc.sublocation = state, city, sublocation
+	return nil
 }
 
-// Equal tests two locations for equality.
-func (l *Location) Equal(o *Location) bool {
-	if (l == nil) != (o == nil) {
-		return false
+// AsComponents returns the components of the location as separate strings.
+func (loc *Location) AsComponents() (countryCode, countryName, state, city, sublocation *String) {
+	if loc == nil {
+		return
 	}
-	if l == nil {
+	return loc.countryCode, loc.countryName, loc.state, loc.city, loc.sublocation
+}
+
+// Empty returns true if the value contains no data.
+func (loc *Location) Empty() bool {
+	return loc == nil || loc.countryCode.Empty()
+}
+
+// Equal returns true if the receiver is equal to the argument.
+func (loc *Location) Equal(other Metadatum) bool {
+	if loc == nil && other == nil {
 		return true
 	}
-	return l.CountryCode == o.CountryCode && l.CountryName == o.CountryName && l.State == o.State &&
-		l.City == o.City && l.Sublocation == o.Sublocation
+	ol, ok := other.(*Location)
+	if !ok {
+		return false
+	}
+	if loc.Empty() != ol.Empty() {
+		return false
+	}
+	if loc.Empty() {
+		return true
+	}
+	return loc.countryCode.Equal(ol.countryCode) && loc.countryName.Equal(ol.countryName) && loc.state.Equal(ol.state) &&
+		loc.city.Equal(ol.city) && loc.sublocation.Equal(ol.sublocation)
 }
+
+// Equivalent returns true if the receiver is equal to the argument, to
+// the precision of the least precise of the two.  If so, the second
+// return value is the more precise of the two.
+func (loc *Location) Equivalent(other Metadatum) (eq bool, precise Metadatum) {
+	if loc == nil && other == nil {
+		return true, nil
+	}
+	ol, ok := other.(*Location)
+	if !ok {
+		return false, nil
+	}
+	if loc.Empty() != ol.Empty() {
+		return false, nil
+	}
+	if loc.Empty() {
+		return true, nil
+	}
+	var mix Location
+	eq, precise = loc.countryCode.Equivalent(ol.countryCode)
+	if eq {
+		mix.countryCode, _ = precise.(*String)
+		eq, precise = loc.countryName.Equivalent(ol.countryName)
+	}
+	if eq {
+		mix.countryName, _ = precise.(*String)
+		eq, precise = loc.state.Equivalent(ol.state)
+	}
+	if eq {
+		mix.state, _ = precise.(*String)
+		eq, precise = loc.city.Equivalent(ol.city)
+	}
+	if eq {
+		mix.city, _ = precise.(*String)
+		eq, precise = loc.sublocation.Equivalent(ol.sublocation)
+	}
+	if eq {
+		mix.sublocation, _ = precise.(*String)
+		return true, &mix
+	}
+	return false, nil
+}
+
+// Verify interface compliance.
+var _ Metadatum = (*Location)(nil)
 
 var countryCodes = map[string]string{
 	"ASC":  "Ascension Island",

@@ -1,7 +1,6 @@
 package iptc
 
 import (
-	"bytes"
 	"strings"
 	"unicode/utf8"
 )
@@ -11,35 +10,24 @@ const MaxCaptionAbstractLen = 2000
 
 const idCaptionAbstract uint16 = 0x0278
 
-// CaptionAbstract returns the IPTC Caption/Abstract tag, if any.
-func (p *IPTC) CaptionAbstract() string {
+func (p *IPTC) getCaptionAbstract() {
 	if dset := p.findDSet(idCaptionAbstract); dset != nil {
 		if utf8.Valid(dset.data) {
-			return strings.TrimSpace(string(dset.data))
+			p.CaptionAbstract.SetMaxLength(MaxCaptionAbstractLen)
+			p.CaptionAbstract.Parse(strings.TrimSpace(string(dset.data)))
+		} else {
+			p.log("ignoring non-UTF8 Caption/Abstract")
 		}
-		p.problems = append(p.problems, "ignoring non-UTF8 IPTC Caption/Abstract")
-	}
-	return ""
-}
-
-// SetCaptionAbstract sets the IPTC Caption/Abstract.
-func (p *IPTC) SetCaptionAbstract(val string) {
-	if p == nil {
 		return
 	}
-	if val == "" {
+}
+
+func (p *IPTC) setCaptionAbstract() {
+	if p.CaptionAbstract.Empty() {
 		p.deleteDSet(idCaptionAbstract)
 		return
 	}
-	dset := p.findDSet(idCaptionAbstract)
-	encoded := []byte(applyMax(val, MaxCaptionAbstractLen))
-	if dset != nil {
-		if !bytes.Equal(encoded, dset.data) {
-			dset.data = encoded
-			p.dirty = true
-		}
-	} else {
-		p.dsets = append(p.dsets, &dsett{0, idCaptionAbstract, encoded})
-		p.dirty = true
-	}
+	p.CaptionAbstract.SetMaxLength(MaxCaptionAbstractLen)
+	encoded := []byte(p.CaptionAbstract.String())
+	p.setDSet(idCaptionAbstract, encoded)
 }

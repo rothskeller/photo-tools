@@ -1,17 +1,33 @@
 package exif
 
 import (
+	"bytes"
 	"sort"
 )
 
-// Render renders and returns the encoded EXIF block, reflecting the data that
-// was read, as subsequently modified by any SetXXX calls.  maxSize is the
-// maximum allowed size of the block.
+// Dirty returns whether the EXIF data have changed and need to be saved.
+func (p *EXIF) Dirty() bool {
+	if p == nil || len(p.Problems) != 0 {
+		return false
+	}
+	p.setArtist()
+	p.setDateTime()
+	p.setDateTimeDigitized()
+	p.setDateTimeOriginal()
+	p.setGPSCoords()
+	p.setImageDescription()
+	p.setUserComment()
+	return (p.ifd0 != nil && p.ifd0.dirty) || (p.exifIFD != nil && p.exifIFD.dirty) || (p.gpsIFD != nil && p.gpsIFD.dirty)
+}
+
+// Render renders and returns the encoded EXIF block, applying any changes made
+// to the metadata fields of the EXIF structure.  maxSize is the maximum allowed
+// size of the block.
 func (p *EXIF) Render(max uint64) (out []byte) {
-	if len(p.problems) != 0 {
+	if len(p.Problems) != 0 {
 		panic("EXIF Render with parse problems")
 	}
-	if (p.ifd0 == nil || !p.ifd0.dirty) && (p.exifIFD == nil || !p.exifIFD.dirty) && (p.gpsIFD == nil || !p.gpsIFD.dirty) {
+	if !p.Dirty() {
 		return p.buf
 	}
 	out = p.render()
@@ -189,6 +205,9 @@ func (p *EXIF) addTag(ifd *ifdt, tag *tagt) {
 }
 
 func (p *EXIF) deleteTag(ifd *ifdt, tag uint16) {
+	if ifd == nil {
+		return
+	}
 	j := 0
 	for _, t := range ifd.tags {
 		if t.tag != tag {
@@ -198,6 +217,78 @@ func (p *EXIF) deleteTag(ifd *ifdt, tag uint16) {
 	}
 	if j < len(ifd.tags) {
 		ifd.tags = ifd.tags[:j]
+		ifd.dirty = true
+	}
+}
+
+func (p *EXIF) addEXIFIFD() {
+	p.exifIFD = new(ifdt)
+	p.addTag(p.ifd0, &tagt{
+		tag:   tagExifIFDOffset,
+		ttype: 4, // LONG
+		count: 1,
+		data:  []byte{0, 0, 0, 0}, // filled in later
+	})
+}
+
+func (p *EXIF) addGPSIFD() {
+	p.gpsIFD = new(ifdt)
+	p.addTag(p.gpsIFD, &tagt{
+		tag:   0, // GPS Version
+		ttype: 1, // BYTE
+		count: 4,
+		data:  []byte{2, 3, 0, 0},
+	})
+	p.addTag(p.ifd0, &tagt{
+		tag:   tagGPSIFDOffset,
+		ttype: 4, // LONG
+		count: 1,
+		data:  []byte{0, 0, 0, 0}, // filled in later
+	})
+}
+
+func (p *EXIF) setASCIITag(ifd *ifdt, tnum uint16, val string) {
+	tag := ifd.findTag(tnum)
+	if tag == nil {
+		tag = &tagt{tag: tnum, ttype: 2, count: 0, data: nil}
+		p.addTag(ifd, tag)
+	}
+	encbytes := make([]byte, len(val)+1)
+	copy(encbytes, val)
+	if !bytes.Equal(tag.data, encbytes) {
+		tag.data = encbytes
+		tag.count = uint32(len(encbytes))
+		ifd.dirty = true
+	}
+}
+
+func (p *EXIF) setRationalTag(ifd *ifdt, tnum uint16, val []uint32) {
+	tag := ifd.findTag(tnum)
+	if tag == nil {
+		tag = &tagt{tag: tnum, ttype: 2, count: 0, data: nil}
+		p.addTag(ifd, tag)
+	}
+	encbytes := make([]byte, len(val)*4)
+	for i := range val {
+		p.enc.PutUint32(encbytes[i*4:], val[i])
+	}
+	if !bytes.Equal(tag.data, encbytes) {
+		tag.data = encbytes
+		tag.count = uint32(len(val))
+		ifd.dirty = true
+	}
+}
+
+func (p *EXIF) setByteTag(ifd *ifdt, tnum uint16, val byte) {
+	tag := ifd.findTag(tnum)
+	if tag == nil {
+		tag = &tagt{tag: tnum, ttype: 1, count: 0, data: nil}
+		p.addTag(ifd, tag)
+	}
+	var encbytes = []byte{val}
+	if !bytes.Equal(tag.data, encbytes) {
+		tag.data = encbytes
+		tag.count = 1
 		ifd.dirty = true
 	}
 }

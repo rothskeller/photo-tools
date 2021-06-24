@@ -1,7 +1,6 @@
 package iptc
 
 import (
-	"bytes"
 	"strings"
 	"unicode/utf8"
 
@@ -25,53 +24,58 @@ const (
 	MaxSublocationLen   = 32
 )
 
-// Location returns the IPTC location.
-func (p *IPTC) Location() (loc *metadata.Location) {
-	loc = new(metadata.Location)
+func (p *IPTC) getLocation() {
+	var ccode, cname, state, city, subloc metadata.String
+
+	ccode.SetMaxLength(MaxCountryPLCodeLen)
+	cname.SetMaxLength(MaxCountryPLNameLen)
+	state.SetMaxLength(MaxProvinceStateLen)
+	city.SetMaxLength(MaxCityLen)
+	subloc.SetMaxLength(MaxSublocationLen)
 	if dset := p.findDSet(idCountryPLCode); dset != nil {
 		if utf8.Valid(dset.data) {
-			loc.CountryCode = strings.TrimSpace(string(dset.data))
+			ccode.Parse(strings.TrimSpace(string(dset.data)))
 		} else {
-			p.problems = append(p.problems, "ignoring non-UTF8 IPTC Country/Primary Location Code")
+			p.log("ignoring non-UTF8 Country/Primary Location Code")
+			return
 		}
 	}
 	if dset := p.findDSet(idCountryPLName); dset != nil {
 		if utf8.Valid(dset.data) {
-			loc.CountryName = strings.TrimSpace(string(dset.data))
+			cname.Parse(strings.TrimSpace(string(dset.data)))
 		} else {
-			p.problems = append(p.problems, "ignoring non-UTF8 IPTC Country/Primary Location Name")
+			p.log("ignoring non-UTF8 IPTC Country/Primary Location Name")
 		}
 	}
 	if dset := p.findDSet(idProvinceState); dset != nil {
 		if utf8.Valid(dset.data) {
-			loc.State = strings.TrimSpace(string(dset.data))
+			state.Parse(strings.TrimSpace(string(dset.data)))
 		} else {
-			p.problems = append(p.problems, "ignoring non-UTF8 IPTC Province/State")
+			p.log("ignoring non-UTF8 IPTC Province/State")
 		}
 	}
 	if dset := p.findDSet(idCity); dset != nil {
 		if utf8.Valid(dset.data) {
-			loc.City = strings.TrimSpace(string(dset.data))
+			city.Parse(strings.TrimSpace(string(dset.data)))
 		} else {
-			p.problems = append(p.problems, "ignoring non-UTF8 IPTC City")
+			p.log("ignoring non-UTF8 IPTC City")
 		}
 	}
 	if dset := p.findDSet(idSublocation); dset != nil {
 		if utf8.Valid(dset.data) {
-			loc.Sublocation = strings.TrimSpace(string(dset.data))
+			subloc.Parse(strings.TrimSpace(string(dset.data)))
 		} else {
-			p.problems = append(p.problems, "ignoring non-UTF8 IPTC Sub-location")
+			p.log("ignoring non-UTF8 IPTC Sub-location")
 		}
 	}
-	return loc
+	p.Location = new(metadata.Location)
+	if err := p.Location.ParseComponents(&ccode, &cname, &state, &city, &subloc); err != nil {
+		p.log("Location: %s", err)
+	}
 }
 
-// SetLocation sets the IPTC location.
-func (p *IPTC) SetLocation(loc *metadata.Location) {
-	if p == nil {
-		return
-	}
-	if !loc.Valid() {
+func (p *IPTC) setLocation() {
+	if p.Location.Empty() {
 		p.deleteDSet(idCountryPLCode)
 		p.deleteDSet(idCountryPLName)
 		p.deleteDSet(idProvinceState)
@@ -79,22 +83,15 @@ func (p *IPTC) SetLocation(loc *metadata.Location) {
 		p.deleteDSet(idSublocation)
 		return
 	}
-	p.setLocationPart(idCountryPLCode, MaxCountryPLCodeLen, loc.CountryCode)
-	p.setLocationPart(idCountryPLName, MaxCountryPLNameLen, loc.CountryName)
-	p.setLocationPart(idProvinceState, MaxProvinceStateLen, loc.State)
-	p.setLocationPart(idCity, MaxCityLen, loc.City)
-	p.setLocationPart(idSublocation, MaxSublocationLen, loc.Sublocation)
-}
-func (p *IPTC) setLocationPart(id uint16, max int, val string) {
-	dset := p.findDSet(id)
-	encoded := []byte(applyMax(val, max))
-	if dset != nil {
-		if !bytes.Equal(encoded, dset.data) {
-			dset.data = encoded
-			p.dirty = true
-		}
-	} else {
-		p.dsets = append(p.dsets, &dsett{0, id, encoded})
-		p.dirty = true
-	}
+	ccode, cname, state, city, subloc := p.Location.AsComponents()
+	ccode.SetMaxLength(MaxCountryPLCodeLen)
+	cname.SetMaxLength(MaxCountryPLNameLen)
+	state.SetMaxLength(MaxProvinceStateLen)
+	city.SetMaxLength(MaxCityLen)
+	subloc.SetMaxLength(MaxSublocationLen)
+	p.setDSet(idCountryPLCode, []byte(ccode.String()))
+	p.setDSet(idCountryPLName, []byte(cname.String()))
+	p.setDSet(idProvinceState, []byte(state.String()))
+	p.setDSet(idCity, []byte(city.String()))
+	p.setDSet(idSublocation, []byte(subloc.String()))
 }

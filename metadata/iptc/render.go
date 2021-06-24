@@ -7,12 +7,34 @@ import (
 	"sort"
 )
 
+// Dirty returns whether the IPTC data have changed and need to be saved.
+func (p *IPTC) Dirty() bool {
+	if p == nil || len(p.Problems) != 0 {
+		return false
+	}
+	p.setBylines()
+	p.setCaptionAbstract()
+	p.setDateTimeCreated()
+	p.setDigitalCreationDateTime()
+	p.setKeywords()
+	p.setLocation()
+	p.setObjectName()
+	return p.dirty
+}
+
 // Render renders and returns the encoded IPTC block, reflecting the data that
 // was read, as subsequently modified by any SetXXX calls.
 func (p *IPTC) Render() []byte {
-	if len(p.problems) != 0 {
+	if len(p.Problems) != 0 {
 		panic("IPTC Render with parse problems")
 	}
+	p.setBylines()
+	p.setCaptionAbstract()
+	p.setDateTimeCreated()
+	p.setDigitalCreationDateTime()
+	p.setKeywords()
+	p.setLocation()
+	p.setObjectName()
 	var out bytes.Buffer
 	for _, psir := range p.psir {
 		if psir.id == iptcPSIRID && p.dirty {
@@ -96,6 +118,19 @@ func (p *IPTC) deleteDSet(id uint16) {
 			p.dsets[i] = nil
 			p.dirty = true
 		}
+	}
+}
+
+func (p *IPTC) setDSet(id uint16, val []byte) {
+	dset := p.findDSet(id)
+	if dset != nil {
+		if !bytes.Equal(dset.data, val) {
+			dset.data = val
+			p.dirty = true
+		}
+	} else {
+		p.dsets = append(p.dsets, &dsett{0, id, val})
+		p.dirty = true
 	}
 }
 

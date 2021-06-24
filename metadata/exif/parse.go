@@ -17,35 +17,6 @@ const (
 	tagGPSIFDOffset  uint16 = 0x8825
 )
 
-// EXIF is a an EXIF parser and generator.
-type EXIF struct {
-	offset   uint32
-	buf      []byte
-	enc      binary.ByteOrder
-	ifd0     *ifdt
-	exifIFD  *ifdt
-	gpsIFD   *ifdt
-	ranges   [][]uint32
-	problems []string
-}
-
-type ifdt struct {
-	offset uint32
-	size   uint32
-	tags   []*tagt
-	next   uint32
-	dirty  bool
-}
-
-type tagt struct {
-	offset uint32
-	tag    uint16
-	ttype  uint16
-	count  uint32
-	doff   uint32
-	data   []byte
-}
-
 var tiffHeaderLE = []byte{0x49, 0x49, 0x2A, 0x00}
 var tiffHeaderBE = []byte{0x4D, 0x4D, 0x00, 0x2A}
 
@@ -55,7 +26,7 @@ var tiffHeaderBE = []byte{0x4D, 0x4D, 0x00, 0x2A}
 func Parse(buf []byte, offset uint32) (exif *EXIF) {
 	exif = &EXIF{offset: offset, buf: buf}
 	if len(buf) < 8 || !bytes.HasPrefix(buf, tiffHeaderBE) && !bytes.HasPrefix(buf, tiffHeaderLE) {
-		exif.problems = append(exif.problems, "[0] EXIF has invalid TIFF header")
+		exif.Problems = append(exif.Problems, "[0] EXIF has invalid TIFF header")
 		return exif
 	}
 	if bytes.HasPrefix(buf, tiffHeaderBE) {
@@ -75,20 +46,18 @@ func Parse(buf []byte, offset uint32) (exif *EXIF) {
 	}
 	exif.verifyNoOverlaps()
 	exif.ranges = nil // free the space
-	return exif
-}
-
-// Problems returns the accumulated set of problems.
-func (p *EXIF) Problems() []string {
-	if p == nil {
-		return nil
+	exif.getArtist()
+	exif.getDateTime()
+	exif.getImageDescription()
+	if exif.exifIFD != nil {
+		exif.getUserComment()
+		exif.getDateTimeDigitized()
+		exif.getDateTimeOriginal()
 	}
-	return p.problems
-}
-
-// CanUpdate returns whether the EXIF block can be safely rewritten.
-func (p *EXIF) CanUpdate() bool {
-	return len(p.problems) == 0
+	if exif.gpsIFD != nil {
+		exif.getGPSCoords()
+	}
+	return exif
 }
 
 func (p *EXIF) parseIFD(offset uint32) (ifd *ifdt) {
@@ -180,7 +149,7 @@ func (p *EXIF) verifyNoOverlaps() {
 	})
 	for i := 1; i < len(p.ranges); i++ {
 		if p.ranges[i][0] < p.ranges[i-1][1] {
-			p.log(p.ranges[i][0], "EXIF structure error: overlapping ranges")
+			p.log(p.ranges[i][0], "structure error: overlapping ranges")
 			p.ifd0 = nil
 			p.exifIFD = nil
 			p.gpsIFD = nil
@@ -226,5 +195,5 @@ func (p *EXIF) asciiAt(tag *tagt, label string) string {
 
 func (p *EXIF) log(offset uint32, f string, args ...interface{}) {
 	s := fmt.Sprintf(f, args...)
-	p.problems = append(p.problems, fmt.Sprintf("[%x] %s", p.offset+offset, s))
+	p.Problems = append(p.Problems, fmt.Sprintf("EXIF[%x] %s", p.offset+offset, s))
 }

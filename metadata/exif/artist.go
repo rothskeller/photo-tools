@@ -1,20 +1,17 @@
 package exif
 
 import (
-	"bytes"
 	"strings"
+
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 const tagArtist uint16 = 0x13B
 
-// Artist returns the list of people in the Artist tag, if any.
-func (p *EXIF) Artist() (artists []string) {
-	if p == nil || p.ifd0 == nil {
-		return nil
-	}
+func (p *EXIF) getArtist() {
 	tag := p.ifd0.findTag(tagArtist)
 	if tag == nil {
-		return nil
+		return
 	}
 	alist := p.asciiAt(tag, "Artist")
 	// According to the Exif specification, this is a semicolon-separated
@@ -39,44 +36,29 @@ func (p *EXIF) Artist() (artists []string) {
 			inquotes = true
 		case b == ';' && !inquotes:
 			if t := strings.TrimSpace(abuf); t != "" {
-				artists = append(artists, t)
+				p.Artist = append(p.Artist, metadata.NewString(t))
 			}
 		default:
 			abuf += string(b)
 		}
 	}
 	if t := strings.TrimSpace(abuf); t != "" {
-		artists = append(artists, t)
+		p.Artist = append(p.Artist, metadata.NewString(t))
 	}
-	return artists
 }
 
-// SetArtist sets the EXIF Artist tag.
-func (p *EXIF) SetArtist(artists []string) {
-	if p == nil || p.ifd0 == nil {
-		// We're not going to add an EXIF block just for this.
-		return
-	}
-	if len(artists) == 0 {
+func (p *EXIF) setArtist() {
+	if len(p.Artist) == 0 {
 		p.deleteTag(p.ifd0, tagArtist)
 		return
 	}
-	tag := p.ifd0.findTag(tagArtist)
-	if tag == nil {
-		tag = &tagt{tag: tagArtist, ttype: 2, count: 1, data: []byte{0}}
-		p.addTag(p.ifd0, tag)
-	}
-	var encoded = make([]string, 0, len(artists))
-	for _, a := range artists {
-		if strings.IndexAny(a, `";`) >= 0 {
-			a = `"` + strings.ReplaceAll(a, `"`, `""`) + `"`
+	var encoded = make([]string, 0, len(p.Artist))
+	for _, a := range p.Artist {
+		as := a.String()
+		if strings.IndexAny(as, `";`) >= 0 {
+			as = `"` + strings.ReplaceAll(as, `"`, `""`) + `"`
 		}
-		encoded = append(encoded, a)
+		encoded = append(encoded, as)
 	}
-	encbytes := []byte(strings.Join(encoded, "; ") + "\000")
-	if !bytes.Equal(encbytes, tag.data) {
-		tag.data = encbytes
-		tag.count = uint32(len(encbytes))
-		p.ifd0.dirty = true
-	}
+	p.setASCIITag(p.ifd0, tagArtist, strings.Join(encoded, "; "))
 }

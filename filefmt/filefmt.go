@@ -7,6 +7,7 @@ import (
 
 	"github.com/rothskeller/photo-tools/filefmt/ifc"
 	"github.com/rothskeller/photo-tools/filefmt/jpeg"
+	"github.com/rothskeller/photo-tools/filefmt/xmp"
 )
 
 // FileHandler is the interface satisfied by a handler returned from HandlerFor.
@@ -18,6 +19,8 @@ func HandlerFor(path string) (handler ifc.FileHandler) {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".jpg", ".jpeg":
 		return jpeg.NewHandler(path)
+	case ".xmp":
+		return xmp.NewHandler(path)
 	}
 	return nil
 }

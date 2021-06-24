@@ -11,25 +11,25 @@ import (
 
 // XMP is a an XMP parser and generator.
 type XMP struct {
-	DCCreator             []*metadata.String
-	DCDescription         metadata.Multilingual // of metadata.String
-	DCSubject             []*metadata.String
-	DCTitle               metadata.Multilingual // of metadata.String
+	DCCreator             []string
+	DCDescription         []metadata.LangString
+	DCSubject             []string
+	DCTitle               []metadata.LangString
 	DigiKamTagsList       []metadata.Keyword
-	EXIFDateTimeOriginal  *metadata.DateTime
-	EXIFDateTimeDigitized *metadata.DateTime
-	EXIFGPSCoords         *metadata.GPSCoords
-	EXIFUserComments      []*metadata.String
-	IPTCLocationCreated   metadata.Multilingual   // of metadata.Location
-	IPTCLocationsShown    []metadata.Multilingual // of metadata.Location
+	EXIFDateTimeOriginal  metadata.DateTime
+	EXIFDateTimeDigitized metadata.DateTime
+	EXIFGPSCoords         metadata.GPSCoords
+	EXIFUserComments      []string
+	IPTCLocationCreated   []metadata.Location
+	IPTCLocationsShown    [][]metadata.Location
 	LRHierarchicalSubject []metadata.Keyword
-	PSDateCreated         *metadata.DateTime
-	TIFFArtist            *metadata.String
-	TIFFDateTime          *metadata.DateTime
-	TIFFImageDescription  metadata.Multilingual // of metadata.String
-	XMPCreateDate         *metadata.DateTime
-	XMPMetadataDate       *metadata.DateTime
-	XMPModifyDate         *metadata.DateTime
+	PSDateCreated         metadata.DateTime
+	TIFFArtist            string
+	TIFFDateTime          metadata.DateTime
+	TIFFImageDescription  []metadata.LangString
+	XMPCreateDate         metadata.DateTime
+	XMPMetadataDate       metadata.DateTime
+	XMPModifyDate         metadata.DateTime
 	Problems              []string
 
 	doc   *xmp.Document
@@ -112,55 +112,30 @@ func (p *XMP) log(f string, args ...interface{}) {
 	p.Problems = append(p.Problems, "XMP: "+s)
 }
 
-func xmpStringsToMetadata(xs []string) (ms []*metadata.String) {
-	if len(xs) == 0 {
-		return nil
-	}
-	ms = make([]*metadata.String, len(xs))
-	for i := range xs {
-		ms[i] = metadata.NewString(xs[i])
-	}
-	return ms
-}
-func xmpAltStringToMetadata(xas xmp.AltString) (ms metadata.Multilingual) {
+func xmpAltStringToMetadata(xas xmp.AltString) (ms []metadata.LangString) {
 	if len(xas) == 0 {
 		return nil
 	}
 	xas.EnsureDefault()
-	ms = make(metadata.Multilingual, len(xas))
+	ms = make([]metadata.LangString, len(xas))
 	for i, alt := range xas {
-		ms[i] = &metadata.LangDatum{Lang: alt.Lang, Metadatum: metadata.NewString(alt.Value)}
+		ms[i].Lang = alt.Lang
+		ms[i].Value = alt.Value
 	}
 	return ms
 }
-func (p *XMP) xmpDateTimeToMetadata(x string) (m *metadata.DateTime) {
-	m = new(metadata.DateTime)
+func (p *XMP) xmpDateTimeToMetadata(x string, m *metadata.DateTime) {
 	if err := m.Parse(x); err != nil {
 		p.log("invalid DateTime value")
-		return nil
 	}
-	if m.Empty() {
-		return nil
-	}
-	return m
 }
-func metadataToXMPStrings(ms []*metadata.String) (xs []string) {
+func metadataToXMPAltString(ms []metadata.LangString) (xas xmp.AltString) {
 	if len(ms) == 0 {
 		return nil
 	}
-	xs = make([]string, len(ms))
-	for i := range ms {
-		xs[i] = ms[i].String()
-	}
-	return xs
-}
-func metadataToXMPAltString(ms metadata.Multilingual) (xas xmp.AltString) {
-	if len(ms) == 0 {
-		return nil
-	}
-	xas.AddDefault(ms[0].Lang, ms[0].String())
+	xas.AddDefault(ms[0].Lang, ms[0].Value)
 	for _, m := range ms[1:] {
-		xas.Add(m.Lang, m.String())
+		xas.Add(m.Lang, m.Value)
 	}
 	return xas
 }

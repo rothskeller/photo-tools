@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/rothskeller/photo-tools/metadata"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
 )
@@ -28,7 +27,7 @@ func (p *EXIF) getUserComment() {
 	}
 	switch {
 	case bytes.Equal(idt.data[:8], charsetASCII):
-		p.UserComment = metadata.NewString(string(idt.data[8:]))
+		p.UserComment = string(idt.data[8:])
 	case bytes.Equal(idt.data[:8], charsetUnicode):
 		// By the spec, this should be UCS-2.  In practice it may
 		// actually be UTF-16.  Reading it as UTF-16 handles both cases.
@@ -43,7 +42,7 @@ func (p *EXIF) getUserComment() {
 			p.log(idt.doff, "UserComment is invalid UTF-16, ignoring")
 			return
 		}
-		p.UserComment = metadata.NewString(u8)
+		p.UserComment = u8
 	case bytes.Equal(idt.data[:8], charsetUnknown):
 		// There's a decent chance this is actually UTF-8.  Let's try it.
 		var s = string(idt.data[8:])
@@ -51,17 +50,17 @@ func (p *EXIF) getUserComment() {
 			p.log(idt.doff, "UserComment is in unknown character set, ignoring")
 			return
 		}
-		p.UserComment = metadata.NewString(s)
+		p.UserComment = s
 	default:
 		p.log(idt.doff, "UserComment is in unknown character set, ignoring")
 	}
 }
 
 func (p *EXIF) setUserComment() {
-	if p.exifIFD == nil && !p.UserComment.Empty() {
+	if p.exifIFD == nil && p.UserComment != "" {
 		p.addEXIFIFD()
 	}
-	if p.UserComment.Empty() {
+	if p.UserComment == "" {
 		p.deleteTag(p.exifIFD, tagUserComment)
 		return
 	}
@@ -71,7 +70,7 @@ func (p *EXIF) setUserComment() {
 		p.addTag(p.exifIFD, tag)
 	}
 	var encbytes []byte
-	if s := p.UserComment.String(); strings.IndexFunc(s, func(r rune) bool {
+	if s := p.UserComment; strings.IndexFunc(s, func(r rune) bool {
 		return r >= utf8.RuneSelf
 	}) < 0 {
 		encbytes = make([]byte, len(s)+8)

@@ -13,8 +13,7 @@ const idCaptionAbstract uint16 = 0x0278
 func (p *IPTC) getCaptionAbstract() {
 	if dset := p.findDSet(idCaptionAbstract); dset != nil {
 		if utf8.Valid(dset.data) {
-			p.CaptionAbstract.SetMaxLength(MaxCaptionAbstractLen)
-			p.CaptionAbstract.Parse(strings.TrimSpace(string(dset.data)))
+			p.CaptionAbstract = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 Caption/Abstract")
 		}
@@ -23,11 +22,10 @@ func (p *IPTC) getCaptionAbstract() {
 }
 
 func (p *IPTC) setCaptionAbstract() {
-	if p.CaptionAbstract.Empty() {
+	if p.CaptionAbstract == "" {
 		p.deleteDSet(idCaptionAbstract)
 		return
 	}
-	p.CaptionAbstract.SetMaxLength(MaxCaptionAbstractLen)
-	encoded := []byte(p.CaptionAbstract.String())
+	encoded := []byte(applyMax(p.CaptionAbstract, MaxCaptionAbstractLen))
 	p.setDSet(idCaptionAbstract, encoded)
 }

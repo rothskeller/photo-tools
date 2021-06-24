@@ -8,14 +8,12 @@ import (
 	"os"
 	"strconv"
 	"text/tabwriter"
-
-	"github.com/rothskeller/photo-tools/metadata"
 )
 
 func createAddOp(args []string) (op operation, remainingArgs []string, err error) {
 	var (
-		argfields []field
-		value     metadata.Metadatum
+		argfields []*field
+		value     interface{}
 	)
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -24,8 +22,8 @@ func createAddOp(args []string) (op operation, remainingArgs []string, err error
 	case 0:
 		return nil, args[1:], errors.New("add: missing field name")
 	case 1:
-		if !argfields[0].multivalued() {
-			return nil, args[1:], fmt.Errorf("add: not supported for %q", argfields[0].name())
+		if !argfields[0].multivalued {
+			return nil, args[1:], fmt.Errorf("add: not supported for %q", argfields[0].name)
 		}
 	default:
 		return nil, args[1:], errors.New("add: not supported for \"all\"")
@@ -33,16 +31,15 @@ func createAddOp(args []string) (op operation, remainingArgs []string, err error
 	if len(args) < 2 {
 		return nil, args[1:], errors.New("add: missing value")
 	}
-	value = argfields[1].newValue()
-	if err = value.Parse(args[1]); err != nil {
+	if value, err = argfields[0].parseValue(args[1]); err != nil {
 		return nil, args[2:], fmt.Errorf("add %s: %s", args[0], err)
 	}
 	return &addOp{argfields[0], value}, args[2:], nil
 }
 
 type addOp struct {
-	field field
-	value metadata.Metadatum
+	field *field
+	value interface{}
 }
 
 var _ operation = addOp{}
@@ -53,18 +50,18 @@ func (op addOp) check(batches [][]mediafile) error {
 
 func (op addOp) run(files []mediafile) error {
 	for _, file := range files {
-		values := op.field.get(file.handler)
+		values := op.field.getValues(file.handler)
 		found := false
 		for _, v := range values {
-			if v.Equal(op.value) {
+			if op.field.equalValue(v, op.value) {
 				found = true
 				break
 			}
 		}
 		if !found {
 			values = append(values, op.value)
-			if err := op.field.set(file.handler, values); err != nil {
-				return fmt.Errorf("%s: add %s: %s", file.path, op.field.name(), err)
+			if err := op.field.setValues(file.handler, values); err != nil {
+				return fmt.Errorf("%s: add %s: %s", file.path, op.field.name, err)
 			}
 		}
 	}
@@ -72,7 +69,7 @@ func (op addOp) run(files []mediafile) error {
 }
 
 func createChooseOp(args []string) (op operation, remainingArgs []string, err error) {
-	var argfields []field
+	var argfields []*field
 
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -81,8 +78,8 @@ func createChooseOp(args []string) (op operation, remainingArgs []string, err er
 	case 0:
 		return nil, args[1:], errors.New("choose: missing field name")
 	case 1:
-		if argfields[0].multivalued() || argfields[0].langtagged() {
-			return nil, args[1:], fmt.Errorf("choose: not supported for %q", argfields[0].name())
+		if argfields[0].multivalued || argfields[0].lang != "" {
+			return nil, args[1:], fmt.Errorf("choose: not supported for %q", argfields[0].name)
 		}
 	default:
 		return nil, args[1:], errors.New("choose: not supported for \"all\"")
@@ -91,7 +88,7 @@ func createChooseOp(args []string) (op operation, remainingArgs []string, err er
 }
 
 type chooseOp struct {
-	field field
+	field *field
 }
 
 var _ operation = chooseOp{}
@@ -102,32 +99,31 @@ func (op chooseOp) check(batches [][]mediafile) error {
 
 func (op chooseOp) run(files []mediafile) error {
 	var (
-		values []metadata.Metadatum
-		newv   metadata.Metadatum
-		newvs  []metadata.Metadatum
+		values []interface{}
+		newv   interface{}
+		newvs  []interface{}
 		scan   *bufio.Scanner
 		line   string
 		tw     = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	)
 	fmt.Fprintln(tw, "#\tFILE\tTAG\tVALUE")
 	for _, file := range files {
-		tags := op.field.tags(file.handler)
-		for _, tag := range tags {
-			values = append(values, tag.Metadatum)
-			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.path, tag.Tag, escapeString(tag.String()))
+		tagNames, tagValues := op.field.getTags(file.handler)
+		values = append(values, tagValues...)
+		for i, tag := range tagNames {
+			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.path, tag, escapeString(op.field.renderValue(tagValues[i])))
 		}
-		if len(tags) == 0 {
+		if len(tagNames) == 0 {
 			fmt.Fprintf(tw, "\t%s\t(none)\t\n", file.path)
 		}
 	}
 	tw.Flush()
-	newv = op.field.newValue()
 	scan = bufio.NewScanner(os.Stdin)
 RETRY:
 	if len(values) != 0 {
-		fmt.Printf("Enter a new value for %s, or 0 to clear, 1-%d to copy, or nothing to skip.\n? ", op.field.name(), len(values))
+		fmt.Printf("Enter a new value for %s, or 0 to clear, 1-%d to copy, or nothing to skip.\n? ", op.field.name, len(values))
 	} else {
-		fmt.Printf("Enter a new value for %s, 0 to clear, or nothing to skip.\n? ", op.field.name())
+		fmt.Printf("Enter a new value for %s, 0 to clear, or nothing to skip.\n? ", op.field.name)
 	}
 	if !scan.Scan() {
 		return scan.Err()
@@ -139,28 +135,28 @@ RETRY:
 		if lnum == 0 {
 			newvs = nil
 		} else if lnum > 0 && lnum <= len(values) {
-			newvs = []metadata.Metadatum{values[lnum-1]}
+			newvs = []interface{}{values[lnum-1]}
 		} else {
 			fmt.Printf("ERROR: no such line %s.\n", line)
 			goto RETRY
 		}
 	} else {
-		if err := newv.Parse(line); err != nil {
+		if newv, err = op.field.parseValue(line); err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			goto RETRY
 		}
-		newvs = []metadata.Metadatum{newv}
+		newvs = []interface{}{newv}
 	}
 	for _, file := range files {
-		if err := op.field.set(file.handler, newvs); err != nil {
-			return fmt.Errorf("%s: choose %s: %s", file.path, op.field.name(), err)
+		if err := op.field.setValues(file.handler, newvs); err != nil {
+			return fmt.Errorf("%s: choose %s: %s", file.path, op.field.name, err)
 		}
 	}
 	return nil
 }
 
 func createClearOp(args []string) (op operation, remainingArgs []string, err error) {
-	var argfields []field
+	var argfields []*field
 
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -174,14 +170,14 @@ func createClearOp(args []string) (op operation, remainingArgs []string, err err
 		return nil, args[1:], errors.New("clear: not supported for \"all\"")
 	}
 	return &setOp{
-		"clear " + argfields[0].pluralName(),
+		"clear " + argfields[0].pluralName,
 		argfields[0],
-		[]metadata.Metadatum{},
-	}, args[2:], nil
+		nil,
+	}, args[1:], nil
 }
 
 func createCopyOp(args []string) (op operation, remainingArgs []string, err error) {
-	var fields []field
+	var fields []*field
 
 	for len(args) != 0 {
 		argfields := parseField(args[0])
@@ -191,7 +187,7 @@ func createCopyOp(args []string) (op operation, remainingArgs []string, err erro
 		for _, af := range argfields {
 			var found bool
 			for _, f := range fields {
-				if f == af {
+				if f.name == af.name {
 					found = true
 					break
 				}
@@ -203,13 +199,14 @@ func createCopyOp(args []string) (op operation, remainingArgs []string, err erro
 		args = args[1:]
 	}
 	if len(fields) == 0 {
-		fields = []field{}
+		fields = []*field{artistField, captionField, dateTimeField, gpsField, keywordsField, titleField,
+			bothLocationsField, bothShownField}
 	}
 	return copyOp{fields}, args, nil
 }
 
 type copyOp struct {
-	fields []field
+	fields []*field
 }
 
 var _ operation = copyOp{}
@@ -227,14 +224,14 @@ func (op copyOp) check(batches [][]mediafile) error {
 }
 
 func (op copyOp) run(files []mediafile) error {
-	var values = make([][]metadata.Metadatum, len(op.fields))
+	var values = make([][]interface{}, len(op.fields))
 	for idx, field := range op.fields {
-		values[idx] = field.get(files[0].handler)
+		values[idx] = field.getValues(files[0].handler)
 	}
 	for _, file := range files[1:] {
 		for idx, field := range op.fields {
-			if err := field.set(file.handler, values[idx]); err != nil {
-				return fmt.Errorf("%s: copy %s: %s", file.path, field.pluralName(), err)
+			if err := field.setValues(file.handler, values[idx]); err != nil {
+				return fmt.Errorf("%s: copy %s: %s", file.path, field.pluralName, err)
 			}
 		}
 	}
@@ -243,8 +240,8 @@ func (op copyOp) run(files []mediafile) error {
 
 func createRemoveOp(args []string) (op operation, remainingArgs []string, err error) {
 	var (
-		argfields []field
-		value     metadata.Metadatum
+		argfields []*field
+		value     interface{}
 	)
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -253,8 +250,8 @@ func createRemoveOp(args []string) (op operation, remainingArgs []string, err er
 	case 0:
 		return nil, args[1:], errors.New("remove: missing field name")
 	case 1:
-		if !argfields[0].multivalued() {
-			return nil, args[1:], fmt.Errorf("remove: not supported for %q", argfields[0].name())
+		if !argfields[0].multivalued {
+			return nil, args[1:], fmt.Errorf("remove: not supported for %q", argfields[0].name)
 		}
 	default:
 		return nil, args[1:], errors.New("remove: not supported for \"all\"")
@@ -262,16 +259,15 @@ func createRemoveOp(args []string) (op operation, remainingArgs []string, err er
 	if len(args) < 2 {
 		return nil, args[1:], errors.New("remove: missing value")
 	}
-	value = argfields[1].newValue()
-	if err = value.Parse(args[1]); err != nil {
+	if value, err = argfields[0].parseValue(args[1]); err != nil {
 		return nil, args[2:], fmt.Errorf("remove %s: %s", args[0], err)
 	}
 	return &removeOp{argfields[0], value}, args[2:], nil
 }
 
 type removeOp struct {
-	field field
-	value metadata.Metadatum
+	field *field
+	value interface{}
 }
 
 var _ operation = removeOp{}
@@ -282,17 +278,17 @@ func (op removeOp) check(batches [][]mediafile) error {
 
 func (op removeOp) run(files []mediafile) error {
 	for _, file := range files {
-		values := op.field.get(file.handler)
+		values := op.field.getValues(file.handler)
 		j := 0
 		for _, v := range values {
-			if !v.Equal(op.value) {
+			if !op.field.equalValue(v, op.value) {
 				values[j] = v
 				j++
 			}
 		}
 		if j < len(values) {
-			if err := op.field.set(file.handler, values[:j]); err != nil {
-				return fmt.Errorf("%s: remove %s: %s", file.path, op.field.name(), err)
+			if err := op.field.setValues(file.handler, values[:j]); err != nil {
+				return fmt.Errorf("%s: remove %s: %s", file.path, op.field.name, err)
 			}
 		}
 	}
@@ -301,8 +297,8 @@ func (op removeOp) run(files []mediafile) error {
 
 func createSetOp(args []string) (op operation, remainingArgs []string, err error) {
 	var (
-		argfields []field
-		value     metadata.Metadatum
+		argfields []*field
+		value     interface{}
 	)
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -311,7 +307,7 @@ func createSetOp(args []string) (op operation, remainingArgs []string, err error
 	case 0:
 		return nil, args[1:], errors.New("set: missing field name")
 	case 1:
-		if argfields[0] == keywordField {
+		if argfields[0] == keywordsField {
 			return nil, args[1:], errors.New("set: not supported for keyword")
 		}
 	default:
@@ -320,21 +316,20 @@ func createSetOp(args []string) (op operation, remainingArgs []string, err error
 	if len(args) < 2 {
 		return nil, args[1:], errors.New("set: missing value")
 	}
-	value = argfields[1].newValue()
-	if err = value.Parse(args[1]); err != nil {
+	if value, err = argfields[0].parseValue(args[1]); err != nil {
 		return nil, args[2:], fmt.Errorf("set %s: %s", args[0], err)
 	}
 	return &setOp{
-		"set " + argfields[0].pluralName(),
+		"set " + argfields[0].pluralName,
 		argfields[0],
-		[]metadata.Metadatum{value},
+		[]interface{}{value},
 	}, args[2:], nil
 }
 
 type setOp struct {
 	label  string
-	field  field
-	values []metadata.Metadatum
+	field  *field
+	values []interface{}
 }
 
 var _ operation = setOp{}
@@ -342,7 +337,7 @@ var _ operation = setOp{}
 func (op setOp) check(batches [][]mediafile) error { return nil }
 func (op setOp) run(files []mediafile) error {
 	for _, file := range files {
-		if err := op.field.set(file.handler, op.values); err != nil {
+		if err := op.field.setValues(file.handler, op.values); err != nil {
 			return fmt.Errorf("%s: %s: %s", file.path, op.label, err)
 		}
 	}
@@ -351,9 +346,9 @@ func (op setOp) run(files []mediafile) error {
 
 func createWriteOp(args []string) (op operation, remainingArgs []string, err error) {
 	var (
-		argfields []field
+		argfields []*field
 		by        []byte
-		value     metadata.String
+		value     interface{}
 	)
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -364,6 +359,8 @@ func createWriteOp(args []string) (op operation, remainingArgs []string, err err
 	if by, err = io.ReadAll(os.Stdin); err != nil {
 		return nil, args[1:], fmt.Errorf("write: standard input: %s", err)
 	}
-	value = metadata.String(string(by))
-	return setOp{"write caption", captionField, []metadata.Metadatum{&value}}, args[1:], nil
+	if value, err = captionField.parseValue(string(by)); err != nil {
+		return nil, args[1:], fmt.Errorf("write %s: %s", captionField.name, err)
+	}
+	return setOp{"write caption", captionField, []interface{}{value}}, args[1:], nil
 }

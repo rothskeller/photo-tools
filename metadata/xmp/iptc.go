@@ -17,12 +17,18 @@ func (p *XMP) getIPTC() {
 		return
 	}
 	p.IPTCLocationCreated = p.xmpIPTCLocationToMetadata(model.LocationCreated)
-	p.IPTCLocationsShown = p.xmpIPTCLocationsToMetadata(model.LocationShown)
+	for _, xl := range model.LocationShown {
+		var ml = p.xmpIPTCLocationToMetadata(xl)
+		if len(ml) != 0 {
+			p.IPTCLocationsShown = append(p.IPTCLocationsShown, ml)
+		}
+	}
 }
 
 func (p *XMP) setIPTC() {
 	var (
 		model *iptc4ext.Iptc4xmpExt
+		shown iptc4ext.LocationArray
 		err   error
 	)
 	if model, err = iptc4ext.MakeModel(p.doc); err != nil {
@@ -32,13 +38,18 @@ func (p *XMP) setIPTC() {
 		model.LocationCreated = loc
 		p.dirty = true
 	}
-	if locs := metadataToXMPIPTCLocations(p.IPTCLocationsShown); !reflect.DeepEqual(locs, model.LocationShown) {
-		model.LocationShown = locs
+	for _, ml := range p.IPTCLocationsShown {
+		if len(ml) != 0 {
+			shown = append(shown, metadataToXMPIPTCLocation(ml))
+		}
+	}
+	if !reflect.DeepEqual(shown, model.LocationShown) {
+		model.LocationShown = shown
 		p.dirty = true
 	}
 }
 
-func (p *XMP) xmpIPTCLocationToMetadata(xl *iptc4ext.Location) (ml metadata.Multilingual) {
+func (p *XMP) xmpIPTCLocationToMetadata(xl *iptc4ext.Location) (mls []metadata.Location) {
 	if xl == nil {
 		return nil
 	}
@@ -69,87 +80,63 @@ func (p *XMP) xmpIPTCLocationToMetadata(xl *iptc4ext.Location) (ml metadata.Mult
 			seen[alt.Lang] = true
 		}
 	}
-	ml = make(metadata.Multilingual, len(langs))
+	mls = make([]metadata.Location, len(langs))
 	for i, lang := range langs {
-		var ccode, cname, state, city, subloc *metadata.String
-		if xl.CountryCode != "" {
-			ccode = metadata.NewString(xl.CountryCode)
-		}
+		mls[i].Lang = lang
+		var cname, state, city, subloc string
 		if s := xl.CountryName.Get(lang); s != "" {
-			cname = metadata.NewString(s)
-		} else if s := xl.CountryName.Default(); s != "" {
-			cname = metadata.NewString(s)
+			cname = s
+		} else {
+			cname = xl.CountryName.Default()
 		}
 		if s := xl.ProvinceState.Get(lang); s != "" {
-			state = metadata.NewString(s)
-		} else if s := xl.ProvinceState.Default(); s != "" {
-			state = metadata.NewString(s)
+			state = s
+		} else {
+			state = xl.ProvinceState.Default()
 		}
 		if s := xl.City.Get(lang); s != "" {
-			city = metadata.NewString(s)
-		} else if s := xl.City.Default(); s != "" {
-			city = metadata.NewString(s)
+			city = s
+		} else {
+			city = xl.City.Default()
 		}
 		if s := xl.Sublocation.Get(lang); s != "" {
-			subloc = metadata.NewString(s)
-		} else if s := xl.Sublocation.Default(); s != "" {
-			subloc = metadata.NewString(s)
+			subloc = s
+		} else {
+			subloc = xl.Sublocation.Default()
 		}
-		var loc metadata.Location
-		if err := loc.ParseComponents(ccode, cname, state, city, subloc); err != nil {
+		if err := mls[i].ParseComponents(xl.CountryCode, cname, state, city, subloc); err != nil {
 			p.log("invalid XMP IPTC location")
 			return nil
 		}
-		ml[i] = &metadata.LangDatum{Lang: lang, Metadatum: &loc}
 	}
-	return ml
+	return mls
 }
 
-func metadataToXMPIPTCLocation(ml metadata.Multilingual) (xl *iptc4ext.Location) {
-	if len(ml) == 0 {
+func metadataToXMPIPTCLocation(mls []metadata.Location) (xl *iptc4ext.Location) {
+	if len(mls) == 0 {
 		return nil
 	}
 	xl = new(iptc4ext.Location)
-	for i, ld := range ml {
-		ccode, cname, state, city, subloc := ld.Metadatum.(*metadata.Location).AsComponents()
+	for i, ml := range mls {
 		if i == 0 {
-			xl.CountryCode = ccode.String()
-			xl.CountryName.AddDefault(ld.Lang, cname.String())
-			xl.ProvinceState.AddDefault(ld.Lang, state.String())
-			xl.City.AddDefault(ld.Lang, city.String())
-			xl.Sublocation.AddDefault(ld.Lang, subloc.String())
+			xl.CountryCode = ml.CountryCode
+			xl.CountryName.AddDefault(ml.Lang, ml.CountryName)
+			xl.ProvinceState.AddDefault(ml.Lang, ml.State)
+			xl.City.AddDefault(ml.Lang, ml.City)
+			xl.Sublocation.AddDefault(ml.Lang, ml.Sublocation)
 		} else {
-			if cname.String() != xl.CountryName.Default() {
-				xl.CountryName.Add(ld.Lang, cname.String())
+			if ml.CountryName != xl.CountryName.Default() {
+				xl.CountryName.Add(ml.Lang, ml.CountryName)
 			}
-			if state.String() != xl.ProvinceState.Default() {
-				xl.ProvinceState.Add(ld.Lang, state.String())
+			if ml.State != xl.ProvinceState.Default() {
+				xl.ProvinceState.Add(ml.Lang, ml.State)
 			}
-			if city.String() != xl.City.Default() {
-				xl.City.Add(ld.Lang, city.String())
+			if ml.City != xl.City.Default() {
+				xl.City.Add(ml.Lang, ml.City)
 			}
-			if subloc.String() != xl.Sublocation.Default() {
-				xl.Sublocation.Add(ld.Lang, subloc.String())
+			if ml.Sublocation != xl.Sublocation.Default() {
+				xl.Sublocation.Add(ml.Lang, ml.Sublocation)
 			}
-		}
-	}
-	return xl
-}
-
-func (p *XMP) xmpIPTCLocationsToMetadata(xl iptc4ext.LocationArray) (ml []metadata.Multilingual) {
-	for _, loc := range xl {
-		var mloc = p.xmpIPTCLocationToMetadata(loc)
-		if len(mloc) != 0 {
-			ml = append(ml, mloc)
-		}
-	}
-	return ml
-}
-
-func metadataToXMPIPTCLocations(ml []metadata.Multilingual) (xl iptc4ext.LocationArray) {
-	for _, loc := range ml {
-		if len(loc) != 0 {
-			xl = append(xl, metadataToXMPIPTCLocation(loc))
 		}
 	}
 	return xl

@@ -2,8 +2,6 @@ package exif
 
 import (
 	"strings"
-
-	"github.com/rothskeller/photo-tools/metadata"
 )
 
 const tagArtist uint16 = 0x13B
@@ -36,14 +34,14 @@ func (p *EXIF) getArtist() {
 			inquotes = true
 		case b == ';' && !inquotes:
 			if t := strings.TrimSpace(abuf); t != "" {
-				p.Artist = append(p.Artist, metadata.NewString(t))
+				p.Artist = append(p.Artist, t)
 			}
 		default:
 			abuf += string(b)
 		}
 	}
 	if t := strings.TrimSpace(abuf); t != "" {
-		p.Artist = append(p.Artist, metadata.NewString(t))
+		p.Artist = append(p.Artist, t)
 	}
 }
 
@@ -54,11 +52,10 @@ func (p *EXIF) setArtist() {
 	}
 	var encoded = make([]string, 0, len(p.Artist))
 	for _, a := range p.Artist {
-		as := a.String()
-		if strings.IndexAny(as, `";`) >= 0 {
-			as = `"` + strings.ReplaceAll(as, `"`, `""`) + `"`
+		if strings.IndexAny(a, `";`) >= 0 {
+			a = `"` + strings.ReplaceAll(a, `"`, `""`) + `"`
 		}
-		encoded = append(encoded, as)
+		encoded = append(encoded, a)
 	}
 	p.setASCIITag(p.ifd0, tagArtist, strings.Join(encoded, "; "))
 }

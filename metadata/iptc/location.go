@@ -3,8 +3,6 @@ package iptc
 import (
 	"strings"
 	"unicode/utf8"
-
-	"github.com/rothskeller/photo-tools/metadata"
 )
 
 const (
@@ -25,16 +23,11 @@ const (
 )
 
 func (p *IPTC) getLocation() {
-	var ccode, cname, state, city, subloc metadata.String
+	var ccode, cname, state, city, subloc string
 
-	ccode.SetMaxLength(MaxCountryPLCodeLen)
-	cname.SetMaxLength(MaxCountryPLNameLen)
-	state.SetMaxLength(MaxProvinceStateLen)
-	city.SetMaxLength(MaxCityLen)
-	subloc.SetMaxLength(MaxSublocationLen)
 	if dset := p.findDSet(idCountryPLCode); dset != nil {
 		if utf8.Valid(dset.data) {
-			ccode.Parse(strings.TrimSpace(string(dset.data)))
+			ccode = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 Country/Primary Location Code")
 			return
@@ -42,34 +35,33 @@ func (p *IPTC) getLocation() {
 	}
 	if dset := p.findDSet(idCountryPLName); dset != nil {
 		if utf8.Valid(dset.data) {
-			cname.Parse(strings.TrimSpace(string(dset.data)))
+			cname = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 IPTC Country/Primary Location Name")
 		}
 	}
 	if dset := p.findDSet(idProvinceState); dset != nil {
 		if utf8.Valid(dset.data) {
-			state.Parse(strings.TrimSpace(string(dset.data)))
+			state = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 IPTC Province/State")
 		}
 	}
 	if dset := p.findDSet(idCity); dset != nil {
 		if utf8.Valid(dset.data) {
-			city.Parse(strings.TrimSpace(string(dset.data)))
+			city = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 IPTC City")
 		}
 	}
 	if dset := p.findDSet(idSublocation); dset != nil {
 		if utf8.Valid(dset.data) {
-			subloc.Parse(strings.TrimSpace(string(dset.data)))
+			subloc = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 IPTC Sub-location")
 		}
 	}
-	p.Location = new(metadata.Location)
-	if err := p.Location.ParseComponents(&ccode, &cname, &state, &city, &subloc); err != nil {
+	if err := p.Location.ParseComponents(ccode, cname, state, city, subloc); err != nil {
 		p.log("Location: %s", err)
 	}
 }
@@ -83,15 +75,9 @@ func (p *IPTC) setLocation() {
 		p.deleteDSet(idSublocation)
 		return
 	}
-	ccode, cname, state, city, subloc := p.Location.AsComponents()
-	ccode.SetMaxLength(MaxCountryPLCodeLen)
-	cname.SetMaxLength(MaxCountryPLNameLen)
-	state.SetMaxLength(MaxProvinceStateLen)
-	city.SetMaxLength(MaxCityLen)
-	subloc.SetMaxLength(MaxSublocationLen)
-	p.setDSet(idCountryPLCode, []byte(ccode.String()))
-	p.setDSet(idCountryPLName, []byte(cname.String()))
-	p.setDSet(idProvinceState, []byte(state.String()))
-	p.setDSet(idCity, []byte(city.String()))
-	p.setDSet(idSublocation, []byte(subloc.String()))
+	p.setDSet(idCountryPLCode, []byte(applyMax(p.Location.CountryCode, MaxCountryPLCodeLen)))
+	p.setDSet(idCountryPLName, []byte(applyMax(p.Location.CountryName, MaxCountryPLNameLen)))
+	p.setDSet(idProvinceState, []byte(applyMax(p.Location.State, MaxProvinceStateLen)))
+	p.setDSet(idCity, []byte(applyMax(p.Location.City, MaxCityLen)))
+	p.setDSet(idSublocation, []byte(applyMax(p.Location.Sublocation, MaxSublocationLen)))
 }

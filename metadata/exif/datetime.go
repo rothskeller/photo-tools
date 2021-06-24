@@ -51,10 +51,10 @@ func (p *EXIF) setDateTimeOriginal() {
 // getDateTimeTagGroup returns the date and time from an exif tag triplet.  The
 // returned value has the form "YYYY-MM-DDTHH:MM:SS", possibly followed by
 // ".sss", possibly followed by "±HH:MM".
-func (p *EXIF) getDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, suffix string) (dt *metadata.DateTime) {
+func (p *EXIF) getDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, suffix string) (dt metadata.DateTime) {
 	dtot := dtifd.findTag(dttag)
 	if dtot == nil {
-		return nil
+		return // empty DateTime
 	}
 	var dto, ssto, oto string
 	dto = p.asciiAt(dtot, "DateTime"+suffix)
@@ -66,7 +66,6 @@ func (p *EXIF) getDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, suf
 			oto = p.asciiAt(otot, "OffsetTime"+suffix)
 		}
 	}
-	dt = new(metadata.DateTime)
 	if err := dt.ParseEXIF(dto, ssto, oto); err != nil {
 		p.log(dtot.offset, "DateTime%s: %s", suffix, err)
 	}
@@ -75,7 +74,7 @@ func (p *EXIF) getDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, suf
 
 // setDateTimeTagGroup sets the exif {Date,SubSec,Offset}Time tags based
 // on the provided datetime string.
-func (p *EXIF) setDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, dt *metadata.DateTime) {
+func (p *EXIF) setDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, dt metadata.DateTime) {
 	if dt.Empty() {
 		p.deleteTag(dtifd, dttag)
 		p.deleteTag(p.exifIFD, ottag)

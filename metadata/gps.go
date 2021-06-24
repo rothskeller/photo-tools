@@ -365,44 +365,30 @@ func (gc *GPSCoords) HasAltitude() bool {
 }
 
 // Equal returns whether two GPSCoords are the same.
-func (gc *GPSCoords) Equal(other Metadatum) bool {
-	if gc == nil && other == nil {
-		return true
-	}
-	o, ok := other.(*GPSCoords)
-	if !ok {
-		return false
-	}
-	if gc.Empty() != o.Empty() {
+func (gc *GPSCoords) Equal(other *GPSCoords) bool {
+	if gc.Empty() != other.Empty() {
 		return false
 	}
 	if gc.Empty() {
 		return true
 	}
-	if gc.latitude != o.latitude || gc.longitude != o.longitude {
+	if gc.latitude != other.latitude || gc.longitude != other.longitude {
 		return false
 	}
-	if gc.HasAltitude() != o.HasAltitude() {
+	if gc.HasAltitude() != other.HasAltitude() {
 		return false
 	}
 	if !gc.HasAltitude() {
 		return true
 	}
-	return gc.altitude == o.altitude
+	return gc.altitude == other.altitude
 }
 
 // Equivalent returns true if the receiver is equal to the argument, to the
 // precision of the least precise of the two.  If so, the second return value is
 // the more precise of the two.
-func (gc *GPSCoords) Equivalent(other Metadatum) (bool, Metadatum) {
-	if gc == nil && other == nil {
-		return true, gc
-	}
-	o, ok := other.(*GPSCoords)
-	if !ok {
-		return false, nil
-	}
-	if gc.Empty() != o.Empty() {
+func (gc *GPSCoords) Equivalent(other *GPSCoords) (bool, *GPSCoords) {
+	if gc.Empty() != other.Empty() {
 		return false, nil
 	}
 	if gc.Empty() {
@@ -411,24 +397,21 @@ func (gc *GPSCoords) Equivalent(other Metadatum) (bool, Metadatum) {
 	// Anything within 0.000003 degrees (in other words, 0.01 second) is
 	// considered equivalent.  This handles the inaccuracy of conversions
 	// between degrees,minutes,seconds format and fractional degrees.
-	if diff := gc.latitude - o.latitude; diff < -3 || diff > 3 {
+	if diff := gc.latitude - other.latitude; diff < -3 || diff > 3 {
 		return false, nil
 	}
-	if diff := gc.longitude - o.longitude; diff < -3 || diff > 3 {
+	if diff := gc.longitude - other.longitude; diff < -3 || diff > 3 {
 		return false, nil
 	}
-	if o.altitude == 0 {
+	if other.altitude == 0 {
 		return true, gc
 	}
 	if gc.altitude == 0 {
-		return true, o
+		return true, other
 	}
 	// Anything within a tenth of a meter is considered equivalent.
-	if diff := gc.altitude - o.altitude; diff < -10000 || diff > 10000 {
+	if diff := gc.altitude - other.altitude; diff < -10000 || diff > 10000 {
 		return false, nil
 	}
 	return true, gc
 }
-
-// Verify interface compliance.
-var _ Metadatum = (*GPSCoords)(nil)

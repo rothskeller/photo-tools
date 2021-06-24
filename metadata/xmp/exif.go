@@ -5,6 +5,7 @@ import (
 
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/exif"
+	"trimmer.io/go-xmp/xmp"
 )
 
 func (p *XMP) getEXIF() {
@@ -16,10 +17,10 @@ func (p *XMP) getEXIF() {
 	if model == nil {
 		return
 	}
-	p.EXIFDateTimeDigitized = p.xmpDateTimeToMetadata(model.DateTimeDigitized)
-	p.EXIFDateTimeOriginal = p.xmpDateTimeToMetadata(model.DateTimeOriginal)
-	p.EXIFGPSCoords = p.xmpEXIFGPSCoordsToMetadata(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude)
-	p.EXIFUserComments = xmpStringsToMetadata(model.UserComment)
+	p.xmpDateTimeToMetadata(model.DateTimeDigitized, &p.EXIFDateTimeDigitized)
+	p.xmpDateTimeToMetadata(model.DateTimeOriginal, &p.EXIFDateTimeOriginal)
+	p.xmpEXIFGPSCoordsToMetadata(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude, &p.EXIFGPSCoords)
+	p.EXIFUserComments = model.UserComment
 }
 
 func (p *XMP) setEXIF() {
@@ -43,20 +44,14 @@ func (p *XMP) setEXIF() {
 		model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude = lat, long, altref, alt
 		p.dirty = true
 	}
-	if comments := metadataToXMPStrings(p.EXIFUserComments); !reflect.DeepEqual(comments, model.UserComment) {
-		model.UserComment = comments
+	if !reflect.DeepEqual(xmp.StringArray(p.EXIFUserComments), model.UserComment) {
+		model.UserComment = p.EXIFUserComments
 		p.dirty = true
 	}
 }
 
-func (p *XMP) xmpEXIFGPSCoordsToMetadata(lat, long, altref, alt string) (m *metadata.GPSCoords) {
-	m = new(metadata.GPSCoords)
+func (p *XMP) xmpEXIFGPSCoordsToMetadata(lat, long, altref, alt string, m *metadata.GPSCoords) {
 	if err := m.ParseXMP(lat, long, altref, alt); err != nil {
 		p.log("invalid GPS coordinates")
-		return nil
 	}
-	if m.Empty() {
-		return nil
-	}
-	return m
 }

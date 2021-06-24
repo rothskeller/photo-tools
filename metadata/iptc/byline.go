@@ -3,8 +3,6 @@ package iptc
 import (
 	"strings"
 	"unicode/utf8"
-
-	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // MaxBylineLen is the maximum length of one By-line entry.
@@ -17,10 +15,7 @@ func (p *IPTC) getBylines() {
 		if dset != nil && dset.id == idByline {
 			if utf8.Valid(dset.data) {
 				if byline := strings.TrimSpace(string(dset.data)); byline != "" {
-					var s metadata.String
-					s.SetMaxLength(MaxBylineLen)
-					s.Parse(byline)
-					p.Bylines = append(p.Bylines, &s)
+					p.Bylines = append(p.Bylines, byline)
 				}
 			} else {
 				p.log("ignoring non-UTF8 By-line")
@@ -38,8 +33,7 @@ func (p *IPTC) setBylines() {
 	for i, dset := range p.dsets {
 		if dset != nil && dset.id == idByline {
 			if idx < len(p.Bylines) {
-				p.Bylines[idx].SetMaxLength(MaxBylineLen)
-				if next := p.Bylines[idx].String(); next != string(dset.data) {
+				if next := applyMax(p.Bylines[idx], MaxBylineLen); next != string(dset.data) {
 					dset.data = []byte(next)
 					p.dirty = true
 				}
@@ -51,8 +45,7 @@ func (p *IPTC) setBylines() {
 		}
 	}
 	for idx < len(p.Bylines) {
-		p.Bylines[idx].SetMaxLength(MaxBylineLen)
-		p.dsets = append(p.dsets, &dsett{0, idByline, []byte(p.Bylines[idx].String())})
+		p.dsets = append(p.dsets, &dsett{0, idByline, []byte(applyMax(p.Bylines[idx], MaxBylineLen))})
 		p.dirty = true
 		idx++
 	}

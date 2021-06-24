@@ -13,9 +13,9 @@ func (p *XMP) getXMP() {
 	if model == nil {
 		return
 	}
-	p.XMPCreateDate = p.xmpDateTimeToMetadata(model.CreateDate)
-	p.XMPMetadataDate = p.xmpDateTimeToMetadata(model.MetadataDate)
-	p.XMPModifyDate = p.xmpDateTimeToMetadata(model.ModifyDate)
+	p.xmpDateTimeToMetadata(model.CreateDate, &p.XMPCreateDate)
+	p.xmpDateTimeToMetadata(model.MetadataDate, &p.XMPMetadataDate)
+	p.xmpDateTimeToMetadata(model.ModifyDate, &p.XMPModifyDate)
 }
 
 func (p *XMP) setXMP() {

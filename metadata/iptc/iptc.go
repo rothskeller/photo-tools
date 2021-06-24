@@ -7,13 +7,13 @@ import (
 
 // IPTC is a an IPTC parser and generator.
 type IPTC struct {
-	Bylines                 []*metadata.String
-	CaptionAbstract         *metadata.String
-	DateTimeCreated         *metadata.DateTime
-	DigitalCreationDateTime *metadata.DateTime
-	Keywords                []*metadata.String
-	Location                *metadata.Location
-	ObjectName              *metadata.String
+	Bylines                 []string
+	CaptionAbstract         string
+	DateTimeCreated         metadata.DateTime
+	DigitalCreationDateTime metadata.DateTime
+	Keywords                []string
+	Location                metadata.Location
+	ObjectName              string
 	Problems                []string
 
 	offset uint32

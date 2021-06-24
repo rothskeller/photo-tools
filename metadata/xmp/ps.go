@@ -13,7 +13,7 @@ func (p *XMP) getPS() {
 	if model == nil {
 		return
 	}
-	p.PSDateCreated = p.xmpDateTimeToMetadata(model.DateCreated)
+	p.xmpDateTimeToMetadata(model.DateCreated, &p.PSDateCreated)
 }
 
 func (p *XMP) setPS() {

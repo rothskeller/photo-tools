@@ -9,7 +9,7 @@ import (
 )
 
 func createShowOp(args []string) (op operation, remainingArgs []string, err error) {
-	var fields []field
+	var fields []*field
 
 	for len(args) != 0 {
 		argfields := parseField(args[0])
@@ -19,7 +19,7 @@ func createShowOp(args []string) (op operation, remainingArgs []string, err erro
 		for _, af := range argfields {
 			var found bool
 			for _, f := range fields {
-				if f == af {
+				if f.name == af.name {
 					found = true
 					break
 				}
@@ -31,12 +31,15 @@ func createShowOp(args []string) (op operation, remainingArgs []string, err erro
 		args = args[1:]
 	}
 	if len(fields) == 0 {
-		fields = []field{}
+		fields = parseField("all")
 	}
-	return showOp(fields), args, nil
+	return showOp{fields: fields}, args, nil
 }
 
-type showOp []field
+type showOp struct {
+	fields []*field
+	hasRun bool
+}
 
 var _ operation = showOp{}
 
@@ -45,26 +48,30 @@ func (op showOp) check(batches [][]mediafile) error {
 }
 
 func (op showOp) run(files []mediafile) error {
+	if op.hasRun {
+		fmt.Println()
+	}
 	var tw = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	fmt.Fprintln(tw, "FILE\tFIELD\tVALUE")
 	for _, file := range files {
-		for _, field := range op {
-			values := field.get(file.handler)
+		for _, field := range op.fields {
+			values := field.getValues(file.handler)
 			if len(values) == 0 {
-				fmt.Fprintf(tw, "%s\t%s\t\n", file.path, field.label())
+				fmt.Fprintf(tw, "%s\t%s\t\n", file.path, field.label)
 			} else {
 				for _, value := range values {
-					fmt.Fprintf(tw, "%s\t%s\t%s\n", file.path, field.label(), escapeString(value.String()))
+					fmt.Fprintf(tw, "%s\t%s\t%s\n", file.path, field.label, escapeString(field.renderValue(value)))
 				}
 			}
 		}
 	}
 	tw.Flush()
+	op.hasRun = true
 	return nil
 }
 
 func createTagsOp(args []string) (op operation, remainingArgs []string, err error) {
-	var fields []field
+	var fields []*field
 
 	for len(args) != 0 {
 		argfields := parseField(args[0])
@@ -74,7 +81,7 @@ func createTagsOp(args []string) (op operation, remainingArgs []string, err erro
 		for _, af := range argfields {
 			var found bool
 			for _, f := range fields {
-				if f == af {
+				if f.name == af.name {
 					found = true
 					break
 				}
@@ -86,12 +93,15 @@ func createTagsOp(args []string) (op operation, remainingArgs []string, err erro
 		args = args[1:]
 	}
 	if len(fields) == 0 {
-		fields = []field{}
+		fields = parseField("all")
 	}
-	return showOp(fields), args, nil
+	return tagsOp{fields: fields}, args, nil
 }
 
-type tagsOp []field
+type tagsOp struct {
+	fields []*field
+	hasRun bool
+}
 
 var _ operation = tagsOp{}
 
@@ -100,17 +110,21 @@ func (op tagsOp) check(batches [][]mediafile) error {
 }
 
 func (op tagsOp) run(files []mediafile) error {
+	if op.hasRun {
+		fmt.Println()
+	}
 	var tw = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	fmt.Fprintln(tw, "FILE\tTAG\tVALUE")
 	for _, file := range files {
-		for _, field := range op {
-			tags := field.tags(file.handler)
-			for _, tag := range tags {
-				fmt.Fprintf(tw, "%s\t%s\t%s\n", file.path, tag.Tag, escapeString(tag.String()))
+		for _, field := range op.fields {
+			tagNames, tagValues := field.getTags(file.handler)
+			for i, tag := range tagNames {
+				fmt.Fprintf(tw, "%s\t%s\t%s\n", file.path, tag, escapeString(field.renderValue(tagValues[i])))
 			}
 		}
 	}
 	tw.Flush()
+	op.hasRun = true
 	return nil
 }
 
@@ -119,7 +133,7 @@ func escapeString(s string) string {
 }
 
 func createReadOp(args []string) (op operation, remainingArgs []string, err error) {
-	var argfields []field
+	var argfields []*field
 
 	if len(args) != 0 {
 		argfields = parseField(args[0])
@@ -142,9 +156,9 @@ func (readCaptionOp) check(batches [][]mediafile) error {
 }
 
 func (readCaptionOp) run(files []mediafile) error {
-	caption := captionField.get(files[0].handler)
-	if !caption.Empty() {
-		str := caption.String()
+	caption := captionField.getValues(files[0].handler)
+	if len(caption) != 0 {
+		str := captionField.renderValue(caption[0])
 		fmt.Print(str)
 		if len(str) != 0 && str[len(str)-1] != '\n' {
 			fmt.Println()

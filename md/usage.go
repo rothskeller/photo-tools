@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rothskeller/photo-tools/filefmt"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 func usage() {
@@ -35,7 +36,7 @@ func parseCommandLine() (ops []operation, batches [][]mediafile) {
 		arg       string
 		batch     bool
 		op        operation
-		handler   filefmt.FileHandler
+		handler   fileHandler
 		fileError bool
 		err       error
 	)
@@ -136,38 +137,71 @@ var optypes = map[string]operationFactory{
 	"write":  createWriteOp,
 }
 
-func parseField(arg string) []field {
+func parseField(arg string) []*field {
 	switch arg {
 	case "artist", "a":
-		panic("not implemented")
+		return []*field{artistField}
 	case "caption", "c":
-		panic("not implemented")
+		return []*field{captionField}
 	case "datetime", "date", "time", "d":
-		panic("not implemented")
+		return []*field{dateTimeField}
 	case "gps", "g":
-		panic("not implemented")
+		return []*field{gpsField}
 	case "keyword", "keywords", "kw", "k":
-		panic("not implemented")
+		return []*field{keywordsField}
 	case "location", "loc", "l":
-		panic("not implemented")
+		return []*field{untaggedLocationField}
 	case "shown", "s":
-		panic("not implemented")
+		return []*field{untaggedShownField}
 	case "title", "t":
-		panic("not implemented")
+		return []*field{titleField}
 	case "group", "groups":
-		panic("not implemented")
+		return []*field{groupsField}
 	case "person", "people":
-		panic("not implemented")
+		return []*field{peopleField}
 	case "topic", "topics":
-		panic("not implemented")
+		return []*field{topicsField}
 	case "all":
-		panic("not implemented")
+		return []*field{titleField, dateTimeField, artistField, gpsField, untaggedLocationField, untaggedShownField,
+			placesField, peopleField, groupsField, topicsField, otherKeywordsField, captionField}
 	}
 	if strings.HasPrefix(arg, "l:") || strings.HasPrefix(arg, "loc:") || strings.HasPrefix(arg, "location:") {
-		panic("not implemented")
+		var f = *untaggedLocationField
+		f.lang = arg[strings.IndexByte(arg, ':')+1:]
+		if f.lang == "" {
+			fmt.Fprintf(os.Stderr, "ERROR: empty language tag on location field\n")
+			usage()
+		}
+		f.name += ":" + f.lang
+		f.pluralName += ":" + f.lang
+		f.label += " [" + f.lang + "]"
+		oldparse := f.parseValue
+		f.parseValue = func(s string) (v interface{}, err error) {
+			if v, err = oldparse(s); err == nil {
+				v.(*metadata.Location).Lang = f.lang
+			}
+			return v, err
+		}
+		return []*field{&f}
 	}
 	if strings.HasPrefix(arg, "s:") || strings.HasPrefix(arg, "shown:") {
-		panic("not implemented")
+		var f = *untaggedShownField
+		f.lang = arg[strings.IndexByte(arg, ':')+1:]
+		if f.lang == "" {
+			fmt.Fprintf(os.Stderr, "ERROR: empty language tag on shown field\n")
+			usage()
+		}
+		f.name += ":" + f.lang
+		f.pluralName += ":" + f.lang
+		f.label += " [" + f.lang + "]"
+		oldparse := f.parseValue
+		f.parseValue = func(s string) (v interface{}, err error) {
+			if v, err = oldparse(s); err == nil {
+				v.(*metadata.Location).Lang = f.lang
+			}
+			return v, err
+		}
+		return []*field{&f}
 	}
 	return nil
 }

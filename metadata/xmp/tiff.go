@@ -3,7 +3,6 @@ package xmp
 import (
 	"reflect"
 
-	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/tiff"
 )
 
@@ -16,10 +15,8 @@ func (p *XMP) getTIFF() {
 	if model == nil {
 		return
 	}
-	if model.Artist != "" {
-		p.TIFFArtist = metadata.NewString(model.Artist)
-	}
-	p.TIFFDateTime = p.xmpDateTimeToMetadata(model.DateTime)
+	p.TIFFArtist = model.Artist
+	p.xmpDateTimeToMetadata(model.DateTime, &p.TIFFDateTime)
 	p.TIFFImageDescription = xmpAltStringToMetadata(model.ImageDescription)
 }
 
@@ -31,8 +28,8 @@ func (p *XMP) setTIFF() {
 	if model, err = tiff.MakeModel(p.doc); err != nil {
 		panic(err)
 	}
-	if artist := p.TIFFArtist.String(); artist != model.Artist {
-		model.Artist = artist
+	if p.TIFFArtist != model.Artist {
+		model.Artist = p.TIFFArtist
 		p.dirty = true
 	}
 	if dt := p.TIFFDateTime.String(); dt != model.DateTime {

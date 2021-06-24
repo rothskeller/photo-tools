@@ -171,50 +171,33 @@ func (dt *DateTime) Empty() bool {
 }
 
 // Equal returns whether two DateTimes are equal.
-func (dt *DateTime) Equal(other Metadatum) bool {
-	if dt == nil && other == nil {
-		return true
-	}
-	ot, ok := other.(*DateTime)
-	if !ok {
-		return false
-	}
-	if dt.Empty() != ot.Empty() {
+func (dt *DateTime) Equal(other *DateTime) bool {
+	if dt.Empty() != other.Empty() {
 		return false
 	}
 	if dt.Empty() {
 		return true
 	}
-	return dt.date == ot.date && dt.time == ot.time && dt.subsec == ot.subsec && dt.zone == ot.zone
+	return dt.date == other.date && dt.time == other.time && dt.subsec == other.subsec && dt.zone == other.zone
 }
 
 // Equivalent returns whether two DateTimes are equal, to the precision of the
 // least precise of the two.  If so, it returns the more precise one.
-func (dt *DateTime) Equivalent(other Metadatum) (bool, Metadatum) {
-	if dt == nil && other == nil {
-		return true, dt
-	}
-	ot, ok := other.(*DateTime)
-	if !ok {
-		return false, nil
-	}
-	if dt.Empty() != ot.Empty() {
+func (dt *DateTime) Equivalent(other *DateTime) (bool, *DateTime) {
+	if dt.Empty() != other.Empty() {
 		return false, nil
 	}
 	if dt.Empty() {
 		return true, dt
 	}
-	if dt.date != ot.date || dt.time != ot.time || dt.zone != ot.zone {
+	if dt.date != other.date || dt.time != other.time || dt.zone != other.zone {
 		return false, nil
 	}
-	if dt.subsec == ot.subsec || ot.subsec == "" {
+	if dt.subsec == other.subsec || other.subsec == "" {
 		return true, dt
 	}
 	if dt.subsec == "" {
-		return true, ot
+		return true, other
 	}
 	return false, nil
 }
-
-// Verify interface compliance.
-var _ Metadatum = (*DateTime)(nil)

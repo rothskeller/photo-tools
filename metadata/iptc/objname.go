@@ -13,10 +13,7 @@ const idObjectName uint16 = 0x0205
 func (p *IPTC) getObjectName() {
 	if dset := p.findDSet(idObjectName); dset != nil {
 		if utf8.Valid(dset.data) {
-			if objname := strings.TrimSpace(string(dset.data)); objname != "" {
-				p.ObjectName.SetMaxLength(MaxObjectNameLen)
-				p.ObjectName.Parse(objname)
-			}
+			p.ObjectName = strings.TrimSpace(string(dset.data))
 		} else {
 			p.log("ignoring non-UTF8 Object Name")
 		}
@@ -24,11 +21,10 @@ func (p *IPTC) getObjectName() {
 }
 
 func (p *IPTC) setObjectName() {
-	if p.ObjectName.Empty() {
+	if p.ObjectName == "" {
 		p.deleteDSet(idObjectName)
 		return
 	}
-	p.ObjectName.SetMaxLength(MaxObjectNameLen)
-	encoded := []byte(p.ObjectName.String())
+	encoded := []byte(applyMax(p.ObjectName, MaxObjectNameLen))
 	p.setDSet(idObjectName, encoded)
 }

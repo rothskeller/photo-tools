@@ -10,7 +10,7 @@ func (p *EXIF) getGPSCoords() {
 	}
 	if latreft == nil || latreft.ttype != 2 || latreft.count != 2 ||
 		latratt == nil || latratt.ttype != 5 || latratt.count != 3 ||
-		longreft == nil || longreft.ttype != 2 || longratt.count != 2 ||
+		longreft == nil || longreft.ttype != 2 || longreft.count != 2 ||
 		longratt == nil || longratt.ttype != 5 || longratt.count != 3 {
 		p.log(p.gpsIFD.offset, "invalid GPS tags")
 		return

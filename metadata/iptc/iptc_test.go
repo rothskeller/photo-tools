@@ -31,7 +31,8 @@ var start = []byte{
 }
 
 func TestRewriteIPTC(t *testing.T) {
-	iptc := Parse(start, 0)
+	var iptc *IPTC
+	iptc = iptc.Parse(start, 0)
 	iptc.Keywords = []string{"new1", "new2"}
 	iptc.ObjectName = "me"
 	out := iptc.Render()

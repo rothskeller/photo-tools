@@ -93,8 +93,22 @@ func (gc *GPSCoords) ParseEXIF(latref string, lat []uint32, longref string, long
 	if (latref != "N" && latref != "S") || len(lat) != 6 || (longref != "E" && longref != "W") || len(long) != 6 {
 		return ErrParseGPSCoords
 	}
-	if lat[1] <= 0 || lat[3] <= 0 || lat[5] <= 0 || long[1] <= 0 || long[3] <= 0 || long[5] <= 0 {
+	if lat[1] <= 0 || lat[3] <= 0 || lat[5] < 0 || long[1] <= 0 || long[3] <= 0 || long[5] < 0 {
 		return ErrParseGPSCoords
+	}
+	if lat[5] == 0 {
+		if lat[4] == 0 {
+			lat[5] = 1 // illegal, but empirically happens; fix it up
+		} else {
+			return ErrParseGPSCoords
+		}
+	}
+	if long[5] == 0 {
+		if long[4] == 0 {
+			long[5] = 1 // illegal, but empirically happens; fix it up
+		} else {
+			return ErrParseGPSCoords
+		}
 	}
 	gc.latitude = FixedFloatFromFraction(int(lat[0]), int(lat[1]))
 	gc.latitude += FixedFloatFromFraction(int(lat[2]), int(lat[3])*60)
@@ -181,7 +195,7 @@ func (gc *GPSCoords) ParseXMP(lat, long, altref, alt string) (err error) {
 	if gc.longitude, err = fromXMPAngle(long, 180); err != nil {
 		return err
 	}
-	if altref == "" && alt == "" {
+	if alt == "" {
 		return nil
 	}
 	if gc.altitude, err = fromXMPAltitude(altref, alt); err != nil {
@@ -292,7 +306,7 @@ func fromXMPAltitude(ref, alt string) (f FixedFloat, err error) {
 		}
 		f = FixedFloatFromFraction(num, den)
 		switch ref {
-		case "0":
+		case "", "0": // "" isn't legal, but it happens a lot in my library
 			break
 		case "1":
 			f = -f

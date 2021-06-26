@@ -57,6 +57,24 @@ func (dt *DateTime) Parse(s string) error {
 		}
 		return nil
 	}
+	// The remaining formats aren't strictly legal, but they have been seen
+	// in my library so I'm supporting them.
+	if _, err := time.Parse("2006-01-02T15:04", s); err == nil {
+		dt.date = s[:10]
+		dt.time = s[11:17] + ":00"
+		return nil
+	} else if z {
+		return ErrParseDateTime
+	}
+	if _, err := time.Parse("2006-01-02T15:04-07:00", s); err == nil {
+		dt.date = s[:10]
+		dt.time = s[11:17] + ":00"
+		dt.zone = s[len(s)-6:]
+		if dt.zone == "-00:00" || dt.zone == "+00:00" {
+			dt.zone = "Z"
+		}
+		return nil
+	}
 	return ErrParseDateTime
 }
 
@@ -80,7 +98,8 @@ func (dt *DateTime) String() string {
 // ErrParseDateTime if the input is invalid.
 func (dt *DateTime) ParseEXIF(datetime, subsec, offset string) error {
 	*dt = DateTime{}
-	if datetime == "" || strings.TrimSpace(datetime) == ":  :     :  :" {
+	if datetime == "" || strings.TrimSpace(datetime) == ":  :     :  :" || datetime == "0000:00:00 00:00:00" {
+		// That last isn't legal, but it's seen empirically.
 		if subsec != "" || offset != "" {
 			return ErrParseDateTime
 		}

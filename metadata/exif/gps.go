@@ -24,18 +24,22 @@ func (p *EXIF) getGPSCoords() {
 	var altrat []uint32
 	altreft := p.gpsIFD.findTag(5)
 	altratt := p.gpsIFD.findTag(6)
-	if altreft != nil || altratt != nil {
-		if altreft == nil || altreft.ttype != 1 || altreft.count != 1 ||
+	if altratt != nil {
+		// Empirically, some JPEGs omit the altitude reference tag.
+		if (altreft != nil && (altreft.ttype != 1 || altreft.count > 1)) ||
 			altratt == nil || altratt.ttype != 5 || altratt.count != 1 {
 			p.log(p.gpsIFD.offset, "invalid GPS tags")
 			return
 		}
-		altref = altreft.data[0]
+		if altreft != nil && altreft.count == 1 {
+			altref = altreft.data[0]
+		}
 		altrat = p.exifRatToUint32(altratt.data)
 	}
 	if err := p.GPSCoords.ParseEXIF(latref, latrat, longref, longrat, altref, altrat); err != nil {
 		p.log(p.gpsIFD.offset, err.Error())
 	}
+	p.saveGPSCoords = p.GPSCoords
 }
 func (p *EXIF) exifRatToUint32(rat []byte) (u []uint32) {
 	u = make([]uint32, len(rat)/4)
@@ -46,6 +50,9 @@ func (p *EXIF) exifRatToUint32(rat []byte) (u []uint32) {
 }
 
 func (p *EXIF) setGPSCoords() {
+	if p.GPSCoords.Equal(&p.saveGPSCoords) {
+		return
+	}
 	if p.GPSCoords.Empty() {
 		p.deleteTag(p.gpsIFD, 1)
 		p.deleteTag(p.gpsIFD, 2)

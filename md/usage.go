@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/rothskeller/photo-tools/filefmt"
-	"github.com/rothskeller/photo-tools/metadata"
 )
 
 func usage() {
@@ -150,58 +149,20 @@ func parseField(arg string) []*field {
 	case "keyword", "keywords", "kw", "k":
 		return []*field{keywordsField}
 	case "location", "loc", "l":
-		return []*field{untaggedLocationField}
-	case "shown", "s":
-		return []*field{untaggedShownField}
+		return []*field{locationField}
 	case "title", "t":
 		return []*field{titleField}
 	case "group", "groups":
 		return []*field{groupsField}
 	case "person", "people":
 		return []*field{peopleField}
+	case "place", "places":
+		return []*field{placesField}
 	case "topic", "topics":
 		return []*field{topicsField}
 	case "all":
-		return []*field{titleField, dateTimeField, artistField, gpsField, untaggedLocationField, untaggedShownField,
+		return []*field{titleField, dateTimeField, artistField, gpsField, locationField,
 			placesField, peopleField, groupsField, topicsField, otherKeywordsField, captionField}
-	}
-	if strings.HasPrefix(arg, "l:") || strings.HasPrefix(arg, "loc:") || strings.HasPrefix(arg, "location:") {
-		var f = *untaggedLocationField
-		f.lang = arg[strings.IndexByte(arg, ':')+1:]
-		if f.lang == "" {
-			fmt.Fprintf(os.Stderr, "ERROR: empty language tag on location field\n")
-			usage()
-		}
-		f.name += ":" + f.lang
-		f.pluralName += ":" + f.lang
-		f.label += " [" + f.lang + "]"
-		oldparse := f.parseValue
-		f.parseValue = func(s string) (v interface{}, err error) {
-			if v, err = oldparse(s); err == nil {
-				v.(*metadata.Location).Lang = f.lang
-			}
-			return v, err
-		}
-		return []*field{&f}
-	}
-	if strings.HasPrefix(arg, "s:") || strings.HasPrefix(arg, "shown:") {
-		var f = *untaggedShownField
-		f.lang = arg[strings.IndexByte(arg, ':')+1:]
-		if f.lang == "" {
-			fmt.Fprintf(os.Stderr, "ERROR: empty language tag on shown field\n")
-			usage()
-		}
-		f.name += ":" + f.lang
-		f.pluralName += ":" + f.lang
-		f.label += " [" + f.lang + "]"
-		oldparse := f.parseValue
-		f.parseValue = func(s string) (v interface{}, err error) {
-			if v, err = oldparse(s); err == nil {
-				v.(*metadata.Location).Lang = f.lang
-			}
-			return v, err
-		}
-		return []*field{&f}
 	}
 	return nil
 }

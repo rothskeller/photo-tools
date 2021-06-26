@@ -2,7 +2,6 @@ package iptc
 
 import (
 	"strings"
-	"unicode/utf8"
 )
 
 const (
@@ -23,61 +22,59 @@ const (
 )
 
 func (p *IPTC) getLocation() {
-	var ccode, cname, state, city, subloc string
-
 	if dset := p.findDSet(idCountryPLCode); dset != nil {
-		if utf8.Valid(dset.data) {
-			ccode = strings.TrimSpace(string(dset.data))
-		} else {
-			p.log("ignoring non-UTF8 Country/Primary Location Code")
-			return
-		}
+		p.CountryPLCode = strings.TrimSpace(p.decodeString(dset.data, "CountryPLCode"))
+		p.saveCountryPLCode = p.CountryPLCode
 	}
 	if dset := p.findDSet(idCountryPLName); dset != nil {
-		if utf8.Valid(dset.data) {
-			cname = strings.TrimSpace(string(dset.data))
-		} else {
-			p.log("ignoring non-UTF8 IPTC Country/Primary Location Name")
-		}
+		p.CountryPLName = strings.TrimSpace(p.decodeString(dset.data, "CountryPLName"))
+		p.saveCountryPLName = p.CountryPLName
 	}
 	if dset := p.findDSet(idProvinceState); dset != nil {
-		if utf8.Valid(dset.data) {
-			state = strings.TrimSpace(string(dset.data))
-		} else {
-			p.log("ignoring non-UTF8 IPTC Province/State")
-		}
+		p.ProvinceState = strings.TrimSpace(p.decodeString(dset.data, "ProvinceState"))
+		p.saveProvinceState = p.ProvinceState
 	}
 	if dset := p.findDSet(idCity); dset != nil {
-		if utf8.Valid(dset.data) {
-			city = strings.TrimSpace(string(dset.data))
-		} else {
-			p.log("ignoring non-UTF8 IPTC City")
-		}
+		p.City = strings.TrimSpace(p.decodeString(dset.data, "City"))
+		p.saveCity = p.City
 	}
 	if dset := p.findDSet(idSublocation); dset != nil {
-		if utf8.Valid(dset.data) {
-			subloc = strings.TrimSpace(string(dset.data))
-		} else {
-			p.log("ignoring non-UTF8 IPTC Sub-location")
-		}
-	}
-	if err := p.Location.ParseComponents(ccode, cname, state, city, subloc); err != nil {
-		p.log("Location: %s", err)
+		p.Sublocation = strings.TrimSpace(p.decodeString(dset.data, "Sublocation"))
+		p.saveSublocation = p.Sublocation
 	}
 }
 
 func (p *IPTC) setLocation() {
-	if p.Location.Empty() {
-		p.deleteDSet(idCountryPLCode)
-		p.deleteDSet(idCountryPLName)
-		p.deleteDSet(idProvinceState)
-		p.deleteDSet(idCity)
-		p.deleteDSet(idSublocation)
+	if stringEqualMax(p.CountryPLCode, p.saveCountryPLCode, MaxCountryPLCodeLen) &&
+		stringEqualMax(p.CountryPLName, p.saveCountryPLName, MaxCountryPLNameLen) &&
+		stringEqualMax(p.ProvinceState, p.saveProvinceState, MaxProvinceStateLen) &&
+		stringEqualMax(p.City, p.saveCity, MaxCityLen) &&
+		stringEqualMax(p.Sublocation, p.saveSublocation, MaxSublocationLen) {
 		return
 	}
-	p.setDSet(idCountryPLCode, []byte(applyMax(p.Location.CountryCode, MaxCountryPLCodeLen)))
-	p.setDSet(idCountryPLName, []byte(applyMax(p.Location.CountryName, MaxCountryPLNameLen)))
-	p.setDSet(idProvinceState, []byte(applyMax(p.Location.State, MaxProvinceStateLen)))
-	p.setDSet(idCity, []byte(applyMax(p.Location.City, MaxCityLen)))
-	p.setDSet(idSublocation, []byte(applyMax(p.Location.Sublocation, MaxSublocationLen)))
+	if p.CountryPLCode != "" {
+		p.setDSet(idCountryPLCode, []byte(applyMax(p.CountryPLCode, MaxCountryPLCodeLen)))
+	} else {
+		p.deleteDSet(idCountryPLCode)
+	}
+	if p.CountryPLName != "" {
+		p.setDSet(idCountryPLName, []byte(applyMax(p.CountryPLName, MaxCountryPLNameLen)))
+	} else {
+		p.deleteDSet(idCountryPLName)
+	}
+	if p.ProvinceState != "" {
+		p.setDSet(idProvinceState, []byte(applyMax(p.ProvinceState, MaxProvinceStateLen)))
+	} else {
+		p.deleteDSet(idProvinceState)
+	}
+	if p.City != "" {
+		p.setDSet(idCity, []byte(applyMax(p.City, MaxCityLen)))
+	} else {
+		p.deleteDSet(idCity)
+	}
+	if p.Sublocation != "" {
+		p.setDSet(idSublocation, []byte(applyMax(p.Sublocation, MaxSublocationLen)))
+	} else {
+		p.deleteDSet(idSublocation)
+	}
 }

@@ -18,18 +18,26 @@ const (
 
 func (p *EXIF) getDateTime() {
 	p.DateTime = p.getDateTimeTagGroup(p.ifd0, tagDateTime, tagOffsetTime, tagSubSecTime, "")
+	p.saveDateTime = p.DateTime
 }
 
 func (p *EXIF) setDateTime() {
+	if p.DateTime.Equal(&p.saveDateTime) {
+		return
+	}
 	p.setDateTimeTagGroup(p.ifd0, tagDateTime, tagOffsetTime, tagSubSecTime, p.DateTime)
 }
 
 func (p *EXIF) getDateTimeDigitized() {
 	p.DateTimeDigitized = p.getDateTimeTagGroup(
 		p.exifIFD, tagDateTimeDigitized, tagOffsetTimeDigitized, tagSubSecTimeDigitized, "Digitized")
+	p.saveDateTimeDigitized = p.DateTimeDigitized
 }
 
 func (p *EXIF) setDateTimeDigitized() {
+	if p.DateTimeDigitized.Equal(&p.saveDateTimeDigitized) {
+		return
+	}
 	if !p.DateTimeDigitized.Empty() && p.exifIFD == nil {
 		p.addEXIFIFD()
 	}
@@ -39,9 +47,13 @@ func (p *EXIF) setDateTimeDigitized() {
 func (p *EXIF) getDateTimeOriginal() {
 	p.DateTimeOriginal = p.getDateTimeTagGroup(
 		p.exifIFD, tagDateTimeOriginal, tagOffsetTimeOriginal, tagSubSecTimeOriginal, "Original")
+	p.saveDateTimeOriginal = p.DateTimeOriginal
 }
 
 func (p *EXIF) setDateTimeOriginal() {
+	if p.DateTimeOriginal.Equal(&p.saveDateTimeOriginal) {
+		return
+	}
 	if !p.DateTimeOriginal.Empty() && p.exifIFD == nil {
 		p.addEXIFIFD()
 	}

@@ -44,7 +44,9 @@ func Parse(buf []byte, offset uint32) (exif *EXIF) {
 	if gifdt := exif.ifd0.findTag(tagGPSIFDOffset); gifdt != nil {
 		exif.gpsIFD = exif.parseIFD(exif.enc.Uint32(gifdt.data))
 	}
-	exif.verifyNoOverlaps()
+	if !exif.verifyNoOverlaps() {
+		return exif
+	}
 	exif.ranges = nil // free the space
 	exif.getArtist()
 	exif.getDateTime()
@@ -143,7 +145,7 @@ func (p *EXIF) parseTag(offset uint32) (tag *tagt, end uint32) {
 	return tag, end
 }
 
-func (p *EXIF) verifyNoOverlaps() {
+func (p *EXIF) verifyNoOverlaps() bool {
 	sort.Slice(p.ranges, func(i, j int) bool {
 		return p.ranges[i][0] < p.ranges[j][0]
 	})
@@ -153,9 +155,10 @@ func (p *EXIF) verifyNoOverlaps() {
 			p.ifd0 = nil
 			p.exifIFD = nil
 			p.gpsIFD = nil
-			return
+			return false
 		}
 	}
+	return true
 }
 
 func (ifd *ifdt) findTag(tag uint16) *tagt {
@@ -173,15 +176,16 @@ func (p *EXIF) asciiAt(tag *tagt, label string) string {
 		return ""
 	}
 	by := tag.data
-	if by[len(by)-1] == 0 {
-		by = by[:len(by)-1]
-	}
+	// The spec requires a trailing NUL, but sometimes it's not there, and
+	// sometimes there are more than one.
+	by = bytes.TrimRightFunc(by, func(r rune) bool { return r == 0 })
 	s := string(by)
 	if utf8.ValidString(s) {
 		return strings.TrimSpace(s)
 	}
 	if s2, err := charmap.ISO8859_1.NewDecoder().String(s); err == nil {
-		p.log(tag.offset, "%s is in unknown character set, assuming ISO-8859-1", label)
+		// p.log(tag.offset, "%s is in unknown character set, assuming ISO-8859-1", label)
+		// Don't log this; I don't want to block file access based on this assumption.
 		return strings.TrimSpace(s2)
 	}
 	p.log(tag.offset, "%s is in unknown character set, removing non-ASCII characters", label)

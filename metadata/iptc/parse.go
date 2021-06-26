@@ -5,6 +5,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"unicode/utf8"
+
+	"golang.org/x/text/encoding/charmap"
 )
 
 const (
@@ -18,26 +21,35 @@ var psirResourceType = []byte("8BIM")
 var utf8Escape1 = []byte{0x1B, 0x25, 0x47}
 var utf8Escape2 = []byte{0x1B, 0x25, 0x2F, 0x49}
 
-// Parse parses an IPTC block and returns the parse results.  offset is the
+// Parse saves a portion of an IPTC block for later parsing.  offset is the
 // offset of the IPTC block in the file, used for problem reporting.
-func Parse(buf []byte, offset uint32) (iptc *IPTC) {
-	iptc = &IPTC{offset: offset, buf: buf}
-	if !iptc.splitPSIRs() {
-		return iptc
+func (p *IPTC) Parse(buf []byte, offset uint32) *IPTC {
+	if p == nil {
+		p = &IPTC{offset: offset, buf: buf}
+	} else {
+		p.buf = append(p.buf, buf...)
 	}
-	for _, psir := range iptc.psir {
+	return p
+}
+
+// Check does the actual parsing of the IPTC block after all of its portions
+// have been retrieved.
+func (p *IPTC) Check() {
+	if p == nil || !p.splitPSIRs() {
+		return
+	}
+	for _, psir := range p.psir {
 		if psir.id == iptcPSIRID {
-			iptc.parseIPTC(psir)
+			p.parseIPTC(psir)
 		}
 	}
-	iptc.getBylines()
-	iptc.getCaptionAbstract()
-	iptc.getDateTimeCreated()
-	iptc.getDigitalCreationDateTime()
-	iptc.getKeywords()
-	iptc.getLocation()
-	iptc.getObjectName()
-	return iptc
+	p.getBylines()
+	p.getCaptionAbstract()
+	p.getDateTimeCreated()
+	p.getDigitalCreationDateTime()
+	p.getKeywords()
+	p.getLocation()
+	p.getObjectName()
 }
 
 // splitPSIRs splits the block up into PSIRs.  It returns false if a format
@@ -72,8 +84,9 @@ func (p *IPTC) splitPSIRs() bool {
 		if resSize%2 == 1 {
 			resSize++
 		}
-		if resLenOff+resSize > bufend {
+		if resLenOff+4+resSize > bufend {
 			p.log("[%x] incomplete PSIR", p.offset+poff)
+			println("return")
 			return false
 		}
 		psir.buf = p.buf[resLenOff+4 : resLenOff+4+resLen]
@@ -149,6 +162,17 @@ func (p *IPTC) findDSet(id uint16) *dsett {
 		}
 	}
 	return nil
+}
+
+func (p *IPTC) decodeString(by []byte, label string) string {
+	if utf8.Valid(by) {
+		return string(by)
+	}
+	if by2, err := charmap.ISO8859_1.NewDecoder().Bytes(by); err == nil {
+		return string(by2)
+	}
+	p.log("cannot determine character set for %s", label)
+	return ""
 }
 
 func (p *IPTC) log(f string, a ...interface{}) {

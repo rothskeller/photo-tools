@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/rothskeller/photo-tools/metadata/exif"
-	"github.com/rothskeller/photo-tools/metadata/iptc"
 	"github.com/rothskeller/photo-tools/metadata/xmp"
 )
 
@@ -22,6 +21,7 @@ func (h *JPEG) ReadMetadata() {
 		size   uint16
 		ok     bool
 		err    error
+		header = make([]byte, 2)
 	)
 	// Open the file and get name and modification time.
 	if fh, err = os.Open(h.path); err != nil {
@@ -29,7 +29,19 @@ func (h *JPEG) ReadMetadata() {
 		return
 	}
 	defer fh.Close()
-
+	// Check that it's really a JPEG file.
+	if _, err = fh.Read(header); err != nil {
+		h.problems = []string{err.Error()}
+		return
+	}
+	if header[0] != 0xFF || header[1] != 0xD8 {
+		h.problems = []string{"missing JPEG file header (not really a JPEG?)"}
+		return
+	}
+	if _, err := fh.Seek(0, 0); err != nil {
+		h.problems = []string{err.Error()}
+		return
+	}
 	// Walk through each of the segments of the file, until we see image
 	// data (which means there will be no more metadata).
 	in = NewOffsetReader(bufio.NewReader(fh))
@@ -54,14 +66,16 @@ func (h *JPEG) ReadMetadata() {
 			} else if len(buf) >= 29 && bytes.HasPrefix(buf, []byte("http://ns.adobe.com/xap/1.0/\000")) {
 				h.xmp = xmp.Parse(buf[29:])
 			} else if len(buf) >= 35 && bytes.HasPrefix(buf, []byte("http://ns.adobe.com/xmp/extension/\000")) {
-				h.log("[%x] JPEG has multiple XMP segments; this application can not change it", mstart)
+				h.xmpext = h.xmpext.Parse(buf[35:])
 			}
 		case 0xED: // APP13 segment, with IPTC metadata
 			if len(buf) >= 14 && bytes.HasPrefix(buf, []byte("Photoshop 3.0\000")) {
-				h.iptc = iptc.Parse(buf[14:], uint32(mstart+14))
+				h.iptc = h.iptc.Parse(buf[14:], uint32(mstart+14))
 			}
 		}
 	}
+	h.iptc.Check()
+	h.xmpext.Check()
 }
 
 // readMarker reads a marker from the JPEG file, including the size of the

@@ -7,14 +7,14 @@ import (
 // GetCaption returns the highest priority caption value.
 func GetCaption(h fileHandler) string {
 	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.DCDescription) != 0 {
-			return xmp.DCDescription[0].Value
+		if def := xmp.DCDescription.Default(); def != "" {
+			return def
 		}
 		if len(xmp.EXIFUserComments) != 0 {
 			return xmp.EXIFUserComments[0]
 		}
-		if len(xmp.TIFFImageDescription) != 0 {
-			return xmp.TIFFImageDescription[0].Value
+		if def := xmp.TIFFImageDescription.Default(); def != "" {
+			return def
 		}
 	}
 	if exif := h.EXIF(); exif != nil {
@@ -36,12 +36,12 @@ func GetCaption(h fileHandler) string {
 // GetCaptionTags returns all of the caption tags and their values.
 func GetCaptionTags(h fileHandler) (tags, values []string) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = tagsForLangStrings(tags, values, "XMP.dc:Description", xmp.DCDescription)
+		tags, values = tagsForAltString(tags, values, "XMP.dc:Description", xmp.DCDescription)
 		for _, v := range xmp.EXIFUserComments {
 			tags = append(tags, "XMP.exif:UserComment")
 			values = append(values, v)
 		}
-		tags, values = tagsForLangStrings(tags, values, "XMP.tiff:ImageDescription", xmp.TIFFImageDescription)
+		tags, values = tagsForAltString(tags, values, "XMP.tiff:ImageDescription", xmp.TIFFImageDescription)
 	}
 	if exif := h.EXIF(); exif != nil {
 		if exif.UserComment != "" {
@@ -60,15 +60,15 @@ func GetCaptionTags(h fileHandler) (tags, values []string) {
 
 // SetCaption sets the caption tags.
 func SetCaption(h fileHandler, v string) error {
-	var list []metadata.LangString
+	var as metadata.AltString
 
 	if v != "" {
-		list = []metadata.LangString{{Lang: "", Value: v}}
+		as = metadata.NewAltString(v)
 	}
 	if xmp := h.XMP(true); xmp != nil {
-		xmp.DCDescription = list
+		xmp.DCDescription = as
 		xmp.EXIFUserComments = nil // Always clear unwanted tag
-		xmp.TIFFImageDescription = list
+		xmp.TIFFImageDescription = as
 	}
 	if exif := h.EXIF(); exif != nil {
 		exif.UserComment = "" // Always clear unwanted tag

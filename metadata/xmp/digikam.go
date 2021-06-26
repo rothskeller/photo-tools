@@ -1,7 +1,6 @@
 package xmp
 
 import (
-	"reflect"
 	"strings"
 
 	"github.com/rothskeller/photo-tools/metadata"
@@ -44,7 +43,7 @@ func (p *XMP) setDigiKam() {
 		}
 		tags = append(tags, strings.Join(comps, "/"))
 	}
-	if !reflect.DeepEqual(tags, model.TagsList) {
+	if !stringSliceEqual(tags, model.TagsList) {
 		model.TagsList = tags
 		p.dirty = true
 	}

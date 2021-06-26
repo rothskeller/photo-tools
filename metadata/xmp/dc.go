@@ -1,8 +1,7 @@
 package xmp
 
 import (
-	"reflect"
-
+	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/dc"
 	"trimmer.io/go-xmp/xmp"
 )
@@ -17,9 +16,9 @@ func (p *XMP) getDC() {
 		return
 	}
 	p.DCCreator = model.Creator
-	p.DCDescription = xmpAltStringToMetadata(model.Description)
+	p.DCDescription = model.Description
 	p.DCSubject = model.Subject
-	p.DCTitle = xmpAltStringToMetadata(model.Title)
+	p.DCTitle = model.Title
 }
 
 func (p *XMP) setDC() {
@@ -30,20 +29,20 @@ func (p *XMP) setDC() {
 	if model, err = dc.MakeModel(p.doc); err != nil {
 		panic(err)
 	}
-	if !reflect.DeepEqual(xmp.StringList(p.DCCreator), model.Creator) {
+	if !stringSliceEqual(xmp.StringList(p.DCCreator), model.Creator) {
 		model.Creator = p.DCCreator
 		p.dirty = true
 	}
-	if desc := metadataToXMPAltString(p.DCDescription); !reflect.DeepEqual(desc, model.Description) {
-		model.Description = desc
+	if !metadata.EqualAltStrings(p.DCDescription, model.Description) {
+		model.Description = p.DCDescription
 		p.dirty = true
 	}
-	if !reflect.DeepEqual(xmp.StringArray(p.DCSubject), model.Subject) {
+	if !stringSliceEqual(xmp.StringArray(p.DCSubject), model.Subject) {
 		model.Subject = p.DCSubject
 		p.dirty = true
 	}
-	if title := metadataToXMPAltString(p.DCTitle); !reflect.DeepEqual(title, model.Title) {
-		model.Title = title
+	if !metadata.EqualAltStrings(p.DCTitle, model.Title) {
+		model.Title = p.DCTitle
 		p.dirty = true
 	}
 }

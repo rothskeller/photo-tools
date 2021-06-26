@@ -19,9 +19,13 @@ func (p *IPTC) getDateTimeCreated() {
 	if err := p.DateTimeCreated.ParseIPTC(date, time); err != nil {
 		p.log("DateTimeCreated: %s", err)
 	}
+	p.saveDateTimeCreated = p.DateTimeCreated
 }
 
 func (p *IPTC) setDateTimeCreated() {
+	if p.saveDateTimeCreated.Equal(&p.DateTimeCreated) {
+		return
+	}
 	if p.DateTimeCreated.Empty() {
 		p.deleteDSet(idDateCreated)
 		p.deleteDSet(idTimeCreated)

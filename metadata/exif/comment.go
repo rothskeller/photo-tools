@@ -27,7 +27,10 @@ func (p *EXIF) getUserComment() {
 	}
 	switch {
 	case bytes.Equal(idt.data[:8], charsetASCII):
-		p.UserComment = string(idt.data[8:])
+		// I've found that comments are often padded with nulls (or
+		// even composed entirely of them).  We don't want those.
+		p.UserComment = strings.TrimRight(string(idt.data[8:]), "\000")
+		p.saveUserComment = p.UserComment
 	case bytes.Equal(idt.data[:8], charsetUnicode):
 		// By the spec, this should be UCS-2.  In practice it may
 		// actually be UTF-16.  Reading it as UTF-16 handles both cases.
@@ -43,6 +46,7 @@ func (p *EXIF) getUserComment() {
 			return
 		}
 		p.UserComment = u8
+		p.saveUserComment = u8
 	case bytes.Equal(idt.data[:8], charsetUnknown):
 		// There's a decent chance this is actually UTF-8.  Let's try it.
 		var s = string(idt.data[8:])
@@ -51,12 +55,16 @@ func (p *EXIF) getUserComment() {
 			return
 		}
 		p.UserComment = s
+		p.saveUserComment = s
 	default:
 		p.log(idt.doff, "UserComment is in unknown character set, ignoring")
 	}
 }
 
 func (p *EXIF) setUserComment() {
+	if p.UserComment == p.saveUserComment {
+		return
+	}
 	if p.exifIFD == nil && p.UserComment != "" {
 		p.addEXIFIFD()
 	}
@@ -91,9 +99,7 @@ func (p *EXIF) setUserComment() {
 		copy(encbytes, charsetUnicode)
 		copy(encbytes[8:], u16)
 	}
-	if !bytes.Equal(encbytes, tag.data) {
-		tag.data = encbytes
-		tag.count = uint32(len(encbytes))
-		p.exifIFD.dirty = true
-	}
+	tag.data = encbytes
+	tag.count = uint32(len(encbytes))
+	p.exifIFD.dirty = true
 }

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/rothskeller/photo-tools/metadata"
-	strmeta "github.com/rothskeller/photo-tools/strmeta"
+	"github.com/rothskeller/photo-tools/strmeta"
 )
 
 // A field represents a metadata field that can be read and/or changed by this
@@ -40,8 +40,6 @@ type field struct {
 	getTags func(fileHandler) ([]string, []interface{})
 	// setValues sets all of the values of the field.
 	setValues func(fileHandler, []interface{}) error
-	// lang is the language tag for the field, if any.
-	lang string
 }
 
 var artistField = &field{
@@ -69,62 +67,6 @@ var artistField = &field{
 		default:
 			return errors.New("artist cannot have multiple values")
 		}
-	},
-}
-
-var bothLocationsField = &field{ // only used internally by "copy all"
-	name: "location", pluralName: "locations", label: "Locations",
-	renderValue: func(v interface{}) string { return v.(*metadata.Location).String() },
-	getValues: func(h fileHandler) []interface{} {
-		if locations := strmeta.GetLocation(h); len(locations) != 0 {
-			var ivals = make([]interface{}, len(locations))
-			for i := range locations {
-				ivals[i] = &locations[i]
-			}
-			return ivals
-		}
-		return nil
-	},
-	setValues: func(h fileHandler, v []interface{}) error {
-		if len(v) != 0 {
-			var locations = make([]metadata.Location, len(v))
-			for i := range v {
-				locations[i] = *v[i].(*metadata.Location)
-			}
-			return strmeta.SetLocation(h, locations)
-		}
-		if err := strmeta.SetLocation(h, nil); err != nil {
-			return err
-		}
-		return setPlacesKeywords(h)
-	},
-}
-
-var bothShownField = &field{ // only used internally by "copy all"
-	name: "shown", pluralName: "shown", label: "Shown",
-	renderValue: func(v interface{}) string { return v.(*metadata.Location).String() },
-	getValues: func(h fileHandler) []interface{} {
-		if shown := strmeta.GetShown(h); len(shown) != 0 {
-			var ivals = make([]interface{}, len(shown))
-			for i := range shown {
-				ivals[i] = &shown[i]
-			}
-			return ivals
-		}
-		return nil
-	},
-	setValues: func(h fileHandler, v []interface{}) error {
-		if len(v) != 0 {
-			var shown = make([]metadata.Location, len(v))
-			for i := range v {
-				shown[i] = *v[i].(*metadata.Location)
-			}
-			return strmeta.SetShown(h, shown)
-		}
-		if err := strmeta.SetLocation(h, nil); err != nil {
-			return err
-		}
-		return setPlacesKeywords(h)
 	},
 }
 
@@ -252,6 +194,44 @@ var keywordsField = &field{
 	setValues:   func(h fileHandler, v []interface{}) error { return setKeywordValues(h, "", v) },
 }
 
+var locationField = &field{
+	name: "location", pluralName: "location", label: "Locations",
+	parseValue: func(s string) (interface{}, error) {
+		var loc strmeta.Location
+		if err := loc.Parse(s); err != nil {
+			return nil, err
+		}
+		return &loc, nil
+	},
+	renderValue: func(v interface{}) string { return v.(*strmeta.Location).String() },
+	getValues: func(h fileHandler) []interface{} {
+		if location := strmeta.GetLocation(h); !location.Empty() {
+			return []interface{}{&location}
+		}
+		return nil
+	},
+	getTags: func(h fileHandler) ([]string, []interface{}) {
+		if tags, values := strmeta.GetLocationTags(h); len(tags) != 0 {
+			var ivals = make([]interface{}, len(values))
+			for i := range values {
+				ivals[i] = &values[i]
+			}
+			return tags, ivals
+		}
+		return nil, nil
+	},
+	setValues: func(h fileHandler, v []interface{}) error {
+		switch len(v) {
+		case 0:
+			return strmeta.SetLocation(h, strmeta.Location{})
+		case 1:
+			return strmeta.SetLocation(h, *v[0].(*strmeta.Location))
+		default:
+			return errors.New("location cannot have multiple values")
+		}
+	},
+}
+
 var otherKeywordsField = &field{ // only used as part of "show all" and "tags all"
 	name: "keyword", pluralName: "keywords", label: "Keyword", multivalued: true,
 	renderValue: func(v interface{}) string { return v.(metadata.Keyword).String() },
@@ -297,12 +277,13 @@ var peopleField = &field{
 	setValues:   func(h fileHandler, v []interface{}) error { return setKeywordValues(h, "PEOPLE", v) },
 }
 
-var placesField = &field{ // only used as part of "show all" and "tags all"
+var placesField = &field{
 	name: "place", pluralName: "places", label: "Place", multivalued: true,
 	renderValue: func(v interface{}) string { return v.(metadata.Keyword).StringWithoutPrefix("PLACES") },
 	equalValue:  func(a, b interface{}) bool { return a.(metadata.Keyword).Equal(b.(metadata.Keyword)) },
 	getValues:   func(h fileHandler) []interface{} { return getKeywordValues(h, "PLACES") },
 	getTags:     func(h fileHandler) ([]string, []interface{}) { return getKeywordTags(h, "PLACES") },
+	setValues:   func(h fileHandler, v []interface{}) error { return setKeywordValues(h, "PLACES", v) },
 }
 
 var titleField = &field{
@@ -341,30 +322,6 @@ var topicsField = &field{
 	getValues:   func(h fileHandler) []interface{} { return getKeywordValues(h, "TOPICS") },
 	getTags:     func(h fileHandler) ([]string, []interface{}) { return getKeywordTags(h, "TOPICS") },
 	setValues:   func(h fileHandler, v []interface{}) error { return setKeywordValues(h, "TOPICS", v) },
-}
-
-var untaggedLocationField = &field{
-	name: "location", pluralName: "location", label: "Location",
-	parseValue: func(s string) (interface{}, error) {
-		var loc metadata.Location
-		if err := loc.Parse(s); err != nil {
-			return nil, err
-		}
-		return &loc, nil
-	},
-	renderValue: func(v interface{}) string { return v.(*metadata.Location).String() },
-}
-
-var untaggedShownField = &field{
-	name: "shown", pluralName: "shown", label: "Shown",
-	parseValue: func(s string) (interface{}, error) {
-		var loc metadata.Location
-		if err := loc.Parse(s); err != nil {
-			return nil, err
-		}
-		return &loc, nil
-	},
-	renderValue: func(v interface{}) string { return v.(*metadata.Location).String() },
 }
 
 func stringSliceToInterfaceSlice(ss []string) (is []interface{}) {
@@ -406,59 +363,4 @@ func setKeywordValues(h fileHandler, prefix string, v []interface{}) error {
 		return strmeta.SetKeywords(h, prefix, kws)
 	}
 	return strmeta.SetKeywords(h, prefix, nil)
-}
-
-func setPlacesKeywords(h fileHandler) error {
-	var kws []metadata.Keyword
-LOCATIONS:
-	for _, loc := range strmeta.GetLocation(h) {
-		var kw metadata.Keyword
-		if loc.CountryName != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: loc.CountryName})
-		}
-		if loc.State != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: loc.State})
-		}
-		if loc.City != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: loc.City})
-		}
-		if loc.Sublocation != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: loc.Sublocation})
-		}
-		if len(kw) == 0 {
-			continue
-		}
-		for _, ex := range kws {
-			if ex.Equal(kw) {
-				continue LOCATIONS
-			}
-		}
-		kws = append(kws, kw)
-	}
-SHOWN:
-	for _, sh := range strmeta.GetShown(h) {
-		var kw metadata.Keyword
-		if sh.CountryName != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: sh.CountryName})
-		}
-		if sh.State != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: sh.State})
-		}
-		if sh.City != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: sh.City})
-		}
-		if sh.Sublocation != "" {
-			kw = append(kw, metadata.KeywordComponent{Word: sh.Sublocation})
-		}
-		if len(kw) == 0 {
-			continue
-		}
-		for _, ex := range kws {
-			if ex.Equal(kw) {
-				continue SHOWN
-			}
-		}
-		kws = append(kws, kw)
-	}
-	return strmeta.SetKeywords(h, "PLACES", kws)
 }

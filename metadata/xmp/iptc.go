@@ -1,8 +1,6 @@
 package xmp
 
 import (
-	"reflect"
-
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/iptc4ext"
 )
@@ -18,126 +16,72 @@ func (p *XMP) getIPTC() {
 	}
 	p.IPTCLocationCreated = p.xmpIPTCLocationToMetadata(model.LocationCreated)
 	for _, xl := range model.LocationShown {
-		var ml = p.xmpIPTCLocationToMetadata(xl)
-		if len(ml) != 0 {
-			p.IPTCLocationsShown = append(p.IPTCLocationsShown, ml)
-		}
+		p.IPTCLocationsShown = append(p.IPTCLocationsShown, p.xmpIPTCLocationToMetadata(xl))
 	}
 }
 
 func (p *XMP) setIPTC() {
 	var (
 		model *iptc4ext.Iptc4xmpExt
-		shown iptc4ext.LocationArray
 		err   error
 	)
 	if model, err = iptc4ext.MakeModel(p.doc); err != nil {
 		panic(err)
 	}
-	if loc := metadataToXMPIPTCLocation(p.IPTCLocationCreated); !reflect.DeepEqual(loc, model.LocationCreated) {
-		model.LocationCreated = loc
-		p.dirty = true
-	}
-	for _, ml := range p.IPTCLocationsShown {
-		if len(ml) != 0 {
-			shown = append(shown, metadataToXMPIPTCLocation(ml))
+	if p.IPTCLocationCreated.Empty() {
+		if model.LocationCreated != nil {
+			model.LocationCreated = nil
+			p.dirty = true
 		}
+	} else {
+		if model.LocationCreated == nil {
+			model.LocationCreated = new(iptc4ext.Location)
+		}
+		p.metadataToXMPIPTCLocation(p.IPTCLocationCreated, model.LocationCreated)
 	}
-	if !reflect.DeepEqual(shown, model.LocationShown) {
-		model.LocationShown = shown
+	if len(model.LocationShown) > len(p.IPTCLocationsShown) {
+		model.LocationShown = model.LocationShown[:len(p.IPTCLocationsShown)]
 		p.dirty = true
+	}
+	for len(model.LocationShown) < len(p.IPTCLocationsShown) {
+		model.LocationShown = append(model.LocationShown, &iptc4ext.Location{})
+	}
+	for i := range p.IPTCLocationsShown {
+		p.metadataToXMPIPTCLocation(p.IPTCLocationsShown[i], model.LocationShown[i])
 	}
 }
 
-func (p *XMP) xmpIPTCLocationToMetadata(xl *iptc4ext.Location) (mls []metadata.Location) {
+func (p *XMP) xmpIPTCLocationToMetadata(xl *iptc4ext.Location) (ml metadata.Location) {
 	if xl == nil {
-		return nil
+		return ml
 	}
-	// What languages are used in the xl?
-	var langs []string
-	var seen = map[string]bool{}
-	for _, alt := range xl.CountryName {
-		if !seen[alt.Lang] {
-			langs = append(langs, alt.Lang)
-			seen[alt.Lang] = true
-		}
-	}
-	for _, alt := range xl.ProvinceState {
-		if !seen[alt.Lang] {
-			langs = append(langs, alt.Lang)
-			seen[alt.Lang] = true
-		}
-	}
-	for _, alt := range xl.City {
-		if !seen[alt.Lang] {
-			langs = append(langs, alt.Lang)
-			seen[alt.Lang] = true
-		}
-	}
-	for _, alt := range xl.Sublocation {
-		if !seen[alt.Lang] {
-			langs = append(langs, alt.Lang)
-			seen[alt.Lang] = true
-		}
-	}
-	mls = make([]metadata.Location, len(langs))
-	for i, lang := range langs {
-		mls[i].Lang = lang
-		var cname, state, city, subloc string
-		if s := xl.CountryName.Get(lang); s != "" {
-			cname = s
-		} else {
-			cname = xl.CountryName.Default()
-		}
-		if s := xl.ProvinceState.Get(lang); s != "" {
-			state = s
-		} else {
-			state = xl.ProvinceState.Default()
-		}
-		if s := xl.City.Get(lang); s != "" {
-			city = s
-		} else {
-			city = xl.City.Default()
-		}
-		if s := xl.Sublocation.Get(lang); s != "" {
-			subloc = s
-		} else {
-			subloc = xl.Sublocation.Default()
-		}
-		if err := mls[i].ParseComponents(xl.CountryCode, cname, state, city, subloc); err != nil {
-			p.log("invalid XMP IPTC location")
-			return nil
-		}
-	}
-	return mls
+	ml.CountryCode = xl.CountryCode
+	ml.CountryName = xl.CountryName
+	ml.State = xl.ProvinceState
+	ml.City = xl.City
+	ml.Sublocation = xl.Sublocation
+	return ml
 }
 
-func metadataToXMPIPTCLocation(mls []metadata.Location) (xl *iptc4ext.Location) {
-	if len(mls) == 0 {
-		return nil
+func (p *XMP) metadataToXMPIPTCLocation(ml metadata.Location, xl *iptc4ext.Location) {
+	if xl.CountryCode != ml.CountryCode {
+		xl.CountryCode = ml.CountryCode
+		p.dirty = true
 	}
-	xl = new(iptc4ext.Location)
-	for i, ml := range mls {
-		if i == 0 {
-			xl.CountryCode = ml.CountryCode
-			xl.CountryName.AddDefault(ml.Lang, ml.CountryName)
-			xl.ProvinceState.AddDefault(ml.Lang, ml.State)
-			xl.City.AddDefault(ml.Lang, ml.City)
-			xl.Sublocation.AddDefault(ml.Lang, ml.Sublocation)
-		} else {
-			if ml.CountryName != xl.CountryName.Default() {
-				xl.CountryName.Add(ml.Lang, ml.CountryName)
-			}
-			if ml.State != xl.ProvinceState.Default() {
-				xl.ProvinceState.Add(ml.Lang, ml.State)
-			}
-			if ml.City != xl.City.Default() {
-				xl.City.Add(ml.Lang, ml.City)
-			}
-			if ml.Sublocation != xl.Sublocation.Default() {
-				xl.Sublocation.Add(ml.Lang, ml.Sublocation)
-			}
-		}
+	if !metadata.EqualAltStrings(ml.CountryName, xl.CountryName) {
+		xl.CountryName = ml.CountryName
+		p.dirty = true
 	}
-	return xl
+	if !metadata.EqualAltStrings(ml.State, xl.ProvinceState) {
+		xl.ProvinceState = ml.State
+		p.dirty = true
+	}
+	if !metadata.EqualAltStrings(ml.City, xl.City) {
+		xl.City = ml.City
+		p.dirty = true
+	}
+	if !metadata.EqualAltStrings(ml.Sublocation, xl.Sublocation) {
+		xl.Sublocation = ml.Sublocation
+		p.dirty = true
+	}
 }

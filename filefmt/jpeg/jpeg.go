@@ -7,6 +7,7 @@ import (
 	"github.com/rothskeller/photo-tools/metadata/exif"
 	"github.com/rothskeller/photo-tools/metadata/iptc"
 	"github.com/rothskeller/photo-tools/metadata/xmp"
+	"github.com/rothskeller/photo-tools/metadata/xmpext"
 )
 
 // NewHandler returns a handler for a JPEG photo Item.
@@ -20,6 +21,7 @@ type JPEG struct {
 	exif     *exif.EXIF
 	iptc     *iptc.IPTC
 	xmp      *xmp.XMP
+	xmpext   *xmpext.XMPExt
 	problems []string
 }
 
@@ -58,8 +60,17 @@ func (h *JPEG) log(f string, a ...interface{}) {
 // Problems returns the accumulated set of problems encountered.
 func (h *JPEG) Problems() (problems []string) {
 	problems = append(problems, h.problems...)
-	problems = append(problems, h.exif.Problems...)
-	problems = append(problems, h.iptc.Problems...)
-	problems = append(problems, h.xmp.Problems...)
+	if h.exif != nil {
+		problems = append(problems, h.exif.Problems...)
+	}
+	if h.iptc != nil {
+		problems = append(problems, h.iptc.Problems...)
+	}
+	if h.xmp != nil {
+		problems = append(problems, h.xmp.Problems...)
+	}
+	if h.xmpext != nil {
+		problems = append(problems, h.xmpext.Problems...)
+	}
 	return problems
 }

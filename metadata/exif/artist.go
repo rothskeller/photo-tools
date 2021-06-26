@@ -35,6 +35,7 @@ func (p *EXIF) getArtist() {
 		case b == ';' && !inquotes:
 			if t := strings.TrimSpace(abuf); t != "" {
 				p.Artist = append(p.Artist, t)
+				p.saveArtist = append(p.saveArtist, t)
 			}
 		default:
 			abuf += string(b)
@@ -42,10 +43,23 @@ func (p *EXIF) getArtist() {
 	}
 	if t := strings.TrimSpace(abuf); t != "" {
 		p.Artist = append(p.Artist, t)
+		p.saveArtist = append(p.saveArtist, t)
 	}
 }
 
 func (p *EXIF) setArtist() {
+	if len(p.Artist) == len(p.saveArtist) {
+		var mismatch = false
+		for i := range p.Artist {
+			if p.Artist[i] != p.saveArtist[i] {
+				mismatch = true
+				break
+			}
+		}
+		if !mismatch {
+			return
+		}
+	}
 	if len(p.Artist) == 0 {
 		p.deleteTag(p.ifd0, tagArtist)
 		return

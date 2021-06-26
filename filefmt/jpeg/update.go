@@ -196,6 +196,9 @@ func writeXMPSegment(out io.Writer, x *xmp.XMP) (err error) {
 	if buf, err = x.Render(); err != nil {
 		return err
 	}
+	if len(buf)+31 > 0xFFFF {
+		panic("XMP block is too large for a JPEG segment")
+	}
 	sbuf[0] = 0xFF
 	sbuf[1] = 0xE1
 	if _, err = out.Write(sbuf[:]); err != nil {
@@ -216,6 +219,9 @@ func writeIPTCSegment(out io.Writer, i *iptc.IPTC) (err error) {
 	var sbuf [2]byte
 	var buf = i.Render()
 
+	if len(buf)+16 > 0xFFFF {
+		panic("IPTC block is too large for a JPEG segment")
+	}
 	sbuf[0] = 0xFF
 	sbuf[1] = 0xED
 	if _, err = out.Write(sbuf[:]); err != nil {

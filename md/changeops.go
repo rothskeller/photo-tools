@@ -78,7 +78,7 @@ func createChooseOp(args []string) (op operation, remainingArgs []string, err er
 	case 0:
 		return nil, args[1:], errors.New("choose: missing field name")
 	case 1:
-		if argfields[0].multivalued || argfields[0].lang != "" {
+		if argfields[0].multivalued {
 			return nil, args[1:], fmt.Errorf("choose: not supported for %q", argfields[0].name)
 		}
 	default:
@@ -199,8 +199,7 @@ func createCopyOp(args []string) (op operation, remainingArgs []string, err erro
 		args = args[1:]
 	}
 	if len(fields) == 0 {
-		fields = []*field{artistField, captionField, dateTimeField, gpsField, keywordsField, titleField,
-			bothLocationsField, bothShownField}
+		fields = []*field{artistField, captionField, dateTimeField, gpsField, keywordsField, locationField, titleField}
 	}
 	return copyOp{fields}, args, nil
 }

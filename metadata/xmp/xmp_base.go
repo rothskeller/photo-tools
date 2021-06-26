@@ -1,6 +1,7 @@
 package xmp
 
 import (
+	"github.com/rothskeller/photo-tools/metadata"
 	xmpbase "github.com/rothskeller/photo-tools/metadata/xmp/models/xmp_base"
 )
 
@@ -21,21 +22,25 @@ func (p *XMP) getXMP() {
 func (p *XMP) setXMP() {
 	var (
 		model *xmpbase.XmpBase
+		dt    metadata.DateTime
 		err   error
 	)
 	if model, err = xmpbase.MakeModel(p.doc); err != nil {
 		panic(err)
 	}
-	if d := p.XMPCreateDate.String(); d != model.CreateDate {
-		model.CreateDate = d
+	p.xmpDateTimeToMetadata(model.CreateDate, &dt)
+	if eq, _ := dt.Equivalent(&p.XMPCreateDate); !eq {
+		model.CreateDate = p.XMPCreateDate.String()
 		p.dirty = true
 	}
-	if d := p.XMPMetadataDate.String(); d != model.MetadataDate {
-		model.MetadataDate = d
+	p.xmpDateTimeToMetadata(model.MetadataDate, &dt)
+	if eq, _ := dt.Equivalent(&p.XMPMetadataDate); !eq {
+		model.MetadataDate = p.XMPMetadataDate.String()
 		p.dirty = true
 	}
-	if d := p.XMPModifyDate.String(); d != model.ModifyDate {
-		model.ModifyDate = d
+	p.xmpDateTimeToMetadata(model.ModifyDate, &dt)
+	if eq, _ := dt.Equivalent(&p.XMPModifyDate); !eq {
+		model.ModifyDate = p.XMPModifyDate.String()
 		p.dirty = true
 	}
 }

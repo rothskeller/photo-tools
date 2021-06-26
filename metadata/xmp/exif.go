@@ -1,8 +1,6 @@
 package xmp
 
 import (
-	"reflect"
-
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/exif"
 	"trimmer.io/go-xmp/xmp"
@@ -26,25 +24,31 @@ func (p *XMP) getEXIF() {
 func (p *XMP) setEXIF() {
 	var (
 		model *exif.ExifInfo
+		dt    metadata.DateTime
+		gps   metadata.GPSCoords
 		err   error
 	)
 	if model, err = exif.MakeModel(p.doc); err != nil {
 		panic(err)
 	}
-	if dtd := p.EXIFDateTimeDigitized.String(); dtd != model.DateTimeDigitized {
-		model.DateTimeDigitized = dtd
+	p.xmpDateTimeToMetadata(model.DateTimeDigitized, &dt)
+	if eq, _ := dt.Equivalent(&p.EXIFDateTimeDigitized); !eq {
+		model.DateTimeDigitized = p.EXIFDateTimeDigitized.String()
 		p.dirty = true
 	}
-	if dto := p.EXIFDateTimeOriginal.String(); dto != model.DateTimeOriginal {
-		model.DateTimeOriginal = dto
+	p.xmpDateTimeToMetadata(model.DateTimeOriginal, &dt)
+	if eq, _ := dt.Equivalent(&p.EXIFDateTimeOriginal); !eq {
+		model.DateTimeOriginal = p.EXIFDateTimeOriginal.String()
 		p.dirty = true
 	}
-	if lat, long, altref, alt := p.EXIFGPSCoords.AsXMP(); lat != model.GPSLatitude || long != model.GPSLongitude ||
-		altref != model.GPSAltitudeRef || alt != model.GPSAltitude {
-		model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude = lat, long, altref, alt
+	// GPS coordinate transformations involve rounding error, hence the
+	// roundabout equivalency check.
+	p.xmpEXIFGPSCoordsToMetadata(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude, &gps)
+	if eq, _ := gps.Equivalent(&p.EXIFGPSCoords); !eq {
+		model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude = p.EXIFGPSCoords.AsXMP()
 		p.dirty = true
 	}
-	if !reflect.DeepEqual(xmp.StringArray(p.EXIFUserComments), model.UserComment) {
+	if !stringSliceEqual(xmp.StringArray(p.EXIFUserComments), model.UserComment) {
 		model.UserComment = p.EXIFUserComments
 		p.dirty = true
 	}

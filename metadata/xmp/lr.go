@@ -1,7 +1,6 @@
 package xmp
 
 import (
-	"reflect"
 	"strings"
 
 	"github.com/rothskeller/photo-tools/metadata"
@@ -44,7 +43,7 @@ func (p *XMP) setLR() {
 		}
 		hs = append(hs, strings.Join(comps, "|"))
 	}
-	if !reflect.DeepEqual(hs, model.HierarchicalSubject) {
+	if !stringSliceEqual(hs, model.HierarchicalSubject) {
 		model.HierarchicalSubject = hs
 		p.dirty = true
 	}

@@ -19,9 +19,13 @@ func (p *IPTC) getDigitalCreationDateTime() {
 	if err := p.DigitalCreationDateTime.ParseIPTC(date, time); err != nil {
 		p.log("DigitalCreationDateTime: %s", err)
 	}
+	p.saveDigitalCreationDateTime = p.DigitalCreationDateTime
 }
 
 func (p *IPTC) setDigitalCreationDateTime() {
+	if p.saveDigitalCreationDateTime.Equal(&p.DigitalCreationDateTime) {
+		return
+	}
 	if p.DigitalCreationDateTime.Empty() {
 		p.deleteDSet(idDigitalCreationDate)
 		p.deleteDSet(idDigitalCreationTime)

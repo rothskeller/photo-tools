@@ -24,12 +24,12 @@ func tagsForStringList(tags, values []string, label string, ss []string) (newt, 
 	return tags, values
 }
 
-func tagsForLangStrings(tags, values []string, label string, lss []metadata.LangString) (newt, newv []string) {
-	if len(lss) == 0 {
+func tagsForAltString(tags, values []string, label string, as metadata.AltString) (newt, newv []string) {
+	if len(as) == 0 {
 		tags = append(tags, label)
 		values = append(values, "")
 	}
-	for i, ls := range lss {
+	for i, ls := range as {
 		if i == 0 && ls.Lang == "" {
 			tags = append(tags, label)
 		} else {

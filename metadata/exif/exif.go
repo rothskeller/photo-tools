@@ -18,6 +18,14 @@ type EXIF struct {
 	UserComment       string
 	Problems          []string
 
+	saveArtist            []string
+	saveDateTime          metadata.DateTime
+	saveDateTimeDigitized metadata.DateTime
+	saveDateTimeOriginal  metadata.DateTime
+	saveImageDescription  string
+	saveGPSCoords         metadata.GPSCoords
+	saveUserComment       string
+
 	offset  uint32
 	buf     []byte
 	enc     binary.ByteOrder

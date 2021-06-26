@@ -1,7 +1,6 @@
 package exif
 
 import (
-	"bytes"
 	"sort"
 )
 
@@ -12,12 +11,16 @@ func (p *EXIF) Dirty() bool {
 	}
 	p.setArtist()
 	p.setDateTime()
-	p.setDateTimeDigitized()
-	p.setDateTimeOriginal()
-	p.setGPSCoords()
 	p.setImageDescription()
-	p.setUserComment()
-	return (p.ifd0 != nil && p.ifd0.dirty) || (p.exifIFD != nil && p.exifIFD.dirty) || (p.gpsIFD != nil && p.gpsIFD.dirty)
+	if p.exifIFD != nil {
+		p.setDateTimeDigitized()
+		p.setDateTimeOriginal()
+		p.setUserComment()
+	}
+	if p.gpsIFD != nil {
+		p.setGPSCoords()
+	}
+	return p.ifd0.dirty || (p.exifIFD != nil && p.exifIFD.dirty) || (p.gpsIFD != nil && p.gpsIFD.dirty)
 }
 
 // Render renders and returns the encoded EXIF block, applying any changes made
@@ -204,6 +207,9 @@ func (p *EXIF) addTag(ifd *ifdt, tag *tagt) {
 	ifd.dirty = true
 }
 
+// Most of the time, deleteTag should set the dirty flag.  For the rare cases
+// when it shouldn't, there's a separate entrypoint, to keep from having to pass
+// an extra argument in the common case.
 func (p *EXIF) deleteTag(ifd *ifdt, tag uint16) {
 	if ifd == nil {
 		return
@@ -253,13 +259,10 @@ func (p *EXIF) setASCIITag(ifd *ifdt, tnum uint16, val string) {
 		tag = &tagt{tag: tnum, ttype: 2, count: 0, data: nil}
 		p.addTag(ifd, tag)
 	}
-	encbytes := make([]byte, len(val)+1)
-	copy(encbytes, val)
-	if !bytes.Equal(tag.data, encbytes) {
-		tag.data = encbytes
-		tag.count = uint32(len(encbytes))
-		ifd.dirty = true
-	}
+	tag.data = make([]byte, len(val)+1)
+	copy(tag.data, val)
+	tag.count = uint32(len(tag.data))
+	ifd.dirty = true
 }
 
 func (p *EXIF) setRationalTag(ifd *ifdt, tnum uint16, val []uint32) {
@@ -268,15 +271,12 @@ func (p *EXIF) setRationalTag(ifd *ifdt, tnum uint16, val []uint32) {
 		tag = &tagt{tag: tnum, ttype: 2, count: 0, data: nil}
 		p.addTag(ifd, tag)
 	}
-	encbytes := make([]byte, len(val)*4)
+	tag.data = make([]byte, len(val)*4)
 	for i := range val {
-		p.enc.PutUint32(encbytes[i*4:], val[i])
+		p.enc.PutUint32(tag.data[i*4:], val[i])
 	}
-	if !bytes.Equal(tag.data, encbytes) {
-		tag.data = encbytes
-		tag.count = uint32(len(val))
-		ifd.dirty = true
-	}
+	tag.count = uint32(len(val))
+	ifd.dirty = true
 }
 
 func (p *EXIF) setByteTag(ifd *ifdt, tnum uint16, val byte) {
@@ -285,10 +285,7 @@ func (p *EXIF) setByteTag(ifd *ifdt, tnum uint16, val byte) {
 		tag = &tagt{tag: tnum, ttype: 1, count: 0, data: nil}
 		p.addTag(ifd, tag)
 	}
-	var encbytes = []byte{val}
-	if !bytes.Equal(tag.data, encbytes) {
-		tag.data = encbytes
-		tag.count = 1
-		ifd.dirty = true
-	}
+	tag.data = []byte{val}
+	tag.count = 1
+	ifd.dirty = true
 }

@@ -7,8 +7,8 @@ import (
 // GetTitle returns the highest priority title value.
 func GetTitle(h fileHandler) string {
 	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.DCTitle) != 0 {
-			return xmp.DCTitle[0].Value
+		if def := xmp.DCTitle.Default(); def != "" {
+			return def
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
@@ -22,7 +22,7 @@ func GetTitle(h fileHandler) string {
 // GetTitleTags returns all of the title tags and their values.
 func GetTitleTags(h fileHandler) (tags, values []string) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = tagsForLangStrings(tags, values, "XMP.dc:Title", xmp.DCTitle)
+		tags, values = tagsForAltString(tags, values, "XMP.dc:Title", xmp.DCTitle)
 	}
 	if iptc := h.IPTC(); iptc != nil {
 		tags = append(tags, "IPTC.ObjectName")
@@ -33,13 +33,13 @@ func GetTitleTags(h fileHandler) (tags, values []string) {
 
 // SetTitle sets the title tags.
 func SetTitle(h fileHandler, v string) error {
-	var list []metadata.LangString
+	var as metadata.AltString
 
 	if v != "" {
-		list = []metadata.LangString{{Lang: "", Value: v}}
+		as = metadata.NewAltString(v)
 	}
 	if xmp := h.XMP(true); xmp != nil {
-		xmp.DCTitle = list
+		xmp.DCTitle = as
 	}
 	if iptc := h.IPTC(); iptc != nil {
 		iptc.ObjectName = v

@@ -40,6 +40,7 @@ func (op *removeOp) Run(files []MediaFile) error {
 			if err := op.field.SetValues(file.Handler, values[:j]); err != nil {
 				return fmt.Errorf("%s: remove %s: %s", file.Path, op.field.Name(), err)
 			}
+			file.Changed = true
 		}
 	}
 	return nil

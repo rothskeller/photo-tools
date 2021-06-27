@@ -62,5 +62,5 @@ func (f *artistField) SetValues(h filefmt.FileHandler, v []interface{}) error {
 // tagged correctly, and are consistent with the values of the field in
 // the reference.
 func (f *artistField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
-	panic("not implemented") // TODO: Implement
+	return strmeta.CheckCreator(ref, tgt)
 }

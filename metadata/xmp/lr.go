@@ -3,7 +3,6 @@ package xmp
 import (
 	"strings"
 
-	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/lr"
 	"trimmer.io/go-xmp/xmp"
 )
@@ -18,12 +17,7 @@ func (p *XMP) getLR() {
 		return
 	}
 	for _, xkw := range model.HierarchicalSubject {
-		parts := strings.Split(xkw, "|")
-		var comps = make(metadata.Keyword, len(parts))
-		for i, c := range parts {
-			comps[i] = metadata.KeywordComponent{Word: c}
-		}
-		p.LRHierarchicalSubject = append(p.LRHierarchicalSubject, comps)
+		p.LRHierarchicalSubject = append(p.LRHierarchicalSubject, strings.Split(xkw, "|"))
 	}
 }
 
@@ -37,11 +31,7 @@ func (p *XMP) setLR() {
 		panic(err)
 	}
 	for _, mkw := range p.LRHierarchicalSubject {
-		var comps = make([]string, len(mkw))
-		for i, c := range mkw {
-			comps[i] = c.Word
-		}
-		hs = append(hs, strings.Join(comps, "|"))
+		hs = append(hs, strings.Join(mkw, "|"))
 	}
 	if !stringSliceEqual(hs, model.HierarchicalSubject) {
 		model.HierarchicalSubject = hs

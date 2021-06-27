@@ -2,6 +2,7 @@ package fields
 
 import (
 	"github.com/rothskeller/photo-tools/filefmt"
+	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/strmeta"
 )
 
@@ -10,70 +11,72 @@ import (
 // prohibited for safety's sake.  It is also used when implied by "all" or an
 // empty field list in any operations that accepts a field lists, except "show".
 var KeywordsField Field = &baseKWField{
-	baseField{
+	baseField: baseField{
 		name:        "keyword",
 		pluralName:  "keywords",
 		label:       "Keyword",
 		shortLabel:  "KW",
 		multivalued: true,
 	},
-	"",
+	prefix:   "",
+	expected: true,
 }
 
 // GroupsField is the field handler for the subset of keywords that start with
 // GROUPS.  These represent groups of people (organizations, teams, etc.) that
 // are depicted in the media.
 var GroupsField Field = &baseKWField{
-	baseField{
+	baseField: baseField{
 		name:        "group",
 		pluralName:  "groups",
 		label:       "Group",
 		shortLabel:  "GR",
 		multivalued: true,
 	},
-	"GROUPS",
+	prefix: "Groups",
 }
 
 // PeopleField is the field handler for the subset of keywords that start with
 // GROUPS.  These represent groups of people (organizations, teams, etc.) that
 // are depicted in the media.
 var PeopleField Field = &baseKWField{
-	baseField{
+	baseField: baseField{
 		name:        "person",
 		pluralName:  "people",
 		label:       "Person",
 		shortLabel:  "PE",
 		multivalued: true,
 	},
-	"PEOPLE",
+	prefix: "People",
 }
 
 // PlacesField is the field handler for the subset of keywords that start with
 // GROUPS.  These represent groups of people (organizations, teams, etc.) that
 // are depicted in the media.
 var PlacesField Field = &baseKWField{
-	baseField{
+	baseField: baseField{
 		name:        "place",
 		pluralName:  "places",
 		label:       "Place",
 		shortLabel:  "PL",
 		multivalued: true,
 	},
-	"PLACES",
+	prefix:   "Places",
+	expected: true,
 }
 
 // TopicsField is the field handler for the subset of keywords that start with
 // GROUPS.  These represent groups of people (organizations, teams, etc.) that
 // are depicted in the media.
 var TopicsField Field = &baseKWField{
-	baseField{
+	baseField: baseField{
 		name:        "topic",
 		pluralName:  "topics",
 		label:       "Topic",
-		shortLabel:  "TO",
+		shortLabel:  "TP",
 		multivalued: true,
 	},
-	"TOPICS",
+	prefix: "Topics",
 }
 
 type otherKeywordsField struct {
@@ -87,14 +90,14 @@ type otherKeywordsField struct {
 // field will list all other keywords not covered by those other fields.
 var OtherKeywordsField Field = &otherKeywordsField{
 	baseKWField{
-		baseField{
+		baseField: baseField{
 			name:        "keyword",
 			pluralName:  "keywords",
 			label:       "Keyword",
 			shortLabel:  "KW",
 			multivalued: true,
 		},
-		"",
+		prefix: "",
 	},
 }
 
@@ -103,21 +106,18 @@ var OtherKeywordsField Field = &otherKeywordsField{
 // should not be included.
 func (f *otherKeywordsField) GetValues(h filefmt.FileHandler) []interface{} {
 	var kws = strmeta.GetKeywords(h)
-	j := 0
+	var filtered []metadata.Keyword
 	for _, kw := range kws {
-		if len(kw) != 0 && kw[0].Word != "GROUPS" && kw[0].Word != "PEOPLE" &&
-			kw[0].Word != "PLACES" && kw[0].Word != "TOPICS" {
-			kws[j] = kw
-			j++
+		if len(kw) != 0 && kw[0] != "Groups" && kw[0] != "People" && kw[0] != "Places" && kw[0] != "Topics" {
+			filtered = append(filtered, kw)
 		}
 	}
-	kws = kws[:j]
-	if len(kws) == 0 {
+	if len(filtered) == 0 {
 		return nil
 	}
-	var ifcs = make([]interface{}, len(kws))
-	for i := range kws {
-		ifcs[i] = kws[i]
+	var ifcs = make([]interface{}, len(filtered))
+	for i := range filtered {
+		ifcs[i] = filtered[i]
 	}
 	return ifcs
 }
@@ -132,7 +132,12 @@ func (f *otherKeywordsField) SetValues(h filefmt.FileHandler, v []interface{}) e
 	panic("should not be called")
 }
 
-// CheckValues should not be called for this pseudo-field.
+// CheckValues returns whether the values of the field in the target are
+// tagged correctly, and are consistent with the values of the field in
+// the reference.
 func (f *otherKeywordsField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
-	panic("should not be called")
+	if result := strmeta.CheckKeywords(ref, tgt); result <= 0 {
+		return result
+	}
+	return strmeta.CheckResult(len(f.GetValues(tgt)))
 }

@@ -19,11 +19,12 @@ independent of how those data types are encoded in different metadata blocks.
 These data types are designed to support the union of possible values for those
 fields as stored in any of the supported metadata block formats.
 
-## Packages `metadata/exif`, `metadata/iptc`, and `metadata/xmp`
+## Packages `metadata/exif`, `metadata/iptc`, `metadata/xmp`, and `metadata/xmpext`
 
 Provide structures and methods for decoding and encoding EXIF, IPTC-IIM, and XMP
-metadata blocks, respectively, and for translating the data in them to and from
-the types defined in package `metadata`.
+metadata blocks, and XMP metadata extension blocks, respectively, and for
+translating the data in them to and from the types defined in package
+`metadata`.
 
 ## Package `strmeta`
 

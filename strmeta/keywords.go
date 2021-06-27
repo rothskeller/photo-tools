@@ -19,17 +19,14 @@ func GetKeywords(h fileHandler) (kws []metadata.Keyword) {
 		return kws
 	}
 	for _, kw := range kws {
-		for i, word := range kw {
-			if _, ok := flat[word.Word]; ok {
-				flat[word.Word] = false
-			} else {
-				kw[i].OmitWhenFlattened = true
-			}
+		word := kw[len(kw)-1]
+		if _, ok := flat[word]; ok {
+			flat[word] = false
 		}
 	}
 	for word, unseen := range flat {
 		if unseen {
-			kws = append(kws, metadata.Keyword{{Word: word}})
+			kws = append(kws, metadata.Keyword{word})
 		}
 	}
 	return kws
@@ -72,13 +69,13 @@ func GetKeywordsTags(h fileHandler) (tags []string, values []metadata.Keyword) {
 		}
 		for _, kw := range xmp.DCSubject {
 			tags = append(tags, "XMP.dc:Subject")
-			values = append(values, []metadata.KeywordComponent{{Word: kw}})
+			values = append(values, metadata.Keyword{kw})
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
 		for _, kw := range iptc.Keywords {
 			tags = append(tags, "IPTC.Keyword")
-			values = append(values, []metadata.KeywordComponent{{Word: kw}})
+			values = append(values, metadata.Keyword{kw})
 		}
 	}
 	return tags, values
@@ -94,15 +91,12 @@ func CheckKeywords(ref, h fileHandler) (res CheckResult) {
 		flatmax = map[string]bool{}
 	)
 	for _, kw := range value {
-		for _, c := range kw {
-			if !c.OmitWhenFlattened {
-				flat[c.Word] = true
-				if len(c.Word) > iptc.MaxKeywordLen {
-					flatmax[c.Word[:iptc.MaxKeywordLen]] = true
-				} else {
-					flatmax[c.Word] = true
-				}
-			}
+		word := kw[len(kw)-1]
+		flat[word] = true
+		if len(word) > iptc.MaxKeywordLen {
+			flatmax[word[:iptc.MaxKeywordLen]] = true
+		} else {
+			flatmax[word] = true
 		}
 	}
 	if xmp := h.XMP(false); xmp != nil {
@@ -142,7 +136,7 @@ func CheckKeywords(ref, h fileHandler) (res CheckResult) {
 	}
 	if i := h.IPTC(); i != nil {
 		if len(i.Keywords) != 0 {
-			if len(i.Keywords) != len(flat) {
+			if len(i.Keywords) != len(flatmax) {
 				return ChkConflictingValues
 			}
 			smap := make(map[string]bool)
@@ -179,7 +173,7 @@ func keywordsEqual(a, b []metadata.Keyword) bool {
 			return false
 		}
 		for j := range a[i] {
-			if a[i][j].Word != b[i][j].Word || a[i][j].OmitWhenFlattened != b[i][j].OmitWhenFlattened {
+			if a[i][j] != b[i][j] {
 				return false
 			}
 		}
@@ -194,17 +188,15 @@ func SetKeywords(h fileHandler, v []metadata.Keyword) error {
 
 	for _, kw := range v {
 		for _, comp := range kw {
-			if !comp.OmitWhenFlattened {
-				var found = false
-				for _, f := range flat {
-					if f == comp.Word {
-						found = true
-						break
-					}
+			var found = false
+			for _, f := range flat {
+				if f == comp {
+					found = true
+					break
 				}
-				if !found {
-					flat = append(flat, comp.Word)
-				}
+			}
+			if !found {
+				flat = append(flat, comp)
 			}
 		}
 	}

@@ -18,7 +18,8 @@ type Operation interface {
 	// certain numbers of files per batch, certain media types, etc.).
 	Check(batches [][]MediaFile) error
 	// Run executes the operation against the listed media files (one
-	// batch).
+	// batch).  It returns whether any changes were made, or an error if one
+	// occurred.
 	Run(files []MediaFile) error
 }
 
@@ -27,6 +28,7 @@ type Operation interface {
 type MediaFile struct {
 	Path    string
 	Handler filefmt.FileHandler
+	Changed bool
 }
 
 func escapeString(s string) string {

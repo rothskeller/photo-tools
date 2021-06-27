@@ -41,6 +41,7 @@ func (op *addOp) Run(files []MediaFile) error {
 			if err := op.field.SetValues(file.Handler, values); err != nil {
 				return fmt.Errorf("%s: add %s: %s", file.Path, op.field.Name(), err)
 			}
+			file.Changed = true
 		}
 	}
 	return nil

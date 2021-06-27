@@ -92,6 +92,7 @@ RETRY:
 		if err := op.field.SetValues(file.Handler, newvs); err != nil {
 			return fmt.Errorf("%s: choose %s: %s", file.Path, op.field.Name(), err)
 		}
+		file.Changed = true
 	}
 	return nil
 }

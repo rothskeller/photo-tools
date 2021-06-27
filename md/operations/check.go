@@ -1,11 +1,19 @@
 package operations
 
-import "github.com/rothskeller/photo-tools/md/fields"
+import (
+	"fmt"
+	"os"
+	"text/tabwriter"
+
+	"github.com/rothskeller/photo-tools/md/fields"
+	"github.com/rothskeller/photo-tools/strmeta"
+)
 
 func newCheckOp() Operation { return new(checkOp) }
 
 type checkOp struct {
 	fieldListOp
+	hasRun bool
 }
 
 // parseArgs parses the arguments for the operation, returning the remaining
@@ -37,5 +45,36 @@ func (op *checkOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *checkOp) Run(files []MediaFile) error {
-	panic("not implemented")
+	if op.hasRun {
+		fmt.Println()
+	}
+	out := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+	fmt.Fprint(out, "FILE")
+	for _, field := range op.fields {
+		fmt.Fprintf(out, "\t%s", field.ShortLabel())
+	}
+	fmt.Fprintln(out)
+	for _, file := range files {
+		fmt.Fprint(out, file.Path)
+		for _, field := range op.fields {
+			result := field.CheckValues(files[0].Handler, file.Handler)
+			if result <= 0 || (result == strmeta.ChkPresent && !field.Multivalued()) {
+				fmt.Fprint(out, resultCodes[result])
+			} else {
+				fmt.Fprintf(out, "\t%2d", result)
+			}
+		}
+		fmt.Fprintln(out)
+	}
+	out.Flush()
+	op.hasRun = true
+	return nil
+}
+
+var resultCodes = map[strmeta.CheckResult]string{
+	strmeta.ChkConflictingValues: "\t!=",
+	strmeta.ChkExpectedAbsent:    "\t--",
+	strmeta.ChkIncorrectlyTagged: "\t[]",
+	strmeta.ChkOptionalAbsent:    "\t  ",
+	strmeta.ChkPresent:           "\t ✓",
 }

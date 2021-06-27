@@ -24,6 +24,8 @@ type FileHandler interface {
 	// Problems returns the accumulated set of problems encountered by the
 	// handler.
 	Problems() []string
+	// Dirty returns whether there are unsaved changes to the metadata.
+	Dirty() bool
 	// SaveMetadata writes the metadata for the photo.  It returns any error
 	// that occurs.
 	SaveMetadata() error

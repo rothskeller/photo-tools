@@ -45,6 +45,7 @@ func (op *writeOp) Run(files []MediaFile) error {
 		if err := fields.CaptionField.SetValues(file.Handler, []interface{}{op.value}); err != nil {
 			return fmt.Errorf("%s: write caption: %s", file.Path, err)
 		}
+		file.Changed = true
 	}
 	return nil
 }

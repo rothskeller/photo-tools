@@ -41,8 +41,9 @@ func (op *resetOp) Run(files []MediaFile) error {
 		for _, field := range op.fields {
 			values := field.GetValues(file.Handler)
 			if err := field.SetValues(file.Handler, values); err != nil {
-				return fmt.Errorf("%s: reset %s: %s", file, field.PluralName(), err)
+				return fmt.Errorf("%s: reset %s: %s", file.Path, field.PluralName(), err)
 			}
+			file.Changed = true
 		}
 	}
 	return nil

@@ -36,6 +36,7 @@ func (op *clearOp) Run(files []MediaFile) error {
 		if err := op.field.SetValues(file.Handler, nil); err != nil {
 			return fmt.Errorf("%s: clear %s: %s", file.Path, op.field.PluralName(), err)
 		}
+		file.Changed = true
 	}
 	return nil
 }

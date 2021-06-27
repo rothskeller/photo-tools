@@ -23,9 +23,13 @@ func main() {
 			}
 		}
 		for _, file := range batch {
-			if err := file.Handler.SaveMetadata(); err != nil {
-				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file, err)
-				sawError = true
+			if file.Changed {
+				if err := file.Handler.SaveMetadata(); err != nil {
+					fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
+					sawError = true
+				}
+			} else if file.Handler.Dirty() {
+				panic(fmt.Errorf("%s: file dirty after read-only operation", file.Path))
 			}
 		}
 	}

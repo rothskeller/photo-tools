@@ -42,14 +42,13 @@ func parseCommandLine() (ops []operations.Operation, batches [][]operations.Medi
 	)
 	args = os.Args[1:]
 	batches = append(batches, []operations.MediaFile{})
-ARGS:
 	for len(args) != 0 {
-		arg, args = args[0], args[1:]
-		if arg == "batch" {
+		if args[0] == "batch" {
 			if batch {
 				fmt.Fprintf(os.Stderr, "ERROR: \"batch\" specified repeatedly\n")
 				usage()
 			}
+			args = args[1:]
 			batch = true
 			continue
 		}
@@ -60,13 +59,15 @@ ARGS:
 			ops = append(ops, op)
 			continue
 		}
+		arg, args = args[0], args[1:]
 		if _, err := os.Stat(arg); os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 			usage()
 		}
 		if handler = filefmt.HandlerFor(arg); handler == nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %s: unsupported file format\n", arg)
 			fileError = true
-			continue ARGS
+			continue
 		}
 		handler.ReadMetadata()
 		if problems := handler.Problems(); len(problems) != 0 {
@@ -74,9 +75,9 @@ ARGS:
 				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", arg, problem)
 			}
 			fileError = true
-			continue ARGS
+			continue
 		}
-		batches[0] = append(batches[0], operations.MediaFile{arg, handler})
+		batches[0] = append(batches[0], operations.MediaFile{Path: arg, Handler: handler})
 	}
 	if len(batches[0]) == 0 && !fileError {
 		fmt.Fprintf(os.Stderr, "ERROR: no files specified\n")

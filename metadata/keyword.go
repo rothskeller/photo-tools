@@ -5,29 +5,25 @@ import (
 	"strings"
 )
 
-type Keyword []KeywordComponent
-
-type KeywordComponent struct {
-	Word              string
-	OmitWhenFlattened bool
-}
+// A Keyword represents a hierarchical keyword.
+type Keyword []string
 
 // ParseKeyword parses a keyword.  If prefix is non-nil, it is prepended to the
-// keyword as an omit-when-flattened.
+// keyword.
 func ParseKeyword(s, prefix string) (kw Keyword, err error) {
 	if strings.TrimSpace(s) == "" {
 		return nil, nil
 	}
 	var words = strings.Split(s, "/")
 	if prefix != "" {
-		kw = append(kw, KeywordComponent{prefix, true})
+		kw = append(kw, prefix)
 	}
 	for _, w := range words {
 		if strings.IndexByte(w, '|') >= 0 {
 			return nil, errors.New("keywords cannot contain | characters")
 		}
 		if w := strings.TrimSpace(w); w != "" {
-			kw = append(kw, KeywordComponent{Word: w})
+			kw = append(kw, w)
 		} else {
 			return nil, errors.New("keywords cannot have empty components")
 		}
@@ -36,11 +32,7 @@ func ParseKeyword(s, prefix string) (kw Keyword, err error) {
 }
 
 func (kw Keyword) String() string {
-	var parts = make([]string, len(kw))
-	for i := range kw {
-		parts[i] = kw[i].Word
-	}
-	return strings.Join(parts, " / ")
+	return strings.Join(kw, " / ")
 }
 
 // StringWithoutPrefix returns the string form of the keyword with the expected
@@ -49,7 +41,7 @@ func (kw Keyword) StringWithoutPrefix(prefix string) string {
 	if len(kw) == 0 {
 		return ""
 	}
-	if kw[0].Word != prefix {
+	if kw[0] != prefix {
 		panic("StringWithoutPrefix called on keyword with wrong prefix")
 	}
 	return kw[1:].String()
@@ -61,7 +53,7 @@ func (kw Keyword) Equal(other Keyword) bool {
 		return false
 	}
 	for i := range kw {
-		if kw[i].Word != other[i].Word {
+		if kw[i] != other[i] {
 			return false
 		}
 	}

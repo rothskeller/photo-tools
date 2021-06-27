@@ -13,6 +13,14 @@ import (
 	"github.com/rothskeller/photo-tools/metadata/xmp"
 )
 
+// Dirty returns whether there are unsaved changes to the metadata.
+func (h *JPEG) Dirty() bool {
+	if len(h.problems) != 0 {
+		return false
+	}
+	return h.exif.Dirty() || h.iptc.Dirty() || h.xmp.Dirty()
+}
+
 // SaveMetadata rewrites the JPEG file with the supplied metadata.
 func (h *JPEG) SaveMetadata() (err error) {
 	var (

@@ -41,7 +41,7 @@ type XMP struct {
 func New() (p *XMP) {
 	p = new(XMP)
 	p.doc = xmp.NewDocument()
-	// TODO p.dirty = true; panic("here")
+	p.dirty = true
 	return p
 }
 

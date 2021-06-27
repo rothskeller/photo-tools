@@ -10,7 +10,8 @@ import (
 // that they all share.
 type baseKWField struct {
 	baseField
-	prefix string
+	prefix   string
+	expected bool
 }
 
 // ParseValue parses a string and returns a value for the field.  It
@@ -39,14 +40,13 @@ func (f *baseKWField) EqualValue(a interface{}, b interface{}) bool {
 func (f *baseKWField) GetValues(h filefmt.FileHandler) []interface{} {
 	var kws = strmeta.GetKeywords(h)
 	if f.prefix != "" {
-		j := 0
+		var filtered []metadata.Keyword
 		for _, kw := range kws {
-			if len(kw) != 0 && kw[0].Word == f.prefix {
-				kws[j] = kw
-				j++
+			if len(kw) != 0 && kw[0] == f.prefix {
+				filtered = append(filtered, kw)
 			}
 		}
-		kws = kws[:j]
+		kws = filtered
 	}
 	if len(kws) == 0 {
 		return nil
@@ -66,7 +66,7 @@ func (f *baseKWField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	if f.prefix != "" {
 		j := 0
 		for i, kw := range values {
-			if len(kw) != 0 && kw[0].Word == f.prefix {
+			if len(kw) != 0 && kw[0] == f.prefix {
 				tags[j] = tags[i]
 				values[j] = kw
 				j++
@@ -96,7 +96,7 @@ func (f *baseKWField) SetValues(h filefmt.FileHandler, v []interface{}) error {
 	} else {
 		j := 0
 		for _, kw := range all {
-			if len(kw) != 0 && kw[0].Word != f.prefix {
+			if len(kw) != 0 && kw[0] != f.prefix {
 				all[j] = kw
 				j++
 			}
@@ -113,5 +113,13 @@ func (f *baseKWField) SetValues(h filefmt.FileHandler, v []interface{}) error {
 // tagged correctly, and are consistent with the values of the field in
 // the reference.
 func (f *baseKWField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
-	panic("not implemented") // TODO: Implement
+	if result := strmeta.CheckKeywords(ref, tgt); result < 0 {
+		return result
+	}
+	if count := len(f.GetValues(tgt)); count > 0 {
+		return strmeta.CheckResult(count)
+	} else if f.expected {
+		return strmeta.ChkExpectedAbsent
+	}
+	return strmeta.ChkOptionalAbsent
 }

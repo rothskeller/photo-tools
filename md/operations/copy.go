@@ -58,6 +58,7 @@ func (op *copyOp) Run(files []MediaFile) error {
 				return fmt.Errorf("%s: copy %s: %s", file.Path, field.PluralName(), err)
 			}
 		}
+		file.Changed = true
 	}
 	return nil
 }

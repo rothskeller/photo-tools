@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rothskeller/photo-tools/filefmt"
+	"github.com/rothskeller/photo-tools/md/operations"
 )
 
 func usage() {
@@ -29,18 +30,18 @@ See MANUAL.md for more details.
 
 // parseCommandLine parses the command line and returns the list of operations
 // and the list of files.  It aborts the program if there are any errors.
-func parseCommandLine() (ops []operation, batches [][]mediafile) {
+func parseCommandLine() (ops []operations.Operation, batches [][]operations.MediaFile) {
 	var (
 		args      []string
 		arg       string
 		batch     bool
-		op        operation
-		handler   fileHandler
+		op        operations.Operation
+		handler   filefmt.FileHandler
 		fileError bool
 		err       error
 	)
 	args = os.Args[1:]
-	batches = append(batches, []mediafile{})
+	batches = append(batches, []operations.MediaFile{})
 ARGS:
 	for len(args) != 0 {
 		arg, args = args[0], args[1:]
@@ -50,14 +51,14 @@ ARGS:
 				usage()
 			}
 			batch = true
+			continue
 		}
-		if factory := optypes[arg]; factory != nil {
-			if op, args, err = factory(args); err != nil {
-				fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
-				usage()
-			}
+		if op, args, err = operations.ParseOperation(args); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			usage()
+		} else if op != nil {
 			ops = append(ops, op)
-			continue ARGS
+			continue
 		}
 		if _, err := os.Stat(arg); os.IsNotExist(err) {
 			usage()
@@ -75,7 +76,7 @@ ARGS:
 			fileError = true
 			continue ARGS
 		}
-		batches[0] = append(batches[0], mediafile{arg, handler})
+		batches[0] = append(batches[0], operations.MediaFile{arg, handler})
 	}
 	if len(batches[0]) == 0 && !fileError {
 		fmt.Fprintf(os.Stderr, "ERROR: no files specified\n")
@@ -85,17 +86,17 @@ ARGS:
 		os.Exit(1)
 	}
 	if len(ops) == 0 {
-		op, _, _ := createShowOp([]string{})
+		op, _, _ = operations.ParseOperation([]string{"show"})
 		ops = append(ops, op)
 	}
 	if batch {
 		var (
 			bnum = 0
 			fnum = 1
-			base = basename(batches[0][0].path)
+			base = basename(batches[0][0].Path)
 		)
 		for fnum < len(batches[bnum]) {
-			if nb := basename(batches[bnum][fnum].path); nb == base {
+			if nb := basename(batches[bnum][fnum].Path); nb == base {
 				fnum++
 			} else {
 				batches = append(batches, batches[bnum][fnum:])
@@ -105,7 +106,7 @@ ARGS:
 		}
 	}
 	for _, op := range ops {
-		if err := op.check(batches); err != nil {
+		if err := op.Check(batches); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 			usage()
 		}
@@ -119,50 +120,4 @@ func basename(path string) string {
 		path = path[:idx]
 	}
 	return path
-}
-
-type operationFactory func(args []string) (op operation, remainingArgs []string, err error)
-
-var optypes = map[string]operationFactory{
-	"add":    createAddOp,
-	"choose": createChooseOp,
-	"clear":  createClearOp,
-	"copy":   createCopyOp,
-	"read":   createReadOp,
-	"remove": createRemoveOp,
-	"set":    createSetOp,
-	"show":   createShowOp,
-	"tags":   createTagsOp,
-	"write":  createWriteOp,
-}
-
-func parseField(arg string) []*field {
-	switch arg {
-	case "artist", "a":
-		return []*field{artistField}
-	case "caption", "c":
-		return []*field{captionField}
-	case "datetime", "date", "time", "d":
-		return []*field{dateTimeField}
-	case "gps", "g":
-		return []*field{gpsField}
-	case "keyword", "keywords", "kw", "k":
-		return []*field{keywordsField}
-	case "location", "loc", "l":
-		return []*field{locationField}
-	case "title", "t":
-		return []*field{titleField}
-	case "group", "groups":
-		return []*field{groupsField}
-	case "person", "people":
-		return []*field{peopleField}
-	case "place", "places":
-		return []*field{placesField}
-	case "topic", "topics":
-		return []*field{topicsField}
-	case "all":
-		return []*field{titleField, dateTimeField, artistField, gpsField, locationField,
-			placesField, peopleField, groupsField, topicsField, otherKeywordsField, captionField}
-	}
-	return nil
 }

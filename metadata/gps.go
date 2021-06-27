@@ -399,33 +399,29 @@ func (gc *GPSCoords) Equal(other *GPSCoords) bool {
 }
 
 // Equivalent returns true if the receiver is equal to the argument, to the
-// precision of the least precise of the two.  If so, the second return value is
-// the more precise of the two.
-func (gc *GPSCoords) Equivalent(other *GPSCoords) (bool, *GPSCoords) {
+// precision of the least precise of the two.
+func (gc *GPSCoords) Equivalent(other *GPSCoords) bool {
 	if gc.Empty() != other.Empty() {
-		return false, nil
+		return false
 	}
 	if gc.Empty() {
-		return true, gc
+		return true
 	}
 	// Anything within 0.000003 degrees (in other words, 0.01 second) is
 	// considered equivalent.  This handles the inaccuracy of conversions
 	// between degrees,minutes,seconds format and fractional degrees.
 	if diff := gc.latitude - other.latitude; diff < -3 || diff > 3 {
-		return false, nil
+		return false
 	}
 	if diff := gc.longitude - other.longitude; diff < -3 || diff > 3 {
-		return false, nil
+		return false
 	}
-	if other.altitude == 0 {
-		return true, gc
-	}
-	if gc.altitude == 0 {
-		return true, other
+	if gc.altitude == 0 || other.altitude == 0 {
+		return true
 	}
 	// Anything within a tenth of a meter is considered equivalent.
 	if diff := gc.altitude - other.altitude; diff < -10000 || diff > 10000 {
-		return false, nil
+		return false
 	}
-	return true, gc
+	return true
 }

@@ -201,22 +201,22 @@ func (dt *DateTime) Equal(other *DateTime) bool {
 }
 
 // Equivalent returns whether two DateTimes are equal, to the precision of the
-// least precise of the two.  If so, it returns the more precise one.
-func (dt *DateTime) Equivalent(other *DateTime) (bool, *DateTime) {
+// least precise of the two.
+func (dt *DateTime) Equivalent(other *DateTime) bool {
 	if dt.Empty() != other.Empty() {
-		return false, nil
+		return false
 	}
 	if dt.Empty() {
-		return true, dt
+		return true
 	}
-	if dt.date != other.date || dt.time != other.time || dt.zone != other.zone {
-		return false, nil
+	if dt.date != other.date || dt.time != other.time {
+		return false
 	}
-	if dt.subsec == other.subsec || other.subsec == "" {
-		return true, dt
+	if dt.zone != "" && other.zone != "" && dt.zone != other.zone {
+		return false
 	}
-	if dt.subsec == "" {
-		return true, other
+	if dt.subsec != "" && other.subsec != "" && dt.subsec != other.subsec {
+		return false
 	}
-	return false, nil
+	return true
 }

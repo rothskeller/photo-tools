@@ -32,19 +32,19 @@ func (p *XMP) setEXIF() {
 		panic(err)
 	}
 	p.xmpDateTimeToMetadata(model.DateTimeDigitized, &dt)
-	if eq, _ := dt.Equivalent(&p.EXIFDateTimeDigitized); !eq {
+	if !dt.Equivalent(&p.EXIFDateTimeDigitized) {
 		model.DateTimeDigitized = p.EXIFDateTimeDigitized.String()
 		p.dirty = true
 	}
 	p.xmpDateTimeToMetadata(model.DateTimeOriginal, &dt)
-	if eq, _ := dt.Equivalent(&p.EXIFDateTimeOriginal); !eq {
+	if !dt.Equivalent(&p.EXIFDateTimeOriginal) {
 		model.DateTimeOriginal = p.EXIFDateTimeOriginal.String()
 		p.dirty = true
 	}
 	// GPS coordinate transformations involve rounding error, hence the
 	// roundabout equivalency check.
 	p.xmpEXIFGPSCoordsToMetadata(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude, &gps)
-	if eq, _ := gps.Equivalent(&p.EXIFGPSCoords); !eq {
+	if !gps.Equivalent(&p.EXIFGPSCoords) {
 		model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude = p.EXIFGPSCoords.AsXMP()
 		p.dirty = true
 	}

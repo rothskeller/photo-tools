@@ -27,7 +27,7 @@ func (p *XMP) setPS() {
 		panic(err)
 	}
 	p.xmpDateTimeToMetadata(model.DateCreated, &dc)
-	if eq, _ := dc.Equivalent(&p.PSDateCreated); !eq {
+	if !dc.Equivalent(&p.PSDateCreated) {
 		model.DateCreated = p.PSDateCreated.String()
 		p.dirty = true
 	}

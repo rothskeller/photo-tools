@@ -41,6 +41,67 @@ func GetCreatorTags(h fileHandler) (tags, values []string) {
 	return tags, values
 }
 
+// CheckCreator determines whether the creator is tagged correctly, and is
+// consistent with the reference.
+func CheckCreator(ref, h fileHandler) (res CheckResult) {
+	var value = GetCreator(ref)
+
+	if xmp := h.XMP(false); xmp != nil {
+		switch len(xmp.DCCreator) {
+		case 0:
+			if value != "" {
+				res = ChkIncorrectlyTagged
+			}
+		case 1:
+			if xmp.DCCreator[0] != value {
+				return ChkConflictingValues
+			}
+		default:
+			return ChkConflictingValues
+		}
+		if xmp.TIFFArtist != "" && xmp.TIFFArtist != value {
+			return ChkConflictingValues
+		} else if xmp.TIFFArtist != "" {
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if i := h.IPTC(); i != nil {
+		switch len(i.Bylines) {
+		case 0:
+			if value != "" {
+				res = ChkIncorrectlyTagged
+			}
+		case 1:
+			if i.Bylines[0] != value {
+				return ChkConflictingValues
+			}
+		default:
+			return ChkConflictingValues
+		}
+	}
+	if exif := h.EXIF(); exif != nil {
+		switch len(exif.Artist) {
+		case 0:
+			if value != "" {
+				res = ChkIncorrectlyTagged
+			}
+		case 1:
+			if exif.Artist[0] != value {
+				return ChkConflictingValues
+			}
+		default:
+			return ChkConflictingValues
+		}
+	}
+	if value != "" && res == 0 {
+		return ChkPresent
+	}
+	if value == "" && res == 0 {
+		return ChkExpectedAbsent
+	}
+	return res
+}
+
 // SetCreator sets the creator tags.
 func SetCreator(h fileHandler, v string) error {
 	var list []string

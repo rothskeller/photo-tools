@@ -15,25 +15,44 @@ The possible operations are:
 
     show [fieldname...]
     tags [fieldname...]
+    check [fieldname...]
     set fieldname value
     add fieldname value
     remove fieldname value
+    reset [fieldname...]
     clear fieldname
     choose fieldname
     copy [fieldname...]
     write caption
     read caption
 
-The `show` operation displays the value of each named field in each named file.
-They are shown in a table with file name, field name, and field value columns.
-Where a file's metadata has conflicting values for a field, only the value(s)
-from the highest priority metadata tag are shown. If no fields are named, `all`
-is assumed.
+If no fields are named For the `show`, `tags`, `check`, `reset`, or `copy`
+operations, or if they are given a field name of `all`, they act on all known
+fields.
 
-The `tags` operation displays the values of each named field in each named file.
-They are shown in a table with file name, metadata tag name, and metadata tag
-value columns. All values of all metadata tags for the requested fields are
-shown. If no fields are named, `all` is assumed.
+The `show` operation displays the value of each named field (or all fields) in
+each named file. They are shown in a table with file name, field name, and
+field value columns. Where a file's metadata has conflicting values for a
+field, only the value(s) from the highest priority metadata tag are shown.
+
+The `tags` operation displays the values of each named field (or all fields) in
+each named file. They are shown in a table with file name, metadata tag name,
+and metadata tag value columns. All values of all metadata tags for the
+requested fields are shown.
+
+The `check` operation verifies that all of the named files are correctly tagged,
+and have the same values, for the named fields (or all fields). It displays a
+table with one row per named file and one column per named field (plus the
+leftmost column for the file name). In each cell of this table, it displays one
+of the following:
+
+    '  ' for an optional field that is not set
+    '--' for an expected field that is not set
+    ' ✓' for a single-valued field that is set, and tagged correctly
+    ' 3' value count for a multi-valued field that is set, and tagged correctly
+    '!=' for a field whose tags don't agree with each other, or don't agree with
+         the field in the first-named file
+    '[]' for a field whose value isn't tagged correctly
 
 The `set` operation removes all values of the named field, and then adds the
 specified value, in each of the named files. As a safety precaution,
@@ -47,6 +66,11 @@ The `remove` operation removes the specified value from the list of values for
 the named field, in each of the named files. It is valid only for fields that
 can have multiple values.
 
+The `reset` operation corrects the tagging of the named fields (or all fields)
+in all named files, using the value(s) from the highest priority metadata tag
+for those fields (i.e., the same one shown by `show`, and the first one listed
+by `tags`).
+
 The `clear` operation removes all values of the specified field, and all
 corresponding metadata tags, from each of the named files.
 
@@ -57,8 +81,8 @@ named files just like the `set` operation. The `choose` operation is not valid
 for `group`, `keyword`, `person`, and `place`, and `topic` fields.
 
 The `copy` operation requires at least two named files. It copies the values of
-the named field(s) from the first named file to all of the other named files.
-If no fields are named, all fields are copied.
+the named fields (or all fields) from the first named file to all of the other
+named files.
 
 The `write caption` operation is like `show caption`, except that the caption is
 written to standard output without any table formatting.
@@ -67,15 +91,14 @@ The `read caption` operation is like `set caption`, except that the value is
 read from standard input rather than taken on the command line.
 
 If the `batch` prefix is given, the named files are batched by basename, and the
-operations are run against each batch separately. This is really only useful
-for the `choose` operation, although it also produces cosmetic differences in
-the output of the `show` and `tags` operations.
+operations are run against each batch separately. This is really only useful for
+the `check` and `choose` operations, although it also produces cosmetic
+differences in the output of the `show` and `tags` operations.
 
 ## Fields
 
 The possible field names (and allowed abbreviations) are:
 
-    all
     artist    (a)
     caption   (c)
     datetime  (d, date, time)
@@ -87,9 +110,6 @@ The possible field names (and allowed abbreviations) are:
     place     (places)
     title     (t)
     topic     (topics)
-
-The `all` word is the same as listing all field names. It is allowed only for
-the `show` and `tags` operations.
 
 The `artist` field is the name of the person who captured the original media,
 e.g. "Steven Roth". When appropriate, it could be a company name, or a person's

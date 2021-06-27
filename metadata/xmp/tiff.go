@@ -33,7 +33,7 @@ func (p *XMP) setTIFF() {
 		p.dirty = true
 	}
 	p.xmpDateTimeToMetadata(model.DateTime, &dt)
-	if eq, _ := dt.Equivalent(&p.TIFFDateTime); !eq {
+	if !dt.Equivalent(&p.TIFFDateTime) {
 		model.DateTime = p.TIFFDateTime.String()
 		p.dirty = true
 	}

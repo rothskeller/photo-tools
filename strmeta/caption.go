@@ -2,6 +2,7 @@ package strmeta
 
 import (
 	"github.com/rothskeller/photo-tools/metadata"
+	"github.com/rothskeller/photo-tools/metadata/iptc"
 )
 
 // GetCaption returns the highest priority caption value.
@@ -56,6 +57,72 @@ func GetCaptionTags(h fileHandler) (tags, values []string) {
 		values = append(values, iptc.CaptionAbstract)
 	}
 	return tags, values
+}
+
+// CheckCaption determines whether the caption is tagged correctly, and is
+// consistent with the reference.
+func CheckCaption(ref, h fileHandler) (res CheckResult) {
+	var value = GetCaption(ref)
+	if xmp := h.XMP(false); xmp != nil {
+		switch len(xmp.DCDescription) {
+		case 0:
+			if value != "" {
+				res = ChkIncorrectlyTagged
+			}
+		case 1:
+			if xmp.DCDescription[0].Value != value {
+				return ChkConflictingValues
+			}
+		default:
+			return ChkConflictingValues
+		}
+		switch len(xmp.EXIFUserComments) {
+		case 0:
+			break
+		case 1:
+			if xmp.EXIFUserComments[0] != value {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		default:
+			return ChkConflictingValues
+		}
+		switch len(xmp.TIFFImageDescription) {
+		case 0:
+			if value != "" {
+				res = ChkIncorrectlyTagged
+			}
+		case 1:
+			if xmp.TIFFImageDescription[0].Value != value {
+				return ChkConflictingValues
+			}
+		default:
+			return ChkConflictingValues
+		}
+	}
+	if exif := h.EXIF(); exif != nil {
+		if exif.UserComment != "" && exif.UserComment != value {
+			return ChkConflictingValues
+		} else if exif.UserComment != "" {
+			res = ChkIncorrectlyTagged
+		}
+		if exif.ImageDescription != "" && exif.ImageDescription != value {
+			return ChkConflictingValues
+		} else if exif.ImageDescription == "" && value != "" {
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if i := h.IPTC(); i != nil {
+		if i.CaptionAbstract != "" && !stringEqualMax(value, i.CaptionAbstract, iptc.MaxCaptionAbstractLen) {
+			return ChkConflictingValues
+		} else if i.CaptionAbstract == "" && value != "" {
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if value != "" && res == 0 {
+		return ChkPresent
+	}
+	return res
 }
 
 // SetCaption sets the caption tags.

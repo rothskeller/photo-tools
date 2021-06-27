@@ -100,6 +100,103 @@ func GetDateTimeTags(h fileHandler) (tags []string, values []metadata.DateTime) 
 	return tags, values
 }
 
+// CheckDateTime determines whether the date/time is tagged correctly, and is
+// consistent with the reference.
+func CheckDateTime(ref, h fileHandler) (res CheckResult) {
+	var value = GetDateTime(ref)
+
+	if exif := h.EXIF(); exif != nil {
+		if !exif.DateTimeOriginal.Empty() {
+			if !value.Equivalent(&exif.DateTimeOriginal) {
+				return ChkConflictingValues
+			}
+		} else if !value.Empty() {
+			res = ChkIncorrectlyTagged
+		}
+		if !exif.DateTimeDigitized.Empty() {
+			if !value.Equivalent(&exif.DateTimeDigitized) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+		if !exif.DateTime.Empty() {
+			if !value.Equivalent(&exif.DateTime) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if xmp := h.XMP(false); xmp != nil {
+		if !xmp.EXIFDateTimeOriginal.Empty() {
+			if !value.Equivalent(&xmp.EXIFDateTimeOriginal) {
+				return ChkConflictingValues
+			}
+		} else if !value.Empty() {
+			res = ChkIncorrectlyTagged
+		}
+		if !xmp.EXIFDateTimeDigitized.Empty() {
+			if !value.Equivalent(&xmp.EXIFDateTimeDigitized) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+		if !xmp.PSDateCreated.Empty() {
+			if !value.Equivalent(&xmp.PSDateCreated) {
+				return ChkConflictingValues
+			}
+		} else if !value.Empty() {
+			res = ChkIncorrectlyTagged
+		}
+		if !xmp.XMPCreateDate.Empty() {
+			if !value.Equivalent(&xmp.XMPCreateDate) {
+				return ChkConflictingValues
+			}
+		} else if !value.Empty() {
+			res = ChkIncorrectlyTagged
+		}
+		if !xmp.TIFFDateTime.Empty() {
+			if !value.Equivalent(&xmp.TIFFDateTime) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+		if !xmp.XMPModifyDate.Empty() {
+			if !value.Equivalent(&xmp.XMPModifyDate) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+		if !xmp.XMPMetadataDate.Empty() {
+			if !value.Equivalent(&xmp.XMPMetadataDate) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if iptc := h.IPTC(); iptc != nil {
+		if !iptc.DateTimeCreated.Empty() {
+			if !value.Equivalent(&iptc.DateTimeCreated) {
+				return ChkConflictingValues
+			}
+		} else if !value.Empty() {
+			res = ChkIncorrectlyTagged
+		}
+		if !iptc.DigitalCreationDateTime.Empty() {
+			if !value.Equivalent(&iptc.DigitalCreationDateTime) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if !value.Empty() && res == 0 {
+		return ChkPresent
+	}
+	if value.Empty() && res == 0 {
+		return ChkExpectedAbsent
+	}
+	return res
+}
+
 // SetDateTime sets the date/time tags.
 func SetDateTime(h fileHandler, v metadata.DateTime) error {
 	if exif := h.EXIF(); exif != nil {

@@ -29,17 +29,17 @@ func (p *XMP) setXMP() {
 		panic(err)
 	}
 	p.xmpDateTimeToMetadata(model.CreateDate, &dt)
-	if eq, _ := dt.Equivalent(&p.XMPCreateDate); !eq {
+	if !dt.Equivalent(&p.XMPCreateDate) {
 		model.CreateDate = p.XMPCreateDate.String()
 		p.dirty = true
 	}
 	p.xmpDateTimeToMetadata(model.MetadataDate, &dt)
-	if eq, _ := dt.Equivalent(&p.XMPMetadataDate); !eq {
+	if !dt.Equivalent(&p.XMPMetadataDate) {
 		model.MetadataDate = p.XMPMetadataDate.String()
 		p.dirty = true
 	}
 	p.xmpDateTimeToMetadata(model.ModifyDate, &dt)
-	if eq, _ := dt.Equivalent(&p.XMPModifyDate); !eq {
+	if !dt.Equivalent(&p.XMPModifyDate) {
 		model.ModifyDate = p.XMPModifyDate.String()
 		p.dirty = true
 	}

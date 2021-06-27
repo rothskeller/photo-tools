@@ -6,36 +6,24 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rothskeller/photo-tools/filefmt"
+	"github.com/rothskeller/photo-tools/md/operations"
 )
-
-type fileHandler = filefmt.FileHandler // copied here to save typing
-
-type mediafile struct {
-	path    string
-	handler fileHandler
-}
-
-type operation interface {
-	check(batches [][]mediafile) error
-	run(files []mediafile) error
-}
 
 func main() {
 	var (
-		ops      []operation
-		batches  [][]mediafile
+		ops      []operations.Operation
+		batches  [][]operations.MediaFile
 		sawError bool
 	)
 	ops, batches = parseCommandLine() // exits on error
 	for _, batch := range batches {
 		for _, op := range ops {
-			if err := op.run(batch); err != nil {
+			if err := op.Run(batch); err != nil {
 				panic("not sure how to handle errors here; revisit once I know what's possible") // TODO
 			}
 		}
 		for _, file := range batch {
-			if err := file.handler.SaveMetadata(); err != nil {
+			if err := file.Handler.SaveMetadata(); err != nil {
 				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file, err)
 				sawError = true
 			}

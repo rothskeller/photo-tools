@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rothskeller/photo-tools/metadata"
+	"github.com/rothskeller/photo-tools/metadata/iptc"
 )
 
 // Location contains a location where the media was captured, or which is
@@ -204,6 +205,96 @@ func addUnique(list []string, val string) []string {
 		}
 	}
 	return append(list, val)
+}
+
+// CheckLocation determines whether the location is tagged correctly, and is
+// consistent with the reference.
+func CheckLocation(ref, h fileHandler) (res CheckResult) {
+	var value = GetLocation(ref)
+
+	xmp := h.XMP(false)
+	if xmp != nil {
+		if !xmp.IPTCLocationCreated.Empty() {
+			if xmp.IPTCLocationCreated.CountryCode != value.CountryCode {
+				return ChkConflictingValues
+			}
+			switch len(xmp.IPTCLocationCreated.CountryName) {
+			case 0:
+				if value.CountryName != "" {
+					return ChkConflictingValues
+				}
+			case 1:
+				if value.CountryName != xmp.IPTCLocationCreated.CountryName[0].Value {
+					return ChkConflictingValues
+				}
+			default:
+				return ChkConflictingValues
+			}
+			switch len(xmp.IPTCLocationCreated.State) {
+			case 0:
+				if value.State != "" {
+					return ChkConflictingValues
+				}
+			case 1:
+				if value.State != xmp.IPTCLocationCreated.State[0].Value {
+					return ChkConflictingValues
+				}
+			default:
+				return ChkConflictingValues
+			}
+			switch len(xmp.IPTCLocationCreated.City) {
+			case 0:
+				if value.City != "" {
+					return ChkConflictingValues
+				}
+			case 1:
+				if value.City != xmp.IPTCLocationCreated.City[0].Value {
+					return ChkConflictingValues
+				}
+			default:
+				return ChkConflictingValues
+			}
+			switch len(xmp.IPTCLocationCreated.Sublocation) {
+			case 0:
+				if value.Sublocation != "" {
+					return ChkConflictingValues
+				}
+			case 1:
+				if value.Sublocation != xmp.IPTCLocationCreated.Sublocation[0].Value {
+					return ChkConflictingValues
+				}
+			default:
+				return ChkConflictingValues
+			}
+		}
+		switch len(xmp.IPTCLocationsShown) {
+		case 0:
+			break
+		case 1:
+			if !xmp.IPTCLocationCreated.Equal(&xmp.IPTCLocationsShown[0]) {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		default:
+			return ChkConflictingValues
+		}
+	}
+	if i := h.IPTC(); i != nil {
+		if !stringEqualMax(value.CountryCode, i.CountryPLCode, iptc.MaxCountryPLCodeLen) ||
+			!stringEqualMax(value.CountryName, i.CountryPLName, iptc.MaxCountryPLNameLen) ||
+			!stringEqualMax(value.State, i.ProvinceState, iptc.MaxProvinceStateLen) ||
+			!stringEqualMax(value.City, i.City, iptc.MaxCityLen) ||
+			!stringEqualMax(value.Sublocation, i.Sublocation, iptc.MaxSublocationLen) {
+			if i.CountryPLCode != "" || i.CountryPLName != "" || i.ProvinceState != "" || i.City != "" || i.Sublocation != "" {
+				return ChkConflictingValues
+			}
+			res = ChkIncorrectlyTagged
+		}
+	}
+	if !value.Empty() && res == 0 {
+		return ChkPresent
+	}
+	return res
 }
 
 // SetLocation sets the location tags.

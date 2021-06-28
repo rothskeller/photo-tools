@@ -1,210 +1,135 @@
 package strmeta
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/iptc"
 )
 
-// GetKeywords returns keywords from the highest priority keyword tag.
-func GetKeywords(h fileHandler) (kws []metadata.Keyword) {
-	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.DigiKamTagsList) != 0 {
-			kws = xmp.DigiKamTagsList
-		} else if len(xmp.LRHierarchicalSubject) != 0 {
-			kws = xmp.LRHierarchicalSubject
+// A Keyword is a free-form hierarchical keyword.
+type Keyword []string
+
+// Parse parses a keyword, as a hierarchical string with levels separated by
+// slashes and optional whitespace.  Pipe symbols are disallowed due to
+// underlying storage formats, and empty levels are disallowed (although a
+// completely empty string is allowed).  Keywords that would be interpreted as
+// keywords, people, places, or topics are disallowed.
+func (g *Keyword) Parse(s string) error {
+	kw, err := metadata.ParseKeyword(s, "")
+	if err == nil {
+		if !keywordPredicate(kw) {
+			return fmt.Errorf("invalid keyword (reserved for %s field)", strings.ToLower(kw[0]))
 		}
+		*g = Keyword(kw)
 	}
-	var flat = getFlatKeywords(h)
-	if flat == nil {
-		return kws
-	}
-	for _, kw := range kws {
-		word := kw[len(kw)-1]
-		if _, ok := flat[word]; ok {
-			flat[word] = false
-		}
-	}
-	for word, unseen := range flat {
-		if unseen {
-			kws = append(kws, metadata.Keyword{word})
-		}
-	}
-	return kws
+	return err
 }
 
-// getFlatKeywords returns the flat keywords from the highest priority flat
-// keyword tag, in the form of a map with the keyword as key and true as the
-// value.
-func getFlatKeywords(h fileHandler) (kws map[string]bool) {
-	kws = make(map[string]bool)
-	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.DCSubject) != 0 {
-			for _, kw := range xmp.DCSubject {
-				kws[kw] = true
-			}
-			return kws
-		}
-	}
-	if iptc := h.IPTC(); iptc != nil {
-		if len(iptc.Keywords) != 0 {
-			for _, kw := range iptc.Keywords {
-				kws[kw] = true
-			}
-			return kws
-		}
-	}
-	return nil
+// String returns the formatted string form of the keyword, suitable for
+// input to Parse.
+func (g Keyword) String() string { return metadata.Keyword(g).String() }
+
+// Empty returns whether the keyword is empty.
+func (g Keyword) Empty() bool { return len(g) == 0 }
+
+// Equal returns whether two keywords are equal.
+func (g Keyword) Equal(other Keyword) bool {
+	return metadata.Keyword(g).Equal(metadata.Keyword(other))
 }
 
-// GetKeywordsTags returns all of the keyword tags and their values.
-func GetKeywordsTags(h fileHandler) (tags []string, values []metadata.Keyword) {
-	if xmp := h.XMP(false); xmp != nil {
-		for _, kw := range xmp.DigiKamTagsList {
-			tags = append(tags, "XMP.digiKam:TagsList")
-			values = append(values, kw)
-		}
-		for _, kw := range xmp.LRHierarchicalSubject {
-			tags = append(tags, "XMP.lr:HierarchicalSubject")
-			values = append(values, kw)
-		}
-		for _, kw := range xmp.DCSubject {
-			tags = append(tags, "XMP.dc:Subject")
-			values = append(values, metadata.Keyword{kw})
-		}
+// GetKeywords returns the highest priority keyword values.
+func GetKeywords(h filefmt.FileHandler) []Keyword {
+	kws := getFilteredKeywords(h, keywordPredicate, true)
+	keywords := make([]Keyword, len(kws))
+	for i := range kws {
+		keywords[i] = Keyword(kws[i])
 	}
-	if iptc := h.IPTC(); iptc != nil {
-		for _, kw := range iptc.Keywords {
-			tags = append(tags, "IPTC.Keyword")
-			values = append(values, metadata.Keyword{kw})
-		}
+	return keywords
+}
+
+// GetKeywordTags returns all of the keyword tags and their values.
+func GetKeywordTags(h filefmt.FileHandler) (tags []string, values []Keyword) {
+	tags, kws := getFilteredKeywordTags(h, keywordPredicate)
+	values = make([]Keyword, len(kws))
+	for i := range kws {
+		values[i] = Keyword(kws[i])
 	}
 	return tags, values
 }
 
-// CheckKeywords checks whether the keywords are correctly tagged, and are
+// CheckKeywords determines whether the keywords are tagged correctly, and are
 // consistent with the reference.
-func CheckKeywords(ref, h fileHandler) (res CheckResult) {
+func CheckKeywords(ref, h filefmt.FileHandler) (res CheckResult) {
+	if res = checkFilteredKeywords(ref, h, keywordPredicate); res == ChkConflictingValues {
+		return res
+	}
+	// Check on the "keywords" field also checks the consistency of the flat
+	// keyword tags.  For this purpose, we look at all keywords, not just
+	// the ones matching keywordPredicate.
 	var (
-		value   = GetKeywords(ref)
-		flat    = map[string]bool{}
-		flatmax = map[string]bool{}
+		values []metadata.Keyword
+		refmap = make(map[string]bool)
 	)
-	for _, kw := range value {
-		word := kw[len(kw)-1]
-		flat[word] = true
-		if len(word) > iptc.MaxKeywordLen {
-			flatmax[word[:iptc.MaxKeywordLen]] = true
-		} else {
-			flatmax[word] = true
+	values = getFilteredKeywords(ref, allKeywordsFilter, true)
+	for _, kw := range values {
+		if len(kw) != 0 {
+			refmap[kw[len(kw)-1]] = true
 		}
 	}
 	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.DigiKamTagsList) != 0 {
-			if !keywordsEqual(value, xmp.DigiKamTagsList) {
-				return ChkConflictingValues
-			}
-		} else if len(value) != 0 {
-			res = ChkIncorrectlyTagged
+		var tgtmap = make(map[string]bool)
+		for _, kw := range xmp.DCSubject {
+			tgtmap[kw] = true
 		}
-		if len(xmp.LRHierarchicalSubject) != 0 {
-			if !keywordsEqual(value, xmp.LRHierarchicalSubject) {
-				return ChkConflictingValues
-			}
-		} else if len(value) != 0 {
-			res = ChkIncorrectlyTagged
-		}
-		if len(xmp.DCSubject) != 0 {
-			if len(xmp.DCSubject) != len(flat) {
-				return ChkConflictingValues
-			}
-			smap := make(map[string]bool)
-			for _, s := range xmp.DCSubject {
-				if !flat[s] {
-					return ChkConflictingValues
-				}
-				smap[s] = true
-			}
-			for s := range flat {
-				if !smap[s] {
-					return ChkConflictingValues
-				}
-			}
-		} else if len(flat) != 0 {
-			res = ChkIncorrectlyTagged
+		if r := checkMaps(refmap, tgtmap); r == ChkConflictingValues {
+			return r
+		} else if r < res {
+			res = r
 		}
 	}
 	if i := h.IPTC(); i != nil {
-		if len(i.Keywords) != 0 {
-			if len(i.Keywords) != len(flatmax) {
-				return ChkConflictingValues
+		for kw := range refmap {
+			if len(kw) > iptc.MaxKeywordLen {
+				refmap[kw[:iptc.MaxKeywordLen]] = true
+				delete(refmap, kw)
 			}
-			smap := make(map[string]bool)
-			for _, s := range i.Keywords {
-				if len(s) > iptc.MaxKeywordLen {
-					res = ChkIncorrectlyTagged
-					s = s[:iptc.MaxKeywordLen]
-				}
-				if !flatmax[s] {
-					return ChkConflictingValues
-				}
-				smap[s] = true
-			}
-			for s := range flatmax {
-				if !smap[s] {
-					return ChkConflictingValues
-				}
-			}
-		} else if len(flatmax) != 0 {
-			res = ChkIncorrectlyTagged
 		}
-	}
-	if len(value) != 0 && res == 0 {
-		return ChkPresent
+		var tgtmap = make(map[string]bool)
+		for _, kw := range i.Keywords {
+			if len(kw) > iptc.MaxKeywordLen {
+				res = ChkIncorrectlyTagged
+				tgtmap[kw[:iptc.MaxKeywordLen]] = true
+			} else {
+				tgtmap[kw] = true
+			}
+		}
+		if r := checkMaps(refmap, tgtmap); r == ChkConflictingValues {
+			return r
+		} else if r < res {
+			res = r
+		}
 	}
 	return res
 }
-func keywordsEqual(a, b []metadata.Keyword) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if len(a[i]) != len(b[i]) {
-			return false
+
+// SetKeywords sets the keyword tags.
+func SetKeywords(h filefmt.FileHandler, v []Keyword) error {
+	var kws = make([]metadata.Keyword, len(v))
+	for i, g := range v {
+		if g.Empty() {
+			return errors.New("empty keyword not allowed")
 		}
-		for j := range a[i] {
-			if a[i][j] != b[i][j] {
-				return false
-			}
-		}
+		kws[i] = metadata.Keyword(v[i])
 	}
-	return true
+	return setFilteredKeywords(h, kws, keywordPredicate)
 }
 
-// SetKeywords sets all keyword tags.
-func SetKeywords(h fileHandler, v []metadata.Keyword) error {
-	var flat []string
-
-	for _, kw := range v {
-		for _, comp := range kw {
-			var found = false
-			for _, f := range flat {
-				if f == comp {
-					found = true
-					break
-				}
-			}
-			if !found {
-				flat = append(flat, comp)
-			}
-		}
-	}
-	if xmp := h.XMP(true); xmp != nil {
-		xmp.DigiKamTagsList = v
-		xmp.LRHierarchicalSubject = v
-		xmp.DCSubject = flat
-	}
-	if iptc := h.IPTC(); iptc != nil {
-		iptc.Keywords = flat
-	}
-	return nil
+// keywordPredicate is the predicate satisfied by keyword tags that encode keyword
+// names.
+func keywordPredicate(kw metadata.Keyword) bool {
+	return !groupPredicate(kw) && !personPredicate(kw) && !placePredicate(kw) && !topicPredicate(kw)
 }

@@ -26,17 +26,17 @@ func GetCreator(h fileHandler) string {
 // GetCreatorTags returns all of the creator tags and their values.
 func GetCreatorTags(h fileHandler) (tags, values []string) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = tagsForStringList(tags, values, "XMP.dc:Creator", xmp.DCCreator)
+		tags, values = tagsForStringList(tags, values, "XMP  dc:Creator", xmp.DCCreator)
 		if xmp.TIFFArtist != "" {
 			tags = append(tags, "XMP.tiff.Artist")
 			values = append(values, xmp.TIFFArtist)
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		tags, values = tagsForStringList(tags, values, "IPTC.Byline", iptc.Bylines)
+		tags, values = tagsForStringList(tags, values, "IPTC Byline", iptc.Bylines)
 	}
 	if exif := h.EXIF(); exif != nil {
-		tags, values = tagsForStringList(tags, values, "EXIF.Artist", exif.Artist)
+		tags, values = tagsForStringList(tags, values, "EXIF Artist", exif.Artist)
 	}
 	return tags, values
 }

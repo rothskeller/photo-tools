@@ -54,46 +54,46 @@ func GetDateTime(h fileHandler) metadata.DateTime {
 // GetDateTimeTags returns all of the date/time tags and their values.
 func GetDateTimeTags(h fileHandler) (tags []string, values []metadata.DateTime) {
 	if exif := h.EXIF(); exif != nil {
-		tags = append(tags, "EXIF.DateTimeOriginal")
+		tags = append(tags, "EXIF DateTimeOriginal")
 		values = append(values, exif.DateTimeOriginal)
 		if !exif.DateTimeDigitized.Empty() {
-			tags = append(tags, "EXIF.DateTimeDigitized")
+			tags = append(tags, "EXIF DateTimeDigitized")
 			values = append(values, exif.DateTimeDigitized)
 		}
 		if !exif.DateTime.Empty() {
-			tags = append(tags, "EXIF.DateTime")
+			tags = append(tags, "EXIF DateTime")
 			values = append(values, exif.DateTime)
 		}
 	}
 	if xmp := h.XMP(false); xmp != nil {
-		tags = append(tags, "XMP.exif:DateTimeOriginal")
+		tags = append(tags, "XMP  exif:DateTimeOriginal")
 		values = append(values, xmp.EXIFDateTimeOriginal)
 		if !xmp.EXIFDateTimeDigitized.Empty() {
-			tags = append(tags, "XMP.exif:DateTimeDigitized")
+			tags = append(tags, "XMP  exif:DateTimeDigitized")
 			values = append(values, xmp.EXIFDateTimeDigitized)
 		}
-		tags = append(tags, "XMP.ps:DateCreated")
+		tags = append(tags, "XMP  ps:DateCreated")
 		values = append(values, xmp.PSDateCreated)
-		tags = append(tags, "XMP.xmp:CreateDate")
+		tags = append(tags, "XMP  xmp:CreateDate")
 		values = append(values, xmp.XMPCreateDate)
 		if !xmp.TIFFDateTime.Empty() {
-			tags = append(tags, "XMP.tiff:DateTime")
+			tags = append(tags, "XMP  tiff:DateTime")
 			values = append(values, xmp.TIFFDateTime)
 		}
 		if !xmp.XMPModifyDate.Empty() {
-			tags = append(tags, "XMP.xmp:ModifyDate")
+			tags = append(tags, "XMP  xmp:ModifyDate")
 			values = append(values, xmp.XMPModifyDate)
 		}
 		if !xmp.XMPMetadataDate.Empty() {
-			tags = append(tags, "XMP.xmp:MetadataDate")
+			tags = append(tags, "XMP  xmp:MetadataDate")
 			values = append(values, xmp.XMPMetadataDate)
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		tags = append(tags, "IPTC.DateTimeCreated")
+		tags = append(tags, "IPTC DateTimeCreated")
 		values = append(values, iptc.DateTimeCreated)
 		if !iptc.DigitalCreationDateTime.Empty() {
-			tags = append(tags, "IPTC.DigitalCreationDateTime")
+			tags = append(tags, "IPTC DigitalCreationDateTime")
 			values = append(values, iptc.DigitalCreationDateTime)
 		}
 	}

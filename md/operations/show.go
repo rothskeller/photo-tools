@@ -31,7 +31,7 @@ func (op *showOp) parseArgs(args []string) (remainingArgs []string, err error) {
 			fields.PeopleField,
 			fields.GroupsField,
 			fields.TopicsField,
-			fields.OtherKeywordsField,
+			fields.KeywordsField,
 			fields.CaptionField,
 		}
 	}
@@ -49,15 +49,20 @@ func (op *showOp) Run(files []MediaFile) error {
 		fmt.Println()
 	}
 	var tw = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprintln(tw, "FILE\tFIELD\tVALUE")
+	fmt.Fprintln(tw, "FILE\t  FIELD\tVALUE")
 	for _, file := range files {
 		for _, field := range op.fields {
 			values := field.GetValues(file.Handler)
-			if len(values) == 0 {
-				fmt.Fprintf(tw, "%s\t%s\t\n", file.Path, field.Label())
+			check := field.CheckValues(file.Handler, file.Handler)
+			if len(values) == 0 && check < 0 {
+				fmt.Fprintf(tw, "%s%s%s\t\n", file.Path, resultCodes[check], field.Label())
 			} else {
 				for _, value := range values {
-					fmt.Fprintf(tw, "%s\t%s\t%s\n", file.Path, field.Label(), escapeString(field.RenderValue(value)))
+					if check < 0 {
+						fmt.Fprintf(tw, "%s%s%s\t%s\n", file.Path, resultCodes[check], field.Label(), escapeString(field.RenderValue(value)))
+					} else {
+						fmt.Fprintf(tw, "%s\t  %s\t%s\n", file.Path, field.Label(), escapeString(field.RenderValue(value)))
+					}
 				}
 			}
 		}

@@ -37,23 +37,23 @@ func GetCaption(h fileHandler) string {
 // GetCaptionTags returns all of the caption tags and their values.
 func GetCaptionTags(h fileHandler) (tags, values []string) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = tagsForAltString(tags, values, "XMP.dc:Description", xmp.DCDescription)
+		tags, values = tagsForAltString(tags, values, "XMP  dc:Description", xmp.DCDescription)
 		for _, v := range xmp.EXIFUserComments {
-			tags = append(tags, "XMP.exif:UserComment")
+			tags = append(tags, "XMP  exif:UserComment")
 			values = append(values, v)
 		}
-		tags, values = tagsForAltString(tags, values, "XMP.tiff:ImageDescription", xmp.TIFFImageDescription)
+		tags, values = tagsForAltString(tags, values, "XMP  tiff:ImageDescription", xmp.TIFFImageDescription)
 	}
 	if exif := h.EXIF(); exif != nil {
 		if exif.UserComment != "" {
-			tags = append(tags, "EXIF.UserComment")
+			tags = append(tags, "EXIF UserComment")
 			values = append(values, exif.UserComment)
 		}
-		tags = append(tags, "EXIF.ImageDescription")
+		tags = append(tags, "EXIF ImageDescription")
 		values = append(values, exif.ImageDescription)
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		tags = append(tags, "IPTC.CaptionAbstract")
+		tags = append(tags, "IPTC CaptionAbstract")
 		values = append(values, iptc.CaptionAbstract)
 	}
 	return tags, values

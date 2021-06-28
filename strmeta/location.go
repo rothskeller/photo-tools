@@ -132,9 +132,9 @@ func mdLocationToSTRLocation(md metadata.Location) (str Location) {
 // GetLocationTags returns all of the location tags and their values.
 func GetLocationTags(h fileHandler) (tags []string, values []Location) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = mdLocationToTags(tags, values, "XMP.iptc:LocationCreated", xmp.IPTCLocationCreated, true)
+		tags, values = mdLocationToTags(tags, values, "XMP  iptc:LocationCreated", xmp.IPTCLocationCreated, true)
 		for _, shown := range xmp.IPTCLocationsShown {
-			tags, values = mdLocationToTags(tags, values, "XMP.iptc:LocationShown", shown, false)
+			tags, values = mdLocationToTags(tags, values, "XMP  iptc:LocationShown", shown, false)
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
@@ -144,7 +144,7 @@ func GetLocationTags(h fileHandler) (tags []string, values []Location) {
 		loc.State = iptc.ProvinceState
 		loc.City = iptc.City
 		loc.Sublocation = iptc.Sublocation
-		tags = append(tags, "IPTC.Location")
+		tags = append(tags, "IPTC Location")
 		values = append(values, loc)
 	}
 	return tags, values

@@ -20,11 +20,11 @@ func GetGPSCoords(h fileHandler) metadata.GPSCoords {
 // GetGPSCoordsTags returns all of the GPS coordinates tags and their values.
 func GetGPSCoordsTags(h fileHandler) (tags []string, values []metadata.GPSCoords) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags = append(tags, "XMP.exif:GPSCoords")
+		tags = append(tags, "XMP  exif:GPSCoords")
 		values = append(values, xmp.EXIFGPSCoords)
 	}
 	if exif := h.EXIF(); exif != nil {
-		tags = append(tags, "EXIF.GPSCoords")
+		tags = append(tags, "EXIF GPSCoords")
 		values = append(values, exif.GPSCoords)
 	}
 	return tags, values

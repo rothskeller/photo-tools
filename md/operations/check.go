@@ -33,7 +33,7 @@ func (op *checkOp) parseArgs(args []string) (remainingArgs []string, err error) 
 			fields.PeopleField,
 			fields.GroupsField,
 			fields.TopicsField,
-			fields.OtherKeywordsField,
+			fields.KeywordsField,
 			fields.CaptionField,
 		}
 	}

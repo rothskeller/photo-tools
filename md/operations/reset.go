@@ -24,9 +24,13 @@ func (op *resetOp) parseArgs(args []string) (remainingArgs []string, err error) 
 			fields.CaptionField,
 			fields.DateTimeField,
 			fields.GPSField,
+			fields.GroupsField,
 			fields.KeywordsField,
 			fields.LocationField,
+			fields.PeopleField,
+			fields.PlacesField,
 			fields.TitleField,
+			fields.TopicsField,
 		}
 	}
 	return remainingArgs, nil

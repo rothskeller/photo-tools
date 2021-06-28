@@ -24,8 +24,8 @@ var GPSField Field = &gpsField{
 	},
 }
 
-// ParseValue parses a string and returns a value for the field.  It
-// returns an error if the string is invalid.
+// ParseValue parses a string and returns a value for the field.  It returns an
+// error if the string is invalid.
 func (f *gpsField) ParseValue(s string) (interface{}, error) {
 	var gps metadata.GPSCoords
 	if err := gps.Parse(s); err != nil {
@@ -34,8 +34,8 @@ func (f *gpsField) ParseValue(s string) (interface{}, error) {
 	return &gps, nil
 }
 
-// RenderValue takes a value for the field and renders it in string form
-// for display.
+// RenderValue takes a value for the field and renders it in string form for
+// display.
 func (f *gpsField) RenderValue(v interface{}) string {
 	return v.(*metadata.GPSCoords).String()
 }
@@ -46,9 +46,9 @@ func (f *gpsField) EqualValue(a interface{}, b interface{}) bool {
 	panic("should not be called")
 }
 
-// GetValues returns all of the values of the field.  (For single-valued
-// fields, the return slice will have at most one entry.)  Empty values
-// should not be included.
+// GetValues returns all of the values of the field.  (For single-valued fields,
+// the return slice will have at most one entry.)  Empty values should not be
+// included.
 func (f *gpsField) GetValues(h filefmt.FileHandler) []interface{} {
 	if gps := strmeta.GetGPSCoords(h); !gps.Empty() {
 		return []interface{}{&gps}
@@ -56,9 +56,9 @@ func (f *gpsField) GetValues(h filefmt.FileHandler) []interface{} {
 	return nil
 }
 
-// GetTags returns the names of all of the metadata tags that correspond
-// to the field in its first return slice, and a parallel slice of the
-// values of those tags (which may be zero values).
+// GetTags returns the names of all of the metadata tags that correspond to the
+// field in its first return slice, and a parallel slice of the values of those
+// tags (which may be zero values).
 func (f *gpsField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	if tags, values := strmeta.GetGPSCoordsTags(h); len(tags) != 0 {
 		var ivals = make([]interface{}, len(values))

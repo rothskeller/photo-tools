@@ -5,12 +5,12 @@ type stringField struct {
 	baseField
 }
 
-// ParseValue parses a string and returns a value for the field.  It
-// returns an error if the string is invalid.
+// ParseValue parses a string and returns a value for the field.  It returns an
+// error if the string is invalid.
 func (f *stringField) ParseValue(s string) (interface{}, error) { return s, nil }
 
-// RenderValue takes a value for the field and renders it in string form
-// for display.
+// RenderValue takes a value for the field and renders it in string form for
+// display.
 func (f *stringField) RenderValue(v interface{}) string { return v.(string) }
 
 // EqualValue compares two values for equality.

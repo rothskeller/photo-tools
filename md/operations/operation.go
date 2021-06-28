@@ -31,6 +31,8 @@ type MediaFile struct {
 	Changed bool
 }
 
+// escapeString escapes newlines in tabular output from the show and tabs
+// operations.
 func escapeString(s string) string {
 	return strings.Replace(strings.Replace(s, "\\", "\\\\", -1), "\n", "\\n", -1)
 }

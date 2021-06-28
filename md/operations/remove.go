@@ -4,6 +4,7 @@ import "fmt"
 
 func newRemoveOp() Operation { return &removeOp{fieldValueOp{name: "remove"}} }
 
+// removeOp removes a value from a multi-valued field.
 type removeOp struct {
 	fieldValueOp
 }
@@ -28,7 +29,9 @@ func (op *removeOp) Check(batches [][]MediaFile) error { return nil }
 // Run executes the operation against the listed media files (one batch).
 func (op *removeOp) Run(files []MediaFile) error {
 	for _, file := range files {
+		// Get the current values.
 		values := op.field.GetValues(file.Handler)
+		// Remove the one we were asked to remove.
 		j := 0
 		for _, v := range values {
 			if !op.field.EqualValue(v, op.value) {
@@ -36,6 +39,7 @@ func (op *removeOp) Run(files []MediaFile) error {
 				j++
 			}
 		}
+		// If we found it, set the new value list that leaves it out.
 		if j < len(values) {
 			if err := op.field.SetValues(file.Handler, values[:j]); err != nil {
 				return fmt.Errorf("%s: remove %s: %s", file.Path, op.field.Name(), err)

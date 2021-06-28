@@ -9,6 +9,7 @@ import (
 
 func newSetOp() Operation { return &setOp{fieldValueOp{name: "set"}} }
 
+// setOp sets the value of a field.
 type setOp struct {
 	fieldValueOp
 }

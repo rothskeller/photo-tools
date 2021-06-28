@@ -11,6 +11,8 @@ import (
 
 func newCheckOp() Operation { return new(checkOp) }
 
+// checkOp displays a table giving the tagging correctness and consistency of
+// each field.
 type checkOp struct {
 	fieldListOp
 	hasRun bool
@@ -45,7 +47,7 @@ func (op *checkOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *checkOp) Run(files []MediaFile) error {
-	if op.hasRun {
+	if op.hasRun { // put a newline between batches for readability
 		fmt.Println()
 	}
 	out := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)

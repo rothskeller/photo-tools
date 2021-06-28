@@ -1,5 +1,5 @@
 // md is a program for viewing and editing media file metadata, tailored to the
-// metadata conventions in my library.
+// metadata conventions in my library.  See MANUAL.md for usage and details.
 package main
 
 import (

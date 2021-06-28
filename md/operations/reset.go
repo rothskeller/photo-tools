@@ -8,6 +8,8 @@ import (
 
 func newResetOp() Operation { return new(resetOp) }
 
+// resetOp resets the values of one or more fields to their primary value, thus
+// clearing up any inconsistencies or tagging errors.
 type resetOp struct {
 	fieldListOp
 }

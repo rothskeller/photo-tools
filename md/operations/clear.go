@@ -9,6 +9,7 @@ import (
 
 func newClearOp() Operation { return new(clearOp) }
 
+// clearOp removes all values of the specified field.
 type clearOp struct {
 	field fields.Field
 }

@@ -68,26 +68,26 @@ can have multiple values.
 
 The `reset` operation corrects the tagging of the named fields (or all fields)
 in all named files, using the value(s) from the highest priority metadata tag
-for those fields (i.e., the same one shown by `show`, and the first one listed
-by `tags`).
+for those fields (i.e., the same one shown by `show`, generally the first one
+listed by `tags`).
 
 The `clear` operation removes all values of the specified field, and all
 corresponding metadata tags, from each of the named files.
 
-The `choose` operation displays all values the named field in the named files,
-just like the `tags` operation. It then allows the user to choose one of those
-values (or manually enter some other value), which it applies to each of the
-named files just like the `set` operation. The `choose` operation is not valid
-for `group`, `keyword`, `person`, and `place`, and `topic` fields.
+The `choose` operation displays all values of the named field in the named
+files, just like the `tags` operation. It then allows the user to choose one of
+those values (or manually enter some other value), which it applies to each of
+the named files just like the `set` operation. The `choose` operation is not
+valid for fields that can have multiple values.
 
 The `copy` operation requires at least two named files. It copies the values of
 the named fields (or all fields) from the first named file to all of the other
 named files.
 
-The `write caption` operation is like `show caption`, except that the caption is
+The `read caption` operation is like `show caption`, except that the caption is
 written to standard output without any table formatting.
 
-The `read caption` operation is like `set caption`, except that the value is
+The `write caption` operation is like `set caption`, except that the value is
 read from standard input rather than taken on the command line.
 
 If the `batch` prefix is given, the named files are batched by basename, and the
@@ -137,9 +137,10 @@ one is present, it is the altitude, and must be followed by a suffix of `m`
 
 The `keyword` field contains a list of keywords associated with the media.
 Keywords are hierarchical, with components separated by slashes. The `group`,
-`person`, `place`, and `topic` fields are shorthand for `keyword` with the first
-component of the value assumed to be `GROUPS`, `PEOPLE`, `PLACES`, and `TOPICS`,
-respectively.
+`place`, and `topic` fields are shorthand for `keyword` with the first component
+of the value assumed to be `Groups`, `Places`, and `Topics`, respectively. The
+`person` field works similarly, with a prefix of `People`, but merges facial
+recognition regions tagged in the media into the list of person keywords.
 
 The `location` field contains a textual description of the location of the
 media. It has the form

@@ -10,6 +10,7 @@ import (
 
 func newShowOp() Operation { return new(showOp) }
 
+// showOp prints the canonical values of one or more fields in a table.
 type showOp struct {
 	fieldListOp
 	hasRun bool

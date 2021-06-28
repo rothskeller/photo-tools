@@ -24,9 +24,9 @@ var TitleField Field = &titleField{
 	},
 }
 
-// GetValues returns all of the values of the field.  (For single-valued
-// fields, the return slice will have at most one entry.)  Empty values
-// should not be included.
+// GetValues returns all of the values of the field.  (For single-valued fields,
+// the return slice will have at most one entry.)  Empty values should not be
+// included.
 func (f *titleField) GetValues(h filefmt.FileHandler) []interface{} {
 	if title := strmeta.GetTitle(h); title != "" {
 		return []interface{}{title}
@@ -34,9 +34,9 @@ func (f *titleField) GetValues(h filefmt.FileHandler) []interface{} {
 	return nil
 }
 
-// GetTags returns the names of all of the metadata tags that correspond
-// to the field in its first return slice, and a parallel slice of the
-// values of those tags (which may be zero values).
+// GetTags returns the names of all of the metadata tags that correspond to the
+// field in its first return slice, and a parallel slice of the values of those
+// tags (which may be zero values).
 func (f *titleField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	if tags, values := strmeta.GetTitleTags(h); len(tags) != 0 {
 		return tags, stringSliceToInterfaceSlice(values)
@@ -56,9 +56,8 @@ func (f *titleField) SetValues(h filefmt.FileHandler, v []interface{}) error {
 	}
 }
 
-// CheckValues returns whether the values of the field in the target are
-// tagged correctly, and are consistent with the values of the field in
-// the reference.
+// CheckValues returns whether the values of the field in the target are tagged
+// correctly, and are consistent with the values of the field in the reference.
 func (f *titleField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
 	return strmeta.CheckTitle(ref, tgt)
 }

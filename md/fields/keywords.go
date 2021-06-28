@@ -9,7 +9,8 @@ import (
 // KeywordsField is the field handler for all keywords regardless of prefix.  It
 // is used when explicitly listed in any operation except "set", where it is
 // prohibited for safety's sake.  It is also used when implied by "all" or an
-// empty field list in any operations that accepts a field lists, except "show".
+// empty field list in any operations that accepts a field list, except "check"
+// and "show".
 var KeywordsField Field = &baseKWField{
 	baseField: baseField{
 		name:        "keyword",
@@ -23,7 +24,7 @@ var KeywordsField Field = &baseKWField{
 }
 
 // GroupsField is the field handler for the subset of keywords that start with
-// GROUPS.  These represent groups of people (organizations, teams, etc.) that
+// Groups.  These represent groups of people (organizations, teams, etc.) that
 // are depicted in the media.
 var GroupsField Field = &baseKWField{
 	baseField: baseField{
@@ -36,23 +37,9 @@ var GroupsField Field = &baseKWField{
 	prefix: "Groups",
 }
 
-// PeopleField is the field handler for the subset of keywords that start with
-// GROUPS.  These represent groups of people (organizations, teams, etc.) that
-// are depicted in the media.
-var PeopleField Field = &baseKWField{
-	baseField: baseField{
-		name:        "person",
-		pluralName:  "people",
-		label:       "Person",
-		shortLabel:  "PE",
-		multivalued: true,
-	},
-	prefix: "People",
-}
-
 // PlacesField is the field handler for the subset of keywords that start with
-// GROUPS.  These represent groups of people (organizations, teams, etc.) that
-// are depicted in the media.
+// Places.  These represent locations: either where the media was captured or
+// a location depicted in it.
 var PlacesField Field = &baseKWField{
 	baseField: baseField{
 		name:        "place",
@@ -66,8 +53,8 @@ var PlacesField Field = &baseKWField{
 }
 
 // TopicsField is the field handler for the subset of keywords that start with
-// GROUPS.  These represent groups of people (organizations, teams, etc.) that
-// are depicted in the media.
+// Topics.  These represent topics (activities, events, etc.) depicted in the
+// media.
 var TopicsField Field = &baseKWField{
 	baseField: baseField{
 		name:        "topic",
@@ -84,10 +71,10 @@ type otherKeywordsField struct {
 }
 
 // OtherKeywordsField is the field handler for a pseudo-field that is used only
-// by the "show" operation when invoked with an "all" field list (or an empty
-// field list implying "all").  The output of that show operation will include
-// groups, people, places, and topics tags under their own headings, and this
-// field will list all other keywords not covered by those other fields.
+// by the "check" and "show" operations when invoked with an "all" field list
+// (or an empty field list implying "all").  These operations list groups,
+// people, places, and topics separately, and their "Keyword" heading is only
+// for the remaining keywords.
 var OtherKeywordsField Field = &otherKeywordsField{
 	baseKWField{
 		baseField: baseField{
@@ -101,16 +88,26 @@ var OtherKeywordsField Field = &otherKeywordsField{
 	},
 }
 
-// GetValues returns all of the values of the field.  (For single-valued
-// fields, the return slice will have at most one entry.)  Empty values
-// should not be included.
+// GetValues returns all of the values of the field.  (For single-valued fields,
+// the return slice will have at most one entry.)  Empty values should not be
+// included.
 func (f *otherKeywordsField) GetValues(h filefmt.FileHandler) []interface{} {
 	var kws = strmeta.GetKeywords(h)
 	var filtered []metadata.Keyword
 	for _, kw := range kws {
-		if len(kw) != 0 && kw[0] != "Groups" && kw[0] != "People" && kw[0] != "Places" && kw[0] != "Topics" {
-			filtered = append(filtered, kw)
+		if len(kw) != 0 {
+			continue
 		}
+		if kw[0] == "Groups" || kw[0] == "Places" || kw[0] == "Topics" {
+			continue
+		}
+		if kw[0] == "People" && len(kw) == 2 {
+			// Because People keywords with more than one component
+			// can't be represented as People values, we treat them
+			// as "other keywords" instead.
+			continue
+		}
+		filtered = append(filtered, kw)
 	}
 	if len(filtered) == 0 {
 		return nil

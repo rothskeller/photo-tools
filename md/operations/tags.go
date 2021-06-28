@@ -10,6 +10,7 @@ import (
 
 func newTagsOp() Operation { return new(tagsOp) }
 
+// tagsOp prints all of the tagged value of one or more fields in a table.
 type tagsOp struct {
 	fieldListOp
 	hasRun bool
@@ -27,6 +28,7 @@ func (op *tagsOp) parseArgs(args []string) (remainingArgs []string, err error) {
 			fields.GPSField,
 			fields.LocationField,
 			fields.KeywordsField,
+			fields.PeopleField, // for face regions
 			fields.CaptionField,
 		}
 	}

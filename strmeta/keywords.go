@@ -82,8 +82,7 @@ func GetKeywordsTags(h fileHandler) (tags []string, values []metadata.Keyword) {
 }
 
 // CheckKeywords checks whether the keywords are correctly tagged, and are
-// consistent with the reference, and whether expected keywords with the
-// specified prefix are present.
+// consistent with the reference.
 func CheckKeywords(ref, h fileHandler) (res CheckResult) {
 	var (
 		value   = GetKeywords(ref)
@@ -181,8 +180,7 @@ func keywordsEqual(a, b []metadata.Keyword) bool {
 	return true
 }
 
-// SetKeywords sets the creator tags with the specified prefix.  It leaves
-// keywords with other prefixes alone.
+// SetKeywords sets all keyword tags.
 func SetKeywords(h fileHandler, v []metadata.Keyword) error {
 	var flat []string
 

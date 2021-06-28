@@ -9,6 +9,8 @@ import (
 
 func newCopyOp() Operation { return new(copyOp) }
 
+// copyOp copies values of the specified fields from the first file to all other
+// files.
 type copyOp struct {
 	fieldListOp
 }

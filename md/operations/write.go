@@ -11,6 +11,7 @@ import (
 
 func newWriteOp() Operation { return new(writeOp) }
 
+// writeOp sets the caption on a media file, reading it from standard input.
 type writeOp struct {
 	value string
 }

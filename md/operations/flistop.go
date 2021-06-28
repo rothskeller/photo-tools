@@ -24,6 +24,7 @@ func (op *fieldListOp) parseArgs(args []string) (remainingArgs []string, err err
 		if !found {
 			op.fields = append(op.fields, field)
 		}
+		args = args[1:]
 	}
 	return nil, nil
 }

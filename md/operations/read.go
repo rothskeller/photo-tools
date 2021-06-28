@@ -9,6 +9,8 @@ import (
 
 func newReadOp() Operation { return new(readOp) }
 
+// readOp echoes the caption of a media file to standard out without any
+// decoration.
 type readOp struct{}
 
 // parseArgs parses the arguments for the operation, returning the remaining

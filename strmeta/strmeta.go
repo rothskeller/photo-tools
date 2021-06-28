@@ -1,6 +1,5 @@
-// Package strmeta contains the definition of a Metadata structure reflecting my
-// desired media metadata model, and the code to read it from and write it to
-// real metadata sources.
+// Package strmeta contains the translation between actual metadata tags and the
+// simplified metadata model used in my library.
 package strmeta
 
 import (
@@ -11,6 +10,33 @@ import (
 )
 
 type fileHandler = filefmt.FileHandler // copied to save typing
+
+// A CheckResult gives the result of a Check operation on a field of a file.
+// A positive integer is a count of values in a multi-valued field that is
+// tagged correctly.  All other values have defined constants.
+type CheckResult int
+
+// Values for CheckResult
+const (
+	ChkPresent           CheckResult = 1
+	ChkOptionalAbsent    CheckResult = 0
+	ChkExpectedAbsent    CheckResult = -1
+	ChkIncorrectlyTagged CheckResult = -2
+	ChkConflictingValues CheckResult = -3
+)
+
+// stringEqualMax compares two strings, with the second one subject to the
+// specified maximum length, and returns whether they should be considered
+// equal for check purposes.
+func stringEqualMax(a, b string, bmax int) bool {
+	if a == b {
+		return true
+	}
+	if len(a) > bmax && a[:bmax] == b {
+		return true
+	}
+	return false
+}
 
 func tagsForStringList(tags, values []string, label string, ss []string) (newt, newv []string) {
 	if len(ss) == 0 {

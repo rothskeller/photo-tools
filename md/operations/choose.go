@@ -13,6 +13,9 @@ import (
 
 func newChooseOp() Operation { return new(chooseOp) }
 
+// chooseOp displays all of the tagged values for a field, lets the user choose
+// one (or type a new value), and then sets the field to that value across all
+// files in the batch.
 type chooseOp struct {
 	field fields.Field
 }
@@ -47,6 +50,7 @@ func (op *chooseOp) Run(files []MediaFile) error {
 		line   string
 		tw     = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	)
+	// Print the tag table.
 	fmt.Fprintln(tw, "#\tFILE\tTAG\tVALUE")
 	for _, file := range files {
 		tagNames, tagValues := op.field.GetTags(file.Handler)
@@ -59,6 +63,7 @@ func (op *chooseOp) Run(files []MediaFile) error {
 		}
 	}
 	tw.Flush()
+	// Repeat reading lines from stdin until we get a valid answer.
 	scan = bufio.NewScanner(os.Stdin)
 RETRY:
 	if len(values) != 0 {
@@ -72,6 +77,7 @@ RETRY:
 	if line = scan.Text(); line == "" {
 		return nil
 	}
+	// Parse the response.  Is it a line number?
 	if lnum, err := strconv.Atoi(line); err == nil {
 		if lnum == 0 {
 			newvs = nil
@@ -81,13 +87,14 @@ RETRY:
 			fmt.Printf("ERROR: no such line %s.\n", line)
 			goto RETRY
 		}
-	} else {
+	} else { // Not a line number; is it a valid value for the field?
 		if newv, err = op.field.ParseValue(line); err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			goto RETRY
 		}
 		newvs = []interface{}{newv}
 	}
+	// Set this value on all files in the batch.
 	for _, file := range files {
 		if err := op.field.SetValues(file.Handler, newvs); err != nil {
 			return fmt.Errorf("%s: choose %s: %s", file.Path, op.field.Name(), err)

@@ -23,6 +23,8 @@ type XMP struct {
 	IPTCLocationCreated   metadata.Location
 	IPTCLocationsShown    []metadata.Location
 	LRHierarchicalSubject []metadata.Keyword
+	MPFaces               []string
+	MWGRSFaces            []string
 	PSDateCreated         metadata.DateTime
 	TIFFArtist            string
 	TIFFDateTime          metadata.DateTime
@@ -59,6 +61,8 @@ func Parse(buf []byte) (p *XMP) {
 	p.getEXIF()
 	p.getIPTC()
 	p.getLR()
+	p.getMWGRS()
+	p.getMP()
 	p.getPS()
 	p.getTIFF()
 	p.getXMP()
@@ -80,6 +84,8 @@ func (p *XMP) Dirty() bool {
 	p.setEXIF()
 	p.setIPTC()
 	p.setLR()
+	p.setMWGRS()
+	p.setMP()
 	p.setPS()
 	p.setTIFF()
 	p.setXMP()
@@ -98,6 +104,8 @@ func (p *XMP) Render() ([]byte, error) {
 	p.setEXIF()
 	p.setIPTC()
 	p.setLR()
+	p.setMWGRS()
+	p.setMP()
 	p.setPS()
 	p.setTIFF()
 	p.setXMP()

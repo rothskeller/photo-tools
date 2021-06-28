@@ -26,9 +26,9 @@ var ArtistField Field = &artistField{
 	},
 }
 
-// GetValues returns all of the values of the field.  (For single-valued
-// fields, the return slice will have at most one entry.)  Empty values
-// should not be included.
+// GetValues returns all of the values of the field.  (For single-valued fields,
+// the return slice will have at most one entry.)  Empty values should not be
+// included.
 func (f *artistField) GetValues(h filefmt.FileHandler) []interface{} {
 	if artist := strmeta.GetCreator(h); artist != "" {
 		return []interface{}{artist}
@@ -36,9 +36,9 @@ func (f *artistField) GetValues(h filefmt.FileHandler) []interface{} {
 	return nil
 }
 
-// GetTags returns the names of all of the metadata tags that correspond
-// to the field in its first return slice, and a parallel slice of the
-// values of those tags (which may be zero values).
+// GetTags returns the names of all of the metadata tags that correspond to the
+// field in its first return slice, and a parallel slice of the values of those
+// tags (which may be zero values).
 func (f *artistField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	if tags, values := strmeta.GetCreatorTags(h); len(tags) != 0 {
 		return tags, stringSliceToInterfaceSlice(values)
@@ -58,9 +58,8 @@ func (f *artistField) SetValues(h filefmt.FileHandler, v []interface{}) error {
 	}
 }
 
-// CheckValues returns whether the values of the field in the target are
-// tagged correctly, and are consistent with the values of the field in
-// the reference.
+// CheckValues returns whether the values of the field in the target are tagged
+// correctly, and are consistent with the values of the field in the reference.
 func (f *artistField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
 	return strmeta.CheckCreator(ref, tgt)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/rothskeller/photo-tools/filefmt"
@@ -18,10 +19,10 @@ func usage() {
     set fieldname value        d(atetime)
     add fieldname value        g(ps)
     remove fieldname value     k(eywords) (kw)
-    clear fieldname            l(ocation)[:lang]
-    choose fieldname           s(hown)[:lang]
-    copy [fieldname...]        t(itle)
-    write caption              group(s), person (people), topic(s)
+    clear fieldname            l(ocation)
+    choose fieldname           t(itle)
+    copy [fieldname...]        person (people)
+    write caption              group(s), place(s), topic(s)
     read caption               all
 See MANUAL.md for more details.
 `)
@@ -59,11 +60,13 @@ func parseCommandLine() (ops []operations.Operation, batches [][]operations.Medi
 			ops = append(ops, op)
 			continue
 		}
+		// It's not "batch" or an operation, so it should be a file name.
 		arg, args = args[0], args[1:]
 		if _, err := os.Stat(arg); os.IsNotExist(err) {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 			usage()
 		}
+		// Open the file and read its metadata.
 		if handler = filefmt.HandlerFor(arg); handler == nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %s: unsupported file format\n", arg)
 			fileError = true
@@ -90,7 +93,12 @@ func parseCommandLine() (ops []operations.Operation, batches [][]operations.Medi
 		op, _, _ = operations.ParseOperation([]string{"show"})
 		ops = append(ops, op)
 	}
-	if batch {
+	// Sort the files (they're all in one batch so far) so that the batching
+	// operation works correctly.
+	sort.Slice(batches[0], func(a, b int) bool {
+		return batchSortFn(batches[0][a], batches[0][b])
+	})
+	if batch { // batch the files if requested
 		var (
 			bnum = 0
 			fnum = 1
@@ -106,6 +114,7 @@ func parseCommandLine() (ops []operations.Operation, batches [][]operations.Medi
 			}
 		}
 	}
+	// Give each operation the chance to check the batches for validity.
 	for _, op := range ops {
 		if err := op.Check(batches); err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
@@ -115,6 +124,57 @@ func parseCommandLine() (ops []operations.Operation, batches [][]operations.Medi
 	return ops, batches
 }
 
+// Files are sorted by basename first, then by variant (the part between the
+// first dot and the extension, if any), then by directory, and finally by
+// extension.  This ensures, for example, that "foo.jpg" comes before
+// "foo.aaa.jpg".
+func batchSortFn(a, b operations.MediaFile) bool {
+	var adir, abase, avariant, aext string
+	var bdir, bbase, bvariant, bext string
+	adir = filepath.Dir(a.Path)
+	bdir = filepath.Dir(b.Path)
+	abase = filepath.Base(a.Path)
+	bbase = filepath.Base(b.Path)
+	if strings.HasSuffix(abase, ".xmp") {
+		abase, aext = abase[:len(abase)-4], ".xmp"
+	}
+	if strings.HasSuffix(bbase, ".xmp") {
+		bbase, bext = bbase[:len(bbase)-4], ".xmp"
+	}
+	if ext := filepath.Ext(abase); ext != "" {
+		aext = ext + aext
+		abase = abase[:len(abase)-len(ext)]
+	}
+	if ext := filepath.Ext(bbase); ext != "" {
+		bext = ext + bext
+		bbase = bbase[:len(bbase)-len(ext)]
+	}
+	if idx := strings.IndexByte(abase, '.'); idx >= 0 {
+		abase, avariant = abase[:idx], abase[idx:]
+	}
+	if idx := strings.IndexByte(bbase, '.'); idx >= 0 {
+		bbase, bvariant = bbase[:idx], bbase[idx:]
+	}
+	switch {
+	case abase < bbase:
+		return true
+	case bbase < abase:
+		return false
+	case avariant < bvariant:
+		return true
+	case bvariant < avariant:
+		return false
+	case adir < bdir:
+		return true
+	case bdir < adir:
+		return false
+	default:
+		return aext < bext
+	}
+}
+
+// basename returns the path name, shorn of any directory information and
+// anything after the first period (including the period itself).
 func basename(path string) string {
 	path = filepath.Base(path)
 	if idx := strings.IndexByte(path, '.'); idx >= 0 {

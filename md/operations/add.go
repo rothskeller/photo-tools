@@ -1,9 +1,12 @@
 package operations
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func newAddOp() Operation { return &addOp{fieldValueOp{name: "add"}} }
 
+// addOp adds a value to a multivalued field.
 type addOp struct {
 	fieldValueOp
 }
@@ -28,7 +31,9 @@ func (op *addOp) Check(batches [][]MediaFile) error { return nil }
 // Run executes the operation against the listed media files (one batch).
 func (op *addOp) Run(files []MediaFile) error {
 	for _, file := range files {
+		// Get the current values.
 		values := op.field.GetValues(file.Handler)
+		// Find out whether the value we're adding is already there.
 		found := false
 		for _, v := range values {
 			if op.field.EqualValue(v, op.value) {
@@ -36,6 +41,7 @@ func (op *addOp) Run(files []MediaFile) error {
 				break
 			}
 		}
+		// If not, add it.
 		if !found {
 			values = append(values, op.value)
 			if err := op.field.SetValues(file.Handler, values); err != nil {

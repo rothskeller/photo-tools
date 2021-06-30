@@ -8,7 +8,7 @@ var start = []byte(`<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-
 
 func TestAddCreators(t *testing.T) {
 	xmp := Parse(start)
-	xmp.DCCreator = []string{"Steve Roth", "Fred Flintstone"}
+	xmp.SetDCCreator([]string{"Steve Roth", "Fred Flintstone"})
 	out, _ := xmp.Render()
 	println(string(out))
 	t.Error("x")

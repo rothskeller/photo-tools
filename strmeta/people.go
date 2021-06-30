@@ -64,10 +64,10 @@ func GetPeople(h filefmt.FileHandler) []Person {
 	}
 	if xmp := h.XMP(false); xmp != nil {
 		var faces []string
-		if len(xmp.MPFaces) != 0 {
-			faces = xmp.MPFaces
+		if len(xmp.MPRegPersonDisplayNames()) != 0 {
+			faces = xmp.MPRegPersonDisplayNames()
 		} else {
-			faces = xmp.MWGRSFaces
+			faces = xmp.MWGRSNames()
 		}
 		for _, face := range faces {
 			if pmap[face] != nil {
@@ -89,14 +89,14 @@ func GetPersonTags(h filefmt.FileHandler) (tags []string, values []Person) {
 		values[i].Name = kws[i][1]
 	}
 	if xmp := h.XMP(false); xmp != nil {
-		for _, face := range xmp.MPFaces {
+		for _, face := range xmp.MPRegPersonDisplayNames() {
 			tags = append(tags, "XMP  MP:Regions")
 			values = append(values, Person{Name: face})
 			// Note, we do not set FaceRegion to true, because that
 			// would result in printing a [F] suffix, which is
 			// rendundant given that the tag name is being shown.
 		}
-		for _, face := range xmp.MWGRSFaces {
+		for _, face := range xmp.MWGRSNames() {
 			tags = append(tags, "XMP  mwg-rs:RegionInfo")
 			values = append(values, Person{Name: face})
 		}
@@ -115,27 +115,27 @@ func CheckPeople(ref, h filefmt.FileHandler) (res CheckResult) {
 		return res
 	}
 	xmp = h.XMP(false)
-	if xmp == nil || (len(xmp.MPFaces) == 0 && len(xmp.MWGRSFaces) == 0) {
+	if xmp == nil || (len(xmp.MPRegPersonDisplayNames()) == 0 && len(xmp.MWGRSNames()) == 0) {
 		return res
 	}
-	if len(xmp.MPFaces) != 0 && len(xmp.MWGRSFaces) != 0 && len(xmp.MPFaces) != len(xmp.MWGRSFaces) {
+	if len(xmp.MPRegPersonDisplayNames()) != 0 && len(xmp.MWGRSNames()) != 0 && len(xmp.MPRegPersonDisplayNames()) != len(xmp.MWGRSNames()) {
 		return ChkConflictingValues
 	}
 	pmap = make(map[string]bool)
 	for _, p := range getFilteredKeywords(ref, personPredicate, false) {
 		pmap[p[1]] = true
 	}
-	for _, f := range xmp.MPFaces {
+	for _, f := range xmp.MPRegPersonDisplayNames() {
 		if !pmap[f] {
 			return ChkConflictingValues
 		}
 	}
-	for _, f := range xmp.MWGRSFaces {
+	for _, f := range xmp.MWGRSNames() {
 		if !pmap[f] {
 			return ChkConflictingValues
 		}
 	}
-	if len(xmp.MPFaces) != len(xmp.MWGRSFaces) { // i.e., one of them is zero and the other isn't
+	if len(xmp.MPRegPersonDisplayNames()) != len(xmp.MWGRSNames()) { // i.e., one of them is zero and the other isn't
 		return ChkIncorrectlyTagged
 	}
 	return res // the result from checking the keywords
@@ -149,12 +149,12 @@ func SetPeople(h filefmt.FileHandler, v []Person) error {
 		faces = make(map[string]bool)
 	)
 	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.MPFaces) != 0 {
-			for _, f := range xmp.MPFaces {
+		if len(xmp.MPRegPersonDisplayNames()) != 0 {
+			for _, f := range xmp.MPRegPersonDisplayNames() {
 				faces[f] = false
 			}
 		} else {
-			for _, f := range xmp.MWGRSFaces {
+			for _, f := range xmp.MWGRSNames() {
 				faces[f] = false
 			}
 		}

@@ -1,10 +1,23 @@
 package xmp
 
 import (
+	"fmt"
+
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/exif"
-	"trimmer.io/go-xmp/xmp"
 )
+
+// EXIFDateTimeDigitized returns the value of the exif:DateTimeDigitized tag.
+func (p *XMP) EXIFDateTimeDigitized() metadata.DateTime { return p.exifDateTimeDigitized }
+
+// EXIFDateTimeOriginal returns the value of the exif:DateTimeOriginal tag.
+func (p *XMP) EXIFDateTimeOriginal() metadata.DateTime { return p.exifDateTimeOriginal }
+
+// EXIFGPSCoords returns the values of the exif:GPS* tags.
+func (p *XMP) EXIFGPSCoords() metadata.GPSCoords { return p.exifGPSCoords }
+
+// EXIFUserComments returns the values of the exif:UserComment tag.
+func (p *XMP) EXIFUserComments() []string { return p.exifUserComments }
 
 func (p *XMP) getEXIF() {
 	var model *exif.ExifInfo
@@ -15,47 +28,74 @@ func (p *XMP) getEXIF() {
 	if model == nil {
 		return
 	}
-	p.xmpDateTimeToMetadata(model.DateTimeDigitized, &p.EXIFDateTimeDigitized)
-	p.xmpDateTimeToMetadata(model.DateTimeOriginal, &p.EXIFDateTimeOriginal)
-	p.xmpEXIFGPSCoordsToMetadata(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude, &p.EXIFGPSCoords)
-	p.EXIFUserComments = model.UserComment
-}
-
-func (p *XMP) setEXIF() {
-	var (
-		model *exif.ExifInfo
-		dt    metadata.DateTime
-		gps   metadata.GPSCoords
-		err   error
-	)
-	if model, err = exif.MakeModel(p.doc); err != nil {
-		panic(err)
-	}
-	p.xmpDateTimeToMetadata(model.DateTimeDigitized, &dt)
-	if !dt.Equivalent(&p.EXIFDateTimeDigitized) {
-		model.DateTimeDigitized = p.EXIFDateTimeDigitized.String()
-		p.dirty = true
-	}
-	p.xmpDateTimeToMetadata(model.DateTimeOriginal, &dt)
-	if !dt.Equivalent(&p.EXIFDateTimeOriginal) {
-		model.DateTimeOriginal = p.EXIFDateTimeOriginal.String()
-		p.dirty = true
-	}
-	// GPS coordinate transformations involve rounding error, hence the
-	// roundabout equivalency check.
-	p.xmpEXIFGPSCoordsToMetadata(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude, &gps)
-	if !gps.Equivalent(&p.EXIFGPSCoords) {
-		model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude = p.EXIFGPSCoords.AsXMP()
-		p.dirty = true
-	}
-	if !stringSliceEqual(xmp.StringArray(p.EXIFUserComments), model.UserComment) {
-		model.UserComment = p.EXIFUserComments
-		p.dirty = true
-	}
-}
-
-func (p *XMP) xmpEXIFGPSCoordsToMetadata(lat, long, altref, alt string, m *metadata.GPSCoords) {
-	if err := m.ParseXMP(lat, long, altref, alt); err != nil {
+	p.xmpDateTimeToMetadata(model.DateTimeDigitized, &p.exifDateTimeDigitized)
+	p.xmpDateTimeToMetadata(model.DateTimeOriginal, &p.exifDateTimeOriginal)
+	if err := p.exifGPSCoords.ParseXMP(model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude); err != nil {
 		p.log("invalid GPS coordinates")
 	}
+	p.exifUserComments = model.UserComment
+}
+
+// SetEXIFDateTimeDigitized sets the value of the exif:DateTimeDigitized tag.
+func (p *XMP) SetEXIFDateTimeDigitized(v metadata.DateTime) (err error) {
+	var model *exif.ExifInfo
+
+	if model, err = exif.MakeModel(p.doc); err != nil {
+		return fmt.Errorf("can't add exif model to XMP: %s", err)
+	}
+	if v.Equivalent(p.exifDateTimeDigitized) {
+		return nil
+	}
+	p.exifDateTimeDigitized = v
+	model.DateTimeDigitized = v.String()
+	p.dirty = true
+	return nil
+}
+
+// SetEXIFDateTimeOriginal sets the value of the exif:DateTimeOriginal tag.
+func (p *XMP) SetEXIFDateTimeOriginal(v metadata.DateTime) (err error) {
+	var model *exif.ExifInfo
+
+	if model, err = exif.MakeModel(p.doc); err != nil {
+		return fmt.Errorf("can't add exif model to XMP: %s", err)
+	}
+	if v.Equivalent(p.exifDateTimeOriginal) {
+		return nil
+	}
+	p.exifDateTimeOriginal = v
+	model.DateTimeOriginal = v.String()
+	p.dirty = true
+	return nil
+}
+
+// SetEXIFGPSCoords sets the values of the exif:GPS* tags.
+func (p *XMP) SetEXIFGPSCoords(v metadata.GPSCoords) (err error) {
+	var model *exif.ExifInfo
+
+	if model, err = exif.MakeModel(p.doc); err != nil {
+		return fmt.Errorf("can't add exif model to XMP: %s", err)
+	}
+	if v.Equivalent(p.exifGPSCoords) {
+		return nil
+	}
+	p.exifGPSCoords = v
+	model.GPSLatitude, model.GPSLongitude, model.GPSAltitudeRef, model.GPSAltitude = v.AsXMP()
+	p.dirty = true
+	return nil
+}
+
+// SetEXIFUserComments sets the values of the exif:UserComment tag.
+func (p *XMP) SetEXIFUserComments(v []string) (err error) {
+	var model *exif.ExifInfo
+
+	if model, err = exif.MakeModel(p.doc); err != nil {
+		return fmt.Errorf("can't add exif model to XMP: %s", err)
+	}
+	if stringSliceEqual(v, p.exifUserComments) {
+		return nil
+	}
+	p.exifUserComments = v
+	model.UserComment = v
+	p.dirty = true
+	return nil
 }

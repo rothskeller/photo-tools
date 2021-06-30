@@ -8,27 +8,27 @@ import (
 // GetCaption returns the highest priority caption value.
 func GetCaption(h fileHandler) string {
 	if xmp := h.XMP(false); xmp != nil {
-		if def := xmp.DCDescription.Default(); def != "" {
+		if def := xmp.DCDescription().Default(); def != "" {
 			return def
 		}
-		if len(xmp.EXIFUserComments) != 0 {
-			return xmp.EXIFUserComments[0]
+		if len(xmp.EXIFUserComments()) != 0 {
+			return xmp.EXIFUserComments()[0]
 		}
-		if def := xmp.TIFFImageDescription.Default(); def != "" {
+		if def := xmp.TIFFImageDescription().Default(); def != "" {
 			return def
 		}
 	}
 	if exif := h.EXIF(); exif != nil {
-		if exif.UserComment != "" {
-			return exif.UserComment
+		if exif.UserComment() != "" {
+			return exif.UserComment()
 		}
-		if exif.ImageDescription != "" {
-			return exif.ImageDescription
+		if exif.ImageDescription() != "" {
+			return exif.ImageDescription()
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		if iptc.CaptionAbstract != "" {
-			return iptc.CaptionAbstract
+		if iptc.CaptionAbstract() != "" {
+			return iptc.CaptionAbstract()
 		}
 	}
 	return ""
@@ -37,24 +37,24 @@ func GetCaption(h fileHandler) string {
 // GetCaptionTags returns all of the caption tags and their values.
 func GetCaptionTags(h fileHandler) (tags, values []string) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = tagsForAltString(tags, values, "XMP  dc:Description", xmp.DCDescription)
-		for _, v := range xmp.EXIFUserComments {
+		tags, values = tagsForAltString(tags, values, "XMP  dc:Description", xmp.DCDescription())
+		for _, v := range xmp.EXIFUserComments() {
 			tags = append(tags, "XMP  exif:UserComment")
 			values = append(values, v)
 		}
-		tags, values = tagsForAltString(tags, values, "XMP  tiff:ImageDescription", xmp.TIFFImageDescription)
+		tags, values = tagsForAltString(tags, values, "XMP  tiff:ImageDescription", xmp.TIFFImageDescription())
 	}
 	if exif := h.EXIF(); exif != nil {
-		if exif.UserComment != "" {
+		if exif.UserComment() != "" {
 			tags = append(tags, "EXIF UserComment")
-			values = append(values, exif.UserComment)
+			values = append(values, exif.UserComment())
 		}
 		tags = append(tags, "EXIF ImageDescription")
-		values = append(values, exif.ImageDescription)
+		values = append(values, exif.ImageDescription())
 	}
 	if iptc := h.IPTC(); iptc != nil {
 		tags = append(tags, "IPTC CaptionAbstract")
-		values = append(values, iptc.CaptionAbstract)
+		values = append(values, iptc.CaptionAbstract())
 	}
 	return tags, values
 }
@@ -64,36 +64,36 @@ func GetCaptionTags(h fileHandler) (tags, values []string) {
 func CheckCaption(ref, h fileHandler) (res CheckResult) {
 	var value = GetCaption(ref)
 	if xmp := h.XMP(false); xmp != nil {
-		switch len(xmp.DCDescription) {
+		switch len(xmp.DCDescription()) {
 		case 0:
 			if value != "" {
 				res = ChkIncorrectlyTagged
 			}
 		case 1:
-			if xmp.DCDescription[0].Value != value {
+			if xmp.DCDescription()[0].Value != value {
 				return ChkConflictingValues
 			}
 		default:
 			return ChkConflictingValues
 		}
-		switch len(xmp.EXIFUserComments) {
+		switch len(xmp.EXIFUserComments()) {
 		case 0:
 			break
 		case 1:
-			if xmp.EXIFUserComments[0] != value {
+			if xmp.EXIFUserComments()[0] != value {
 				return ChkConflictingValues
 			}
 			res = ChkIncorrectlyTagged
 		default:
 			return ChkConflictingValues
 		}
-		switch len(xmp.TIFFImageDescription) {
+		switch len(xmp.TIFFImageDescription()) {
 		case 0:
 			if value != "" {
 				res = ChkIncorrectlyTagged
 			}
 		case 1:
-			if xmp.TIFFImageDescription[0].Value != value {
+			if xmp.TIFFImageDescription()[0].Value != value {
 				return ChkConflictingValues
 			}
 		default:
@@ -101,21 +101,21 @@ func CheckCaption(ref, h fileHandler) (res CheckResult) {
 		}
 	}
 	if exif := h.EXIF(); exif != nil {
-		if exif.UserComment != "" && exif.UserComment != value {
+		if exif.UserComment() != "" && exif.UserComment() != value {
 			return ChkConflictingValues
-		} else if exif.UserComment != "" {
+		} else if exif.UserComment() != "" {
 			res = ChkIncorrectlyTagged
 		}
-		if exif.ImageDescription != "" && exif.ImageDescription != value {
+		if exif.ImageDescription() != "" && exif.ImageDescription() != value {
 			return ChkConflictingValues
-		} else if exif.ImageDescription == "" && value != "" {
+		} else if exif.ImageDescription() == "" && value != "" {
 			res = ChkIncorrectlyTagged
 		}
 	}
 	if i := h.IPTC(); i != nil {
-		if i.CaptionAbstract != "" && !stringEqualMax(value, i.CaptionAbstract, iptc.MaxCaptionAbstractLen) {
+		if i.CaptionAbstract() != "" && !stringEqualMax(value, i.CaptionAbstract(), iptc.MaxCaptionAbstractLen) {
 			return ChkConflictingValues
-		} else if i.CaptionAbstract == "" && value != "" {
+		} else if i.CaptionAbstract() == "" && value != "" {
 			res = ChkIncorrectlyTagged
 		}
 	}
@@ -133,16 +133,28 @@ func SetCaption(h fileHandler, v string) error {
 		as = metadata.NewAltString(v)
 	}
 	if xmp := h.XMP(true); xmp != nil {
-		xmp.DCDescription = as
-		xmp.EXIFUserComments = nil // Always clear unwanted tag
-		xmp.TIFFImageDescription = as
+		if err := xmp.SetDCDescription(as); err != nil {
+			return err
+		}
+		if err := xmp.SetEXIFUserComments(nil); err != nil { // Always clear unwanted tag
+			return err
+		}
+		if err := xmp.SetTIFFImageDescription(as); err != nil {
+			return err
+		}
 	}
 	if exif := h.EXIF(); exif != nil {
-		exif.UserComment = "" // Always clear unwanted tag
-		exif.ImageDescription = v
+		if err := exif.SetUserComment(""); err != nil { // Always clear unwanted tag
+			return err
+		}
+		if err := exif.SetImageDescription(v); err != nil {
+			return err
+		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		iptc.CaptionAbstract = v
+		if err := iptc.SetCaptionAbstract(v); err != nil {
+			return err
+		}
 	}
 	return nil
 }

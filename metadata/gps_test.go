@@ -19,7 +19,7 @@ func TestGPS(t *testing.T) {
 			t.Errorf("gc.ParseXMP failed")
 		}
 	}
-	if !gc.Equivalent(&gc2) {
+	if !gc.Equivalent(gc2) {
 		t.Errorf("result is not equivalent: %s", gc2.String())
 	}
 	if gc2.String() != "37.33544, -122.0199, 200ft" {

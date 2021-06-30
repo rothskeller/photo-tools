@@ -9,20 +9,25 @@ const MaxObjectNameLen = 64
 
 const idObjectName uint16 = 0x0205
 
+// ObjectName returns the value of the Object Name tag.
+func (p *IPTC) ObjectName() string { return p.ObjectName() }
+
 func (p *IPTC) getObjectName() {
 	if dset := p.findDSet(idObjectName); dset != nil {
-		p.ObjectName = strings.TrimSpace(p.decodeString(dset.data, "ObjectName"))
-		p.saveObjectName = p.ObjectName
+		p.objectName = strings.TrimSpace(p.decodeString(dset.data, "ObjectName"))
 	}
 }
 
-func (p *IPTC) setObjectName() {
-	if stringEqualMax(p.ObjectName, p.saveObjectName, MaxObjectNameLen) {
-		return
+// SetObjectName sets the value of the Object Name tag.
+func (p *IPTC) SetObjectName(v string) error {
+	if stringEqualMax(v, p.objectName, MaxObjectNameLen) {
+		return nil
 	}
-	if p.ObjectName == "" {
+	p.objectName = applyMax(v, MaxObjectNameLen)
+	if p.objectName == "" {
 		p.deleteDSet(idObjectName)
-		return
+		return nil
 	}
-	p.setDSet(idObjectName, []byte(applyMax(p.ObjectName, MaxObjectNameLen)))
+	p.setDSet(idObjectName, []byte(p.objectName))
+	return nil
 }

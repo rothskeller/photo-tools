@@ -3,6 +3,7 @@ package exif
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"strings"
 	"unicode/utf8"
 
@@ -15,6 +16,9 @@ const tagUserComment uint16 = 0x9286
 var charsetASCII = []byte("ASCII\000\000\000")
 var charsetUnicode = []byte("UNICODE\000")
 var charsetUnknown = []byte("\000\000\000\000\000\000\000\000")
+
+// UserComment returns the value of the UserComment tag.
+func (p *EXIF) UserComment() string { return p.userComment }
 
 func (p *EXIF) getUserComment() {
 	idt := p.exifIFD.findTag(tagUserComment)
@@ -29,8 +33,7 @@ func (p *EXIF) getUserComment() {
 	case bytes.Equal(idt.data[:8], charsetASCII):
 		// I've found that comments are often padded with nulls (or
 		// even composed entirely of them).  We don't want those.
-		p.UserComment = strings.TrimRight(string(idt.data[8:]), "\000")
-		p.saveUserComment = p.UserComment
+		p.userComment = strings.TrimRight(string(idt.data[8:]), "\000")
 	case bytes.Equal(idt.data[:8], charsetUnicode):
 		// By the spec, this should be UCS-2.  In practice it may
 		// actually be UTF-16.  Reading it as UTF-16 handles both cases.
@@ -45,8 +48,7 @@ func (p *EXIF) getUserComment() {
 			p.log(idt.doff, "UserComment is invalid UTF-16, ignoring")
 			return
 		}
-		p.UserComment = u8
-		p.saveUserComment = u8
+		p.userComment = u8
 	case bytes.Equal(idt.data[:8], charsetUnknown):
 		// There's a decent chance this is actually UTF-8.  Let's try it.
 		var s = string(idt.data[8:])
@@ -54,23 +56,23 @@ func (p *EXIF) getUserComment() {
 			p.log(idt.doff, "UserComment is in unknown character set, ignoring")
 			return
 		}
-		p.UserComment = s
-		p.saveUserComment = s
+		p.userComment = s
 	default:
 		p.log(idt.doff, "UserComment is in unknown character set, ignoring")
 	}
 }
 
-func (p *EXIF) setUserComment() {
-	if p.UserComment == p.saveUserComment {
-		return
+// SetUserComment sets the value of the UserComment tag.
+func (p *EXIF) SetUserComment(v string) error {
+	if v == p.userComment {
+		return nil
 	}
-	if p.exifIFD == nil && p.UserComment != "" {
+	if p.exifIFD == nil && p.userComment != "" {
 		p.addEXIFIFD()
 	}
-	if p.UserComment == "" {
+	if p.userComment == "" {
 		p.deleteTag(p.exifIFD, tagUserComment)
-		return
+		return nil
 	}
 	tag := p.exifIFD.findTag(tagUserComment)
 	if tag == nil {
@@ -78,7 +80,7 @@ func (p *EXIF) setUserComment() {
 		p.addTag(p.exifIFD, tag)
 	}
 	var encbytes []byte
-	if s := p.UserComment; strings.IndexFunc(s, func(r rune) bool {
+	if s := p.userComment; strings.IndexFunc(s, func(r rune) bool {
 		return r >= utf8.RuneSelf
 	}) < 0 {
 		encbytes = make([]byte, len(s)+8)
@@ -93,7 +95,7 @@ func (p *EXIF) setUserComment() {
 		}
 		u16, err := enc.NewEncoder().String(s)
 		if err != nil {
-			panic("can't encode comment into UTF-16?")
+			return errors.New("can't encode comment into UTF-16 for EXIF")
 		}
 		encbytes = make([]byte, len(u16)+8)
 		copy(encbytes, charsetUnicode)
@@ -102,4 +104,5 @@ func (p *EXIF) setUserComment() {
 	tag.data = encbytes
 	tag.count = uint32(len(encbytes))
 	p.exifIFD.dirty = true
+	return nil
 }

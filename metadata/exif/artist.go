@@ -6,6 +6,9 @@ import (
 
 const tagArtist uint16 = 0x13B
 
+// Artist returns the value of the Artist tag.
+func (p *EXIF) Artist() []string { return p.artist }
+
 func (p *EXIF) getArtist() {
 	tag := p.ifd0.findTag(tagArtist)
 	if tag == nil {
@@ -34,42 +37,43 @@ func (p *EXIF) getArtist() {
 			inquotes = true
 		case b == ';' && !inquotes:
 			if t := strings.TrimSpace(abuf); t != "" {
-				p.Artist = append(p.Artist, t)
-				p.saveArtist = append(p.saveArtist, t)
+				p.artist = append(p.artist, t)
 			}
 		default:
 			abuf += string(b)
 		}
 	}
 	if t := strings.TrimSpace(abuf); t != "" {
-		p.Artist = append(p.Artist, t)
-		p.saveArtist = append(p.saveArtist, t)
+		p.artist = append(p.artist, t)
 	}
 }
 
-func (p *EXIF) setArtist() {
-	if len(p.Artist) == len(p.saveArtist) {
+// SetArtist sets the value of the Artist tag.
+func (p *EXIF) SetArtist(v []string) error {
+	if len(v) == len(p.artist) {
 		var mismatch = false
-		for i := range p.Artist {
-			if p.Artist[i] != p.saveArtist[i] {
+		for i := range v {
+			if v[i] != p.artist[i] {
 				mismatch = true
 				break
 			}
 		}
 		if !mismatch {
-			return
+			return nil
 		}
 	}
-	if len(p.Artist) == 0 {
+	p.artist = v
+	if len(p.artist) == 0 {
 		p.deleteTag(p.ifd0, tagArtist)
-		return
+		return nil
 	}
-	var encoded = make([]string, 0, len(p.Artist))
-	for _, a := range p.Artist {
+	var encoded = make([]string, 0, len(p.artist))
+	for _, a := range p.artist {
 		if strings.IndexAny(a, `";`) >= 0 {
 			a = `"` + strings.ReplaceAll(a, `"`, `""`) + `"`
 		}
 		encoded = append(encoded, a)
 	}
 	p.setASCIITag(p.ifd0, tagArtist, strings.Join(encoded, "; "))
+	return nil
 }

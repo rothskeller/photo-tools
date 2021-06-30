@@ -1,9 +1,14 @@
 package iptc
 
+import "github.com/rothskeller/photo-tools/metadata"
+
 const (
 	idDateCreated uint16 = 0x0237
 	idTimeCreated uint16 = 0x023C
 )
+
+// DateTimeCreated returns the values of the Date Created and Time Created tags.
+func (p *IPTC) DateTimeCreated() metadata.DateTime { return p.dateTimeCreated }
 
 func (p *IPTC) getDateTimeCreated() {
 	var date, time string
@@ -16,22 +21,24 @@ func (p *IPTC) getDateTimeCreated() {
 	if timedset := p.findDSet(idTimeCreated); timedset != nil {
 		time = string(timedset.data)
 	}
-	if err := p.DateTimeCreated.ParseIPTC(date, time); err != nil {
+	if err := p.dateTimeCreated.ParseIPTC(date, time); err != nil {
 		p.log("DateTimeCreated: %s", err)
 	}
-	p.saveDateTimeCreated = p.DateTimeCreated
 }
 
-func (p *IPTC) setDateTimeCreated() {
-	if p.saveDateTimeCreated.Equal(&p.DateTimeCreated) {
-		return
+// SetDateTimeCreated sets the values of the Date Created and Time Created tags.
+func (p *IPTC) SetDateTimeCreated(v metadata.DateTime) error {
+	if v.Equivalent(p.dateTimeCreated) {
+		return nil
 	}
-	if p.DateTimeCreated.Empty() {
+	p.dateTimeCreated = v
+	if p.dateTimeCreated.Empty() {
 		p.deleteDSet(idDateCreated)
 		p.deleteDSet(idTimeCreated)
-		return
+		return nil
 	}
-	date, time := p.DateTimeCreated.AsIPTC()
+	date, time := p.dateTimeCreated.AsIPTC()
 	p.setDSet(idDateCreated, []byte(date))
 	p.setDSet(idTimeCreated, []byte(time))
+	return nil
 }

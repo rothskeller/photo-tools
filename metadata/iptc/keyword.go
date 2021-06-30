@@ -9,39 +9,47 @@ const MaxKeywordLen = 64
 
 const idKeyword uint16 = 0x0219
 
+// Keywords returns the values of the Keyword tag.
+func (p *IPTC) Keywords() []string { return p.keywords }
+
 func (p *IPTC) getKeywords() {
 	for _, dset := range p.dsets {
 		if dset != nil && dset.id == idKeyword {
 			if kw := strings.TrimSpace(p.decodeString(dset.data, "Keyword")); kw != "" {
-				p.Keywords = append(p.Keywords, kw)
+				p.keywords = append(p.keywords, kw)
 			}
 		}
 	}
-	p.saveKeywords = append([]string{}, p.Keywords...)
 }
 
-func (p *IPTC) setKeywords() {
-	if stringSliceEqualMax(p.Keywords, p.saveKeywords, MaxKeywordLen) {
-		return
+// SetKeywords sets the values of the Keyword tag.
+func (p *IPTC) SetKeywords(v []string) error {
+	if stringSliceEqualMax(v, p.keywords, MaxKeywordLen) {
+		return nil
 	}
-	if len(p.Keywords) == 0 {
+	p.keywords = make([]string, len(v))
+	for i := range v {
+		p.keywords[i] = applyMax(v[i], MaxKeywordLen)
+	}
+	if len(p.keywords) == 0 {
 		p.deleteDSet(idKeyword)
-		return
+		return nil
 	}
 	var idx int
 	for i, dset := range p.dsets {
 		if dset != nil && dset.id == idKeyword {
-			if idx < len(p.Keywords) {
-				dset.data = []byte(applyMax(p.Keywords[idx], MaxKeywordLen))
+			if idx < len(p.keywords) {
+				dset.data = []byte(p.keywords[idx])
 				idx++
 			} else {
 				p.dsets[i] = nil
 			}
 		}
 	}
-	for idx < len(p.Keywords) {
-		p.dsets = append(p.dsets, &dsett{0, idKeyword, []byte(applyMax(p.Keywords[idx], MaxKeywordLen))})
+	for idx < len(p.keywords) {
+		p.dsets = append(p.dsets, &dsett{0, idKeyword, []byte(p.keywords[idx])})
 		idx++
 	}
 	p.dirty = true
+	return nil
 }

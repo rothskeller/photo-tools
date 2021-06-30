@@ -10,10 +10,7 @@ type Location struct {
 }
 
 // Empty returns true if the value contains no data.
-func (loc *Location) Empty() bool {
-	if loc == nil {
-		return true
-	}
+func (loc Location) Empty() bool {
 	return loc.CountryCode == "" &&
 		EmptyAltString(loc.CountryName) &&
 		EmptyAltString(loc.State) &&
@@ -22,13 +19,7 @@ func (loc *Location) Empty() bool {
 }
 
 // Equal returns true if the receiver is equal to the argument.
-func (loc *Location) Equal(other *Location) bool {
-	if (loc == nil) != (other == nil) {
-		return false
-	}
-	if loc == nil {
-		return true
-	}
+func (loc Location) Equal(other Location) bool {
 	return loc.CountryCode == other.CountryCode &&
 		EqualAltStrings(loc.CountryName, other.CountryName) &&
 		EqualAltStrings(loc.State, other.State) &&
@@ -37,7 +28,7 @@ func (loc *Location) Equal(other *Location) bool {
 }
 
 // Copy copies the argument Location into the receiver Location.
-func (loc *Location) Copy(other *Location) {
+func (loc Location) Copy(other Location) {
 	loc.CountryCode = other.CountryCode
 	loc.CountryName = CopyAltString(other.CountryName)
 	loc.State = CopyAltString(other.State)

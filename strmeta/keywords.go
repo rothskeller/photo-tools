@@ -82,7 +82,7 @@ func CheckKeywords(ref, h filefmt.FileHandler) (res CheckResult) {
 	}
 	if xmp := h.XMP(false); xmp != nil {
 		var tgtmap = make(map[string]bool)
-		for _, kw := range xmp.DCSubject {
+		for _, kw := range xmp.DCSubject() {
 			tgtmap[kw] = true
 		}
 		if r := checkMaps(refmap, tgtmap); r == ChkConflictingValues {
@@ -99,7 +99,7 @@ func CheckKeywords(ref, h filefmt.FileHandler) (res CheckResult) {
 			}
 		}
 		var tgtmap = make(map[string]bool)
-		for _, kw := range i.Keywords {
+		for _, kw := range i.Keywords() {
 			if len(kw) > iptc.MaxKeywordLen {
 				res = ChkIncorrectlyTagged
 				tgtmap[kw[:iptc.MaxKeywordLen]] = true

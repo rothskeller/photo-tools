@@ -1,5 +1,10 @@
 package exif
 
+import "github.com/rothskeller/photo-tools/metadata"
+
+// GPSCoords returns the GPS coordinates from the EXIF tags.
+func (p *EXIF) GPSCoords() metadata.GPSCoords { return p.gpsCoords }
+
 func (p *EXIF) getGPSCoords() {
 	latreft := p.gpsIFD.findTag(1)
 	latratt := p.gpsIFD.findTag(2)
@@ -36,10 +41,9 @@ func (p *EXIF) getGPSCoords() {
 		}
 		altrat = p.exifRatToUint32(altratt.data)
 	}
-	if err := p.GPSCoords.ParseEXIF(latref, latrat, longref, longrat, altref, altrat); err != nil {
+	if err := p.gpsCoords.ParseEXIF(latref, latrat, longref, longrat, altref, altrat); err != nil {
 		p.log(p.gpsIFD.offset, err.Error())
 	}
-	p.saveGPSCoords = p.GPSCoords
 }
 func (p *EXIF) exifRatToUint32(rat []byte) (u []uint32) {
 	u = make([]uint32, len(rat)/4)
@@ -49,11 +53,13 @@ func (p *EXIF) exifRatToUint32(rat []byte) (u []uint32) {
 	return u
 }
 
-func (p *EXIF) setGPSCoords() {
-	if p.GPSCoords.Equal(&p.saveGPSCoords) {
-		return
+// SetGPSCoords sets the values of the GPS coordinate tags.
+func (p *EXIF) SetGPSCoords(v metadata.GPSCoords) error {
+	if v.Equivalent(p.gpsCoords) {
+		return nil
 	}
-	if p.GPSCoords.Empty() {
+	p.gpsCoords = v
+	if p.gpsCoords.Empty() {
 		p.deleteTag(p.gpsIFD, 1)
 		p.deleteTag(p.gpsIFD, 2)
 		p.deleteTag(p.gpsIFD, 3)
@@ -64,12 +70,12 @@ func (p *EXIF) setGPSCoords() {
 			p.gpsIFD = nil
 			p.deleteTag(p.ifd0, tagGPSIFDOffset)
 		}
-		return
+		return nil
 	}
 	if p.gpsIFD == nil {
 		p.addGPSIFD()
 	}
-	latref, latrat, longref, longrat, altref, altrat := p.GPSCoords.AsEXIF()
+	latref, latrat, longref, longrat, altref, altrat := p.gpsCoords.AsEXIF()
 	p.setASCIITag(p.gpsIFD, 1, latref)
 	p.setRationalTag(p.gpsIFD, 2, latrat)
 	p.setASCIITag(p.gpsIFD, 3, longref)
@@ -81,4 +87,5 @@ func (p *EXIF) setGPSCoords() {
 		p.deleteTag(p.gpsIFD, 5)
 		p.deleteTag(p.gpsIFD, 6)
 	}
+	return nil
 }

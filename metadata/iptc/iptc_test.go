@@ -33,8 +33,8 @@ var start = []byte{
 func TestRewriteIPTC(t *testing.T) {
 	var iptc *IPTC
 	iptc = iptc.Parse(start, 0)
-	iptc.Keywords = []string{"new1", "new2"}
-	iptc.ObjectName = "me"
+	iptc.SetKeywords([]string{"new1", "new2"})
+	iptc.SetObjectName("me")
 	out := iptc.Render()
 	if !bytes.Equal(out, rewriteIPTCExpected) {
 		t.Error("wrong output")

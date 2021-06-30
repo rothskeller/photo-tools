@@ -12,13 +12,6 @@ func (p *IPTC) Dirty() bool {
 	if p == nil || len(p.Problems) != 0 {
 		return false
 	}
-	p.setBylines()
-	p.setCaptionAbstract()
-	p.setDateTimeCreated()
-	p.setDigitalCreationDateTime()
-	p.setKeywords()
-	p.setLocation()
-	p.setObjectName()
 	return p.dirty
 }
 
@@ -28,13 +21,6 @@ func (p *IPTC) Render() []byte {
 	if len(p.Problems) != 0 {
 		panic("IPTC Render with parse problems")
 	}
-	p.setBylines()
-	p.setCaptionAbstract()
-	p.setDateTimeCreated()
-	p.setDigitalCreationDateTime()
-	p.setKeywords()
-	p.setLocation()
-	p.setObjectName()
 	var out bytes.Buffer
 	for _, psir := range p.psir {
 		if psir.id == iptcPSIRID && p.dirty {

@@ -7,30 +7,18 @@ import (
 
 // IPTC is a an IPTC parser and generator.
 type IPTC struct {
-	Bylines                 []string
-	CaptionAbstract         string
-	City                    string
-	CountryPLCode           string
-	CountryPLName           string
-	DateTimeCreated         metadata.DateTime
-	DigitalCreationDateTime metadata.DateTime
-	Keywords                []string
-	ObjectName              string
-	ProvinceState           string
-	Sublocation             string
+	bylines                 []string
+	captionAbstract         string
+	city                    string
+	countryPLCode           string
+	countryPLName           string
+	dateTimeCreated         metadata.DateTime
+	digitalCreationDateTime metadata.DateTime
+	keywords                []string
+	objectName              string
+	provinceState           string
+	sublocation             string
 	Problems                []string
-
-	saveBylines                 []string
-	saveCaptionAbstract         string
-	saveCity                    string
-	saveCountryPLCode           string
-	saveCountryPLName           string
-	saveDateTimeCreated         metadata.DateTime
-	saveDigitalCreationDateTime metadata.DateTime
-	saveKeywords                []string
-	saveObjectName              string
-	saveProvinceState           string
-	saveSublocation             string
 
 	offset uint32
 	buf    []byte

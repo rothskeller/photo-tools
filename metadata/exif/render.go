@@ -9,17 +9,6 @@ func (p *EXIF) Dirty() bool {
 	if p == nil || len(p.Problems) != 0 {
 		return false
 	}
-	p.setArtist()
-	p.setDateTime()
-	p.setImageDescription()
-	if p.exifIFD != nil {
-		p.setDateTimeDigitized()
-		p.setDateTimeOriginal()
-		p.setUserComment()
-	}
-	if p.gpsIFD != nil {
-		p.setGPSCoords()
-	}
 	return p.ifd0.dirty || (p.exifIFD != nil && p.exifIFD.dirty) || (p.gpsIFD != nil && p.gpsIFD.dirty)
 }
 

@@ -65,7 +65,7 @@ func (gc *GPSCoords) Parse(s string) (err error) {
 }
 
 // String returns the value in string form, suitable for input to Parse.
-func (gc *GPSCoords) String() string {
+func (gc GPSCoords) String() string {
 	var sb strings.Builder
 	if gc.Empty() {
 		return ""
@@ -138,7 +138,7 @@ func (gc *GPSCoords) ParseEXIF(latref string, lat []uint32, longref string, long
 // AsEXIF renders a set of GPS coordinates in EXIF metadata form.  Note that
 // the ParseEXIF / AsEXIF round trip is not idempotent, because it transforms
 // degrees,minutes,seconds into fractional degrees.
-func (gc *GPSCoords) AsEXIF() (latref string, lat []uint32, longref string, long []uint32, altref byte, alt []uint32) {
+func (gc GPSCoords) AsEXIF() (latref string, lat []uint32, longref string, long []uint32, altref byte, alt []uint32) {
 	if gc.Empty() {
 		return
 	}
@@ -322,7 +322,7 @@ func fromXMPAltitude(ref, alt string) (f FixedFloat, err error) {
 // AsXMP renders a set of GPS coordinates in XMP metadata form.  Note that
 // the ParseXMP / AsXMP round trip is not idempotent, because it transforms
 // degrees,minutes,seconds into degrees and fractional minutes.
-func (gc *GPSCoords) AsXMP() (lat, long, altref, alt string) {
+func (gc GPSCoords) AsXMP() (lat, long, altref, alt string) {
 	if gc.Empty() {
 		return
 	}
@@ -369,17 +369,17 @@ func toXMPAltitude(f FixedFloat) (ref, alt string) {
 }
 
 // Empty returns true if the value contains no data.
-func (gc *GPSCoords) Empty() bool {
-	return gc == nil || gc.latitude == 0 || gc.longitude == 0
+func (gc GPSCoords) Empty() bool {
+	return gc.latitude == 0 || gc.longitude == 0
 }
 
 // HasAltitude returns whether the coordinates include an altitude.
-func (gc *GPSCoords) HasAltitude() bool {
+func (gc GPSCoords) HasAltitude() bool {
 	return !gc.Empty() && gc.altitude != 0
 }
 
 // Equal returns whether two GPSCoords are the same.
-func (gc *GPSCoords) Equal(other *GPSCoords) bool {
+func (gc GPSCoords) Equal(other GPSCoords) bool {
 	if gc.Empty() != other.Empty() {
 		return false
 	}
@@ -400,7 +400,7 @@ func (gc *GPSCoords) Equal(other *GPSCoords) bool {
 
 // Equivalent returns true if the receiver is equal to the argument, to the
 // precision of the least precise of the two.
-func (gc *GPSCoords) Equivalent(other *GPSCoords) bool {
+func (gc GPSCoords) Equivalent(other GPSCoords) bool {
 	if gc.Empty() != other.Empty() {
 		return false
 	}

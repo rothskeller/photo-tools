@@ -16,53 +16,66 @@ const (
 	tagOffsetTimeOriginal  uint16 = 0x9011
 )
 
+// DateTime returns the value of the DateTime tag.
+func (p *EXIF) DateTime() metadata.DateTime { return p.dateTime }
+
 func (p *EXIF) getDateTime() {
-	p.DateTime = p.getDateTimeTagGroup(p.ifd0, tagDateTime, tagOffsetTime, tagSubSecTime, "")
-	p.saveDateTime = p.DateTime
+	p.dateTime = p.getDateTimeTagGroup(p.ifd0, tagDateTime, tagOffsetTime, tagSubSecTime, "")
 }
 
-func (p *EXIF) setDateTime() {
-	if p.DateTime.Equal(&p.saveDateTime) {
-		return
+// SetDateTime sets the value of the DateTime tag.
+func (p *EXIF) SetDateTime(v metadata.DateTime) error {
+	if v.Equal(p.dateTime) {
+		return nil
 	}
-	p.setDateTimeTagGroup(p.ifd0, tagDateTime, tagOffsetTime, tagSubSecTime, p.DateTime)
+	p.dateTime = v
+	p.setDateTimeTagGroup(p.ifd0, tagDateTime, tagOffsetTime, tagSubSecTime, p.dateTime)
+	return nil
 }
+
+// DateTimeDigitized returns the value of the DateTimeDigitized tag.
+func (p *EXIF) DateTimeDigitized() metadata.DateTime { return p.dateTimeDigitized }
 
 func (p *EXIF) getDateTimeDigitized() {
-	p.DateTimeDigitized = p.getDateTimeTagGroup(
+	p.dateTimeDigitized = p.getDateTimeTagGroup(
 		p.exifIFD, tagDateTimeDigitized, tagOffsetTimeDigitized, tagSubSecTimeDigitized, "Digitized")
-	p.saveDateTimeDigitized = p.DateTimeDigitized
 }
 
-func (p *EXIF) setDateTimeDigitized() {
-	if p.DateTimeDigitized.Equal(&p.saveDateTimeDigitized) {
-		return
+// SetDateTimeDigitized sets the value of the DateTimeDigitized tag.
+func (p *EXIF) SetDateTimeDigitized(v metadata.DateTime) error {
+	if v.Equal(p.dateTimeDigitized) {
+		return nil
 	}
-	if !p.DateTimeDigitized.Empty() && p.exifIFD == nil {
+	p.dateTimeDigitized = v
+	if !p.dateTimeDigitized.Empty() && p.exifIFD == nil {
 		p.addEXIFIFD()
 	}
-	p.setDateTimeTagGroup(p.exifIFD, tagDateTimeDigitized, tagOffsetTimeDigitized, tagSubSecTimeDigitized, p.DateTimeDigitized)
+	p.setDateTimeTagGroup(p.exifIFD, tagDateTimeDigitized, tagOffsetTimeDigitized, tagSubSecTimeDigitized, p.dateTimeDigitized)
+	return nil
 }
+
+// DateTimeOriginal returns the value of the DateTimeOriginal tag.
+func (p *EXIF) DateTimeOriginal() metadata.DateTime { return p.dateTimeOriginal }
 
 func (p *EXIF) getDateTimeOriginal() {
-	p.DateTimeOriginal = p.getDateTimeTagGroup(
+	p.dateTimeOriginal = p.getDateTimeTagGroup(
 		p.exifIFD, tagDateTimeOriginal, tagOffsetTimeOriginal, tagSubSecTimeOriginal, "Original")
-	p.saveDateTimeOriginal = p.DateTimeOriginal
 }
 
-func (p *EXIF) setDateTimeOriginal() {
-	if p.DateTimeOriginal.Equal(&p.saveDateTimeOriginal) {
-		return
+// SetDateTimeOriginal sets the value of the DateTimeOriginal tag.
+func (p *EXIF) SetDateTimeOriginal(v metadata.DateTime) error {
+	if v.Equal(p.dateTimeOriginal) {
+		return nil
 	}
-	if !p.DateTimeOriginal.Empty() && p.exifIFD == nil {
+	p.dateTimeOriginal = v
+	if !p.dateTimeOriginal.Empty() && p.exifIFD == nil {
 		p.addEXIFIFD()
 	}
-	p.setDateTimeTagGroup(p.exifIFD, tagDateTimeOriginal, tagOffsetTimeOriginal, tagSubSecTimeOriginal, p.DateTimeOriginal)
+	p.setDateTimeTagGroup(p.exifIFD, tagDateTimeOriginal, tagOffsetTimeOriginal, tagSubSecTimeOriginal, p.dateTimeOriginal)
+	return nil
 }
 
-// getDateTimeTagGroup returns the date and time from an exif tag triplet.  The
-// returned value has the form "YYYY-MM-DDTHH:MM:SS", possibly followed by
-// ".sss", possibly followed by "±HH:MM".
+// getDateTimeTagGroup returns the date and time from an exif tag triplet.
 func (p *EXIF) getDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, suffix string) (dt metadata.DateTime) {
 	dtot := dtifd.findTag(dttag)
 	if dtot == nil {

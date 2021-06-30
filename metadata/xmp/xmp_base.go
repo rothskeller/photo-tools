@@ -1,9 +1,20 @@
 package xmp
 
 import (
+	"fmt"
+
 	"github.com/rothskeller/photo-tools/metadata"
 	xmpbase "github.com/rothskeller/photo-tools/metadata/xmp/models/xmp_base"
 )
+
+// XMPCreateDate returns the value of the xmp:CreateDate tag.
+func (p *XMP) XMPCreateDate() metadata.DateTime { return p.xmpCreateDate }
+
+// XMPMetadataDate returns the value of the xmp:MetadataDate tag.
+func (p *XMP) XMPMetadataDate() metadata.DateTime { return p.xmpMetadataDate }
+
+// XMPModifyDate returns the value of the xmp:ModifyDate tag.
+func (p *XMP) XMPModifyDate() metadata.DateTime { return p.xmpModifyDate }
 
 func (p *XMP) getXMP() {
 	var model *xmpbase.XmpBase
@@ -14,33 +25,55 @@ func (p *XMP) getXMP() {
 	if model == nil {
 		return
 	}
-	p.xmpDateTimeToMetadata(model.CreateDate, &p.XMPCreateDate)
-	p.xmpDateTimeToMetadata(model.MetadataDate, &p.XMPMetadataDate)
-	p.xmpDateTimeToMetadata(model.ModifyDate, &p.XMPModifyDate)
+	p.xmpDateTimeToMetadata(model.CreateDate, &p.xmpCreateDate)
+	p.xmpDateTimeToMetadata(model.MetadataDate, &p.xmpMetadataDate)
+	p.xmpDateTimeToMetadata(model.ModifyDate, &p.xmpModifyDate)
 }
 
-func (p *XMP) setXMP() {
-	var (
-		model *xmpbase.XmpBase
-		dt    metadata.DateTime
-		err   error
-	)
+// SetXMPCreateDate sets the value of the xmp:CreateDate tag.
+func (p *XMP) SetXMPCreateDate(v metadata.DateTime) (err error) {
+	var model *xmpbase.XmpBase
+
 	if model, err = xmpbase.MakeModel(p.doc); err != nil {
-		panic(err)
+		return fmt.Errorf("can't add xmp model to XMP: %s", err)
 	}
-	p.xmpDateTimeToMetadata(model.CreateDate, &dt)
-	if !dt.Equivalent(&p.XMPCreateDate) {
-		model.CreateDate = p.XMPCreateDate.String()
-		p.dirty = true
+	if v.Equivalent(p.xmpCreateDate) {
+		return nil
 	}
-	p.xmpDateTimeToMetadata(model.MetadataDate, &dt)
-	if !dt.Equivalent(&p.XMPMetadataDate) {
-		model.MetadataDate = p.XMPMetadataDate.String()
-		p.dirty = true
+	p.xmpCreateDate = v
+	model.CreateDate = v.String()
+	p.dirty = true
+	return nil
+}
+
+// SetXMPMetadataDate sets the value of the xmp:MetadataDate tag.
+func (p *XMP) SetXMPMetadataDate(v metadata.DateTime) (err error) {
+	var model *xmpbase.XmpBase
+
+	if model, err = xmpbase.MakeModel(p.doc); err != nil {
+		return fmt.Errorf("can't add xmp model to XMP: %s", err)
 	}
-	p.xmpDateTimeToMetadata(model.ModifyDate, &dt)
-	if !dt.Equivalent(&p.XMPModifyDate) {
-		model.ModifyDate = p.XMPModifyDate.String()
-		p.dirty = true
+	if v.Equivalent(p.xmpMetadataDate) {
+		return nil
 	}
+	p.xmpMetadataDate = v
+	model.MetadataDate = v.String()
+	p.dirty = true
+	return nil
+}
+
+// SetXMPModifyDate sets the value of the xmp:ModifyDate tag.
+func (p *XMP) SetXMPModifyDate(v metadata.DateTime) (err error) {
+	var model *xmpbase.XmpBase
+
+	if model, err = xmpbase.MakeModel(p.doc); err != nil {
+		return fmt.Errorf("can't add xmp model to XMP: %s", err)
+	}
+	if v.Equivalent(p.xmpModifyDate) {
+		return nil
+	}
+	p.xmpModifyDate = v
+	model.ModifyDate = v.String()
+	p.dirty = true
+	return nil
 }

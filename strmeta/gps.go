@@ -5,13 +5,13 @@ import "github.com/rothskeller/photo-tools/metadata"
 // GetGPSCoords returns the highest priority GPS coordinates value.
 func GetGPSCoords(h fileHandler) metadata.GPSCoords {
 	if xmp := h.XMP(false); xmp != nil {
-		if !xmp.EXIFGPSCoords.Empty() {
-			return xmp.EXIFGPSCoords
+		if !xmp.EXIFGPSCoords().Empty() {
+			return xmp.EXIFGPSCoords()
 		}
 	}
 	if exif := h.EXIF(); exif != nil {
-		if !exif.GPSCoords.Empty() {
-			return exif.GPSCoords
+		if !exif.GPSCoords().Empty() {
+			return exif.GPSCoords()
 		}
 	}
 	return metadata.GPSCoords{}
@@ -21,11 +21,11 @@ func GetGPSCoords(h fileHandler) metadata.GPSCoords {
 func GetGPSCoordsTags(h fileHandler) (tags []string, values []metadata.GPSCoords) {
 	if xmp := h.XMP(false); xmp != nil {
 		tags = append(tags, "XMP  exif:GPSCoords")
-		values = append(values, xmp.EXIFGPSCoords)
+		values = append(values, xmp.EXIFGPSCoords())
 	}
 	if exif := h.EXIF(); exif != nil {
 		tags = append(tags, "EXIF GPSCoords")
-		values = append(values, exif.GPSCoords)
+		values = append(values, exif.GPSCoords())
 	}
 	return tags, values
 }
@@ -36,8 +36,8 @@ func CheckGPSCoords(ref, h fileHandler) (res CheckResult) {
 	var value = GetGPSCoords(ref)
 
 	if xmp := h.XMP(false); xmp != nil {
-		if !xmp.EXIFGPSCoords.Empty() {
-			if !value.Equivalent(&xmp.EXIFGPSCoords) {
+		if !xmp.EXIFGPSCoords().Empty() {
+			if !value.Equivalent(xmp.EXIFGPSCoords()) {
 				return ChkConflictingValues
 			}
 		} else if !value.Empty() {
@@ -45,8 +45,8 @@ func CheckGPSCoords(ref, h fileHandler) (res CheckResult) {
 		}
 	}
 	if exif := h.EXIF(); exif != nil {
-		if !exif.GPSCoords.Empty() {
-			if !value.Equivalent(&exif.GPSCoords) {
+		if !exif.GPSCoords().Empty() {
+			if !value.Equivalent(exif.GPSCoords()) {
 				return ChkConflictingValues
 			}
 		} else if !value.Empty() {
@@ -65,10 +65,14 @@ func CheckGPSCoords(ref, h fileHandler) (res CheckResult) {
 // SetGPSCoords sets the GPS coordinates tags.
 func SetGPSCoords(h fileHandler, v metadata.GPSCoords) error {
 	if xmp := h.XMP(true); xmp != nil {
-		xmp.EXIFGPSCoords = v
+		if err := xmp.SetEXIFGPSCoords(v); err != nil {
+			return err
+		}
 	}
 	if exif := h.EXIF(); exif != nil {
-		exif.GPSCoords = v
+		if err := exif.SetGPSCoords(v); err != nil {
+			return err
+		}
 	}
 	return nil
 }

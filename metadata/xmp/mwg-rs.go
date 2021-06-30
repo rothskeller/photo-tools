@@ -4,6 +4,9 @@ import (
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/mwgrs"
 )
 
+// MWGRSNames returns the values of the mwg-rs:Name tags for face regions.
+func (p *XMP) MWGRSNames() []string { return p.mwgrsNames }
+
 func (p *XMP) getMWGRS() {
 	var model *mwgrs.MWGRegions
 
@@ -15,40 +18,9 @@ func (p *XMP) getMWGRS() {
 	}
 	for _, r := range model.Regions.RegionList {
 		if r.Type == "Face" && r.Name != "" {
-			p.MWGRSFaces = append(p.MWGRSFaces, r.Name)
+			p.mwgrsNames = append(p.mwgrsNames, r.Name)
 		}
 	}
 }
 
-func (p *XMP) setMWGRS() {
-	var (
-		model *mwgrs.MWGRegions
-		err   error
-	)
-	if model, err = mwgrs.MakeModel(p.doc); err != nil {
-		panic(err)
-	}
-	j := 0
-	for _, r := range model.Regions.RegionList {
-		if r.Type != "Face" {
-			model.Regions.RegionList[j] = r
-			j++
-			continue
-		}
-		found := false
-		for _, f := range p.MWGRSFaces {
-			if f == r.Name {
-				found = true
-				break
-			}
-		}
-		if found {
-			model.Regions.RegionList[j] = r
-			j++
-		}
-	}
-	if j < len(model.Regions.RegionList) {
-		model.Regions.RegionList = model.Regions.RegionList[:j]
-		p.dirty = true
-	}
-}
+// Note: there is no SetMWGRSNames, because this library cannot set those tags.

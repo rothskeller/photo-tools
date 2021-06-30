@@ -54,14 +54,6 @@ func (h *XMP) Problems() (problems []string) {
 	return problems
 }
 
-// Dirty returns whether there are any unsaved changes to the metadata.
-func (h *XMP) Dirty() bool {
-	if len(h.Problems()) != 0 {
-		return false
-	}
-	return h.xmp.Dirty()
-}
-
 // SaveMetadata writes the metadata for the photo.  It returns any error
 // that occurs.
 func (h *XMP) SaveMetadata() (err error) {

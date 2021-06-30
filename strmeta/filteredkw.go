@@ -24,17 +24,17 @@ func getFilteredKeywords(h filefmt.FileHandler, pred keywordFilter, includeFlat 
 	)
 	// First, get all keywords.
 	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.DigiKamTagsList) != 0 {
-			all = xmp.DigiKamTagsList
-		} else if len(xmp.LRHierarchicalSubject) != 0 {
-			all = xmp.LRHierarchicalSubject
+		if len(xmp.DigiKamTagsList()) != 0 {
+			all = xmp.DigiKamTagsList()
+		} else if len(xmp.LRHierarchicalSubject()) != 0 {
+			all = xmp.LRHierarchicalSubject()
 		}
-		if len(xmp.DCSubject) != 0 {
-			flat = xmp.DCSubject
+		if len(xmp.DCSubject()) != 0 {
+			flat = xmp.DCSubject()
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil && flat == nil {
-		flat = iptc.Keywords
+		flat = iptc.Keywords()
 	}
 	for _, f := range flat {
 		flatmap[f] = true
@@ -65,19 +65,19 @@ func getFilteredKeywords(h filefmt.FileHandler, pred keywordFilter, includeFlat 
 // keywords that satisfy the specified filter.
 func getFilteredKeywordTags(h filefmt.FileHandler, pred keywordFilter) (tags []string, values []metadata.Keyword) {
 	if xmp := h.XMP(false); xmp != nil {
-		for _, kw := range xmp.DigiKamTagsList {
+		for _, kw := range xmp.DigiKamTagsList() {
 			if pred(kw) {
 				tags = append(tags, "XMP  digiKam:TagsList")
 				values = append(values, kw)
 			}
 		}
-		for _, kw := range xmp.LRHierarchicalSubject {
+		for _, kw := range xmp.LRHierarchicalSubject() {
 			if pred(kw) {
 				tags = append(tags, "XMP  lr:HirerchicalSubject")
 				values = append(values, kw)
 			}
 		}
-		for _, s := range xmp.DCSubject {
+		for _, s := range xmp.DCSubject() {
 			var kw = metadata.Keyword{s}
 			if pred(kw) {
 				tags = append(tags, "XMP  dc:subject")
@@ -86,7 +86,7 @@ func getFilteredKeywordTags(h filefmt.FileHandler, pred keywordFilter) (tags []s
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		for _, s := range iptc.Keywords {
+		for _, s := range iptc.Keywords() {
 			var kw = metadata.Keyword{s}
 			if pred(kw) {
 				tags = append(tags, "IPTC Keywords")
@@ -109,8 +109,8 @@ func checkFilteredKeywords(ref, tgt filefmt.FileHandler, pred keywordFilter) (re
 		valuemap[kw.String()] = true
 	}
 	if xmp := tgt.XMP(false); xmp != nil {
-		res = checkFilteredHierarchicalKeywords(valuemap, xmp.DigiKamTagsList, pred)
-		if r := checkFilteredHierarchicalKeywords(valuemap, xmp.LRHierarchicalSubject, pred); r < res {
+		res = checkFilteredHierarchicalKeywords(valuemap, xmp.DigiKamTagsList(), pred)
+		if r := checkFilteredHierarchicalKeywords(valuemap, xmp.LRHierarchicalSubject(), pred); r < res {
 			res = r
 		}
 	}
@@ -180,12 +180,20 @@ func setFilteredKeywords(h filefmt.FileHandler, values []metadata.Keyword, pred 
 	}
 	sort.Strings(flat)
 	if xmp := h.XMP(true); xmp != nil {
-		xmp.DigiKamTagsList = set
-		xmp.LRHierarchicalSubject = set
-		xmp.DCSubject = flat
+		if err := xmp.SetDigiKamTagsList(set); err != nil {
+			return err
+		}
+		if err := xmp.SetLRHierarchicalSubject(set); err != nil {
+			return err
+		}
+		if err := xmp.SetDCSubject(flat); err != nil {
+			return err
+		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		iptc.Keywords = flat
+		if err := iptc.SetKeywords(flat); err != nil {
+			return err
+		}
 	}
 	return nil
 }

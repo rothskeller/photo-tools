@@ -1,11 +1,16 @@
 package xmp
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/lr"
 	"trimmer.io/go-xmp/xmp"
 )
+
+// LRHierarchicalSubject returns the values of the lr:HierarchicalSubject tag.
+func (p *XMP) LRHierarchicalSubject() []metadata.Keyword { return p.lrHierarchicalSubject }
 
 func (p *XMP) getLR() {
 	var model *lr.Lightroom
@@ -17,24 +22,34 @@ func (p *XMP) getLR() {
 		return
 	}
 	for _, xkw := range model.HierarchicalSubject {
-		p.LRHierarchicalSubject = append(p.LRHierarchicalSubject, strings.Split(xkw, "|"))
+		p.lrHierarchicalSubject = append(p.lrHierarchicalSubject, strings.Split(xkw, "|"))
 	}
 }
 
-func (p *XMP) setLR() {
-	var (
-		model *lr.Lightroom
-		hs    xmp.StringArray
-		err   error
-	)
+// SetLRHierarchicalSubject sets the values of the lr:HierarchicalSubject tag.
+func (p *XMP) SetLRHierarchicalSubject(v []metadata.Keyword) (err error) {
+	var model *lr.Lightroom
+
 	if model, err = lr.MakeModel(p.doc); err != nil {
-		panic(err)
+		return fmt.Errorf("can't add lr model to XMP: %s", err)
 	}
-	for _, mkw := range p.LRHierarchicalSubject {
-		hs = append(hs, strings.Join(mkw, "|"))
+	if len(v) == len(p.lrHierarchicalSubject) {
+		mismatch := false
+		for i := range v {
+			if !v[i].Equal(p.lrHierarchicalSubject[i]) {
+				mismatch = true
+				break
+			}
+		}
+		if !mismatch {
+			return nil
+		}
 	}
-	if !stringSliceEqual(hs, model.HierarchicalSubject) {
-		model.HierarchicalSubject = hs
-		p.dirty = true
+	p.lrHierarchicalSubject = v
+	model.HierarchicalSubject = make(xmp.StringArray, len(v))
+	for i := range v {
+		model.HierarchicalSubject[i] = strings.Join(v[i], "|")
 	}
+	p.dirty = true
+	return nil
 }

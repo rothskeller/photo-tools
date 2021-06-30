@@ -78,8 +78,8 @@ func (dt *DateTime) Parse(s string) error {
 	return ErrParseDateTime
 }
 
-func (dt *DateTime) String() string {
-	if dt == nil || dt.date == "" {
+func (dt DateTime) String() string {
+	if dt.date == "" {
 		return ""
 	}
 	var sb strings.Builder
@@ -127,8 +127,8 @@ func (dt *DateTime) ParseEXIF(datetime, subsec, offset string) error {
 }
 
 // AsEXIF returns the data and time as it would be represented in EXIF metadata.
-func (dt *DateTime) AsEXIF() (datetime, subsec, offset string) {
-	if dt == nil || dt.date == "" {
+func (dt DateTime) AsEXIF() (datetime, subsec, offset string) {
+	if dt.date == "" {
 		return "", "", ""
 	}
 	datetime = strings.Replace(dt.date, "-", ":", -1) + " " + dt.time
@@ -170,8 +170,8 @@ func (dt *DateTime) ParseIPTC(date, timev string) error {
 }
 
 // AsIPTC returns the data and time as it would be represented in IPTC metadata.
-func (dt *DateTime) AsIPTC() (date, timev string) {
-	if dt == nil || dt.date == "" {
+func (dt DateTime) AsIPTC() (date, timev string) {
+	if dt.date == "" {
 		return "", ""
 	}
 	switch dt.zone {
@@ -185,12 +185,12 @@ func (dt *DateTime) AsIPTC() (date, timev string) {
 }
 
 // Empty returns whether the DateTime has a value.
-func (dt *DateTime) Empty() bool {
-	return dt == nil || dt.date == ""
+func (dt DateTime) Empty() bool {
+	return dt.date == ""
 }
 
 // Equal returns whether two DateTimes are equal.
-func (dt *DateTime) Equal(other *DateTime) bool {
+func (dt DateTime) Equal(other DateTime) bool {
 	if dt.Empty() != other.Empty() {
 		return false
 	}
@@ -202,7 +202,7 @@ func (dt *DateTime) Equal(other *DateTime) bool {
 
 // Equivalent returns whether two DateTimes are equal, to the precision of the
 // least precise of the two.
-func (dt *DateTime) Equivalent(other *DateTime) bool {
+func (dt DateTime) Equivalent(other DateTime) bool {
 	if dt.Empty() != other.Empty() {
 		return false
 	}

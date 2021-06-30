@@ -96,23 +96,23 @@ func (loc *Location) Empty() bool {
 func GetLocation(h fileHandler) Location {
 	xmp := h.XMP(false)
 	if xmp != nil {
-		if !xmp.IPTCLocationCreated.Empty() {
-			return mdLocationToSTRLocation(xmp.IPTCLocationCreated)
+		if !xmp.IPTCLocationCreated().Empty() {
+			return mdLocationToSTRLocation(xmp.IPTCLocationCreated())
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
 		var loc Location
-		loc.CountryCode = iptc.CountryPLCode
-		loc.CountryName = iptc.CountryPLName
-		loc.State = iptc.ProvinceState
-		loc.City = iptc.City
-		loc.Sublocation = iptc.Sublocation
+		loc.CountryCode = iptc.CountryPLCode()
+		loc.CountryName = iptc.CountryPLName()
+		loc.State = iptc.ProvinceState()
+		loc.City = iptc.City()
+		loc.Sublocation = iptc.Sublocation()
 		if !loc.Empty() {
 			return loc
 		}
 	}
 	if xmp != nil {
-		for _, shown := range xmp.IPTCLocationsShown {
+		for _, shown := range xmp.IPTCLocationsShown() {
 			if !shown.Empty() {
 				return mdLocationToSTRLocation(shown)
 			}
@@ -132,18 +132,18 @@ func mdLocationToSTRLocation(md metadata.Location) (str Location) {
 // GetLocationTags returns all of the location tags and their values.
 func GetLocationTags(h fileHandler) (tags []string, values []Location) {
 	if xmp := h.XMP(false); xmp != nil {
-		tags, values = mdLocationToTags(tags, values, "XMP  iptc:LocationCreated", xmp.IPTCLocationCreated, true)
-		for _, shown := range xmp.IPTCLocationsShown {
+		tags, values = mdLocationToTags(tags, values, "XMP  iptc:LocationCreated", xmp.IPTCLocationCreated(), true)
+		for _, shown := range xmp.IPTCLocationsShown() {
 			tags, values = mdLocationToTags(tags, values, "XMP  iptc:LocationShown", shown, false)
 		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
 		var loc Location
-		loc.CountryCode = iptc.CountryPLCode
-		loc.CountryName = iptc.CountryPLName
-		loc.State = iptc.ProvinceState
-		loc.City = iptc.City
-		loc.Sublocation = iptc.Sublocation
+		loc.CountryCode = iptc.CountryPLCode()
+		loc.CountryName = iptc.CountryPLName()
+		loc.State = iptc.ProvinceState()
+		loc.City = iptc.City()
+		loc.Sublocation = iptc.Sublocation()
 		tags = append(tags, "IPTC Location")
 		values = append(values, loc)
 	}
@@ -214,64 +214,64 @@ func CheckLocation(ref, h fileHandler) (res CheckResult) {
 
 	xmp := h.XMP(false)
 	if xmp != nil {
-		if !xmp.IPTCLocationCreated.Empty() {
-			if xmp.IPTCLocationCreated.CountryCode != value.CountryCode {
+		if !xmp.IPTCLocationCreated().Empty() {
+			if xmp.IPTCLocationCreated().CountryCode != value.CountryCode {
 				return ChkConflictingValues
 			}
-			switch len(xmp.IPTCLocationCreated.CountryName) {
+			switch len(xmp.IPTCLocationCreated().CountryName) {
 			case 0:
 				if value.CountryName != "" {
 					return ChkConflictingValues
 				}
 			case 1:
-				if value.CountryName != xmp.IPTCLocationCreated.CountryName[0].Value {
+				if value.CountryName != xmp.IPTCLocationCreated().CountryName[0].Value {
 					return ChkConflictingValues
 				}
 			default:
 				return ChkConflictingValues
 			}
-			switch len(xmp.IPTCLocationCreated.State) {
+			switch len(xmp.IPTCLocationCreated().State) {
 			case 0:
 				if value.State != "" {
 					return ChkConflictingValues
 				}
 			case 1:
-				if value.State != xmp.IPTCLocationCreated.State[0].Value {
+				if value.State != xmp.IPTCLocationCreated().State[0].Value {
 					return ChkConflictingValues
 				}
 			default:
 				return ChkConflictingValues
 			}
-			switch len(xmp.IPTCLocationCreated.City) {
+			switch len(xmp.IPTCLocationCreated().City) {
 			case 0:
 				if value.City != "" {
 					return ChkConflictingValues
 				}
 			case 1:
-				if value.City != xmp.IPTCLocationCreated.City[0].Value {
+				if value.City != xmp.IPTCLocationCreated().City[0].Value {
 					return ChkConflictingValues
 				}
 			default:
 				return ChkConflictingValues
 			}
-			switch len(xmp.IPTCLocationCreated.Sublocation) {
+			switch len(xmp.IPTCLocationCreated().Sublocation) {
 			case 0:
 				if value.Sublocation != "" {
 					return ChkConflictingValues
 				}
 			case 1:
-				if value.Sublocation != xmp.IPTCLocationCreated.Sublocation[0].Value {
+				if value.Sublocation != xmp.IPTCLocationCreated().Sublocation[0].Value {
 					return ChkConflictingValues
 				}
 			default:
 				return ChkConflictingValues
 			}
 		}
-		switch len(xmp.IPTCLocationsShown) {
+		switch len(xmp.IPTCLocationsShown()) {
 		case 0:
 			break
 		case 1:
-			if !xmp.IPTCLocationCreated.Equal(&xmp.IPTCLocationsShown[0]) {
+			if !xmp.IPTCLocationCreated().Equal(xmp.IPTCLocationsShown()[0]) {
 				return ChkConflictingValues
 			}
 			res = ChkIncorrectlyTagged
@@ -280,12 +280,13 @@ func CheckLocation(ref, h fileHandler) (res CheckResult) {
 		}
 	}
 	if i := h.IPTC(); i != nil {
-		if !stringEqualMax(value.CountryCode, i.CountryPLCode, iptc.MaxCountryPLCodeLen) ||
-			!stringEqualMax(value.CountryName, i.CountryPLName, iptc.MaxCountryPLNameLen) ||
-			!stringEqualMax(value.State, i.ProvinceState, iptc.MaxProvinceStateLen) ||
-			!stringEqualMax(value.City, i.City, iptc.MaxCityLen) ||
-			!stringEqualMax(value.Sublocation, i.Sublocation, iptc.MaxSublocationLen) {
-			if i.CountryPLCode != "" || i.CountryPLName != "" || i.ProvinceState != "" || i.City != "" || i.Sublocation != "" {
+		if !stringEqualMax(value.CountryCode, i.CountryPLCode(), iptc.MaxCountryPLCodeLen) ||
+			!stringEqualMax(value.CountryName, i.CountryPLName(), iptc.MaxCountryPLNameLen) ||
+			!stringEqualMax(value.State, i.ProvinceState(), iptc.MaxProvinceStateLen) ||
+			!stringEqualMax(value.City, i.City(), iptc.MaxCityLen) ||
+			!stringEqualMax(value.Sublocation, i.Sublocation(), iptc.MaxSublocationLen) {
+			if i.CountryPLCode() != "" || i.CountryPLName() != "" || i.ProvinceState() != "" || i.City() != "" ||
+				i.Sublocation() != "" {
 				return ChkConflictingValues
 			}
 			res = ChkIncorrectlyTagged
@@ -300,15 +301,29 @@ func CheckLocation(ref, h fileHandler) (res CheckResult) {
 // SetLocation sets the location tags.
 func SetLocation(h fileHandler, v Location) error {
 	if xmp := h.XMP(true); xmp != nil {
-		xmp.IPTCLocationCreated = strLocationToMDLocation(v)
-		xmp.IPTCLocationsShown = nil // Always remove unwanted tag
+		if err := xmp.SetIPTCLocationCreated(strLocationToMDLocation(v)); err != nil {
+			return err
+		}
+		if err := xmp.SetIPTCLocationsShown(nil); err != nil { // Always remove unwanted tag
+			return err
+		}
 	}
 	if iptc := h.IPTC(); iptc != nil {
-		iptc.CountryPLCode = v.CountryCode
-		iptc.CountryPLName = v.CountryName
-		iptc.ProvinceState = v.State
-		iptc.City = v.City
-		iptc.Sublocation = v.Sublocation
+		if err := iptc.SetCountryPLCode(v.CountryCode); err != nil {
+			return err
+		}
+		if err := iptc.SetCountryPLName(v.CountryName); err != nil {
+			return err
+		}
+		if err := iptc.SetProvinceState(v.State); err != nil {
+			return err
+		}
+		if err := iptc.SetCity(v.City); err != nil {
+			return err
+		}
+		if err := iptc.SetSublocation(v.Sublocation); err != nil {
+			return err
+		}
 	}
 	return nil
 }

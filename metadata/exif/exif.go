@@ -9,22 +9,14 @@ import (
 
 // EXIF is a an EXIF parser and generator.
 type EXIF struct {
-	Artist            []string
-	DateTime          metadata.DateTime
-	DateTimeDigitized metadata.DateTime
-	DateTimeOriginal  metadata.DateTime
-	ImageDescription  string
-	GPSCoords         metadata.GPSCoords
-	UserComment       string
+	artist            []string
+	dateTime          metadata.DateTime
+	dateTimeDigitized metadata.DateTime
+	dateTimeOriginal  metadata.DateTime
+	imageDescription  string
+	gpsCoords         metadata.GPSCoords
+	userComment       string
 	Problems          []string
-
-	saveArtist            []string
-	saveDateTime          metadata.DateTime
-	saveDateTimeDigitized metadata.DateTime
-	saveDateTimeOriginal  metadata.DateTime
-	saveImageDescription  string
-	saveGPSCoords         metadata.GPSCoords
-	saveUserComment       string
 
 	offset  uint32
 	buf     []byte

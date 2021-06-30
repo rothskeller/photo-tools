@@ -4,6 +4,9 @@ import (
 	"github.com/rothskeller/photo-tools/metadata/xmp/models/mp"
 )
 
+// MPRegPersonDisplayNames returns the values of the MPReg:PersonDisplayName tag.
+func (p *XMP) MPRegPersonDisplayNames() []string { return p.mpRegPersonDisplayNames }
+
 func (p *XMP) getMP() {
 	var model *mp.MPInfo
 
@@ -14,34 +17,9 @@ func (p *XMP) getMP() {
 		return
 	}
 	for _, r := range model.RegionInfo.Regions {
-		p.MPFaces = append(p.MPFaces, r.PersonDisplayName)
+		p.mpRegPersonDisplayNames = append(p.mpRegPersonDisplayNames, r.PersonDisplayName)
 	}
 }
 
-func (p *XMP) setMP() {
-	var (
-		model *mp.MPInfo
-		err   error
-	)
-	if model, err = mp.MakeModel(p.doc); err != nil {
-		panic(err)
-	}
-	j := 0
-	for _, r := range model.RegionInfo.Regions {
-		found := false
-		for _, f := range p.MPFaces {
-			if f == r.PersonDisplayName {
-				found = true
-				break
-			}
-		}
-		if found {
-			model.RegionInfo.Regions[j] = r
-			j++
-		}
-	}
-	if j < len(model.RegionInfo.Regions) {
-		model.RegionInfo.Regions = model.RegionInfo.Regions[:j]
-		p.dirty = true
-	}
-}
+// Note that there is no SetMPRegPersonDisplayNames, because this library can't
+// change those tags.

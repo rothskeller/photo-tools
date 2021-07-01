@@ -58,13 +58,13 @@ func (op *copyOp) Run(files []MediaFile) error {
 	for idx, field := range op.fields {
 		values[idx] = field.GetValues(files[0].Handler)
 	}
-	for _, file := range files[1:] {
+	for i, file := range files[1:] {
 		for idx, field := range op.fields {
 			if err := field.SetValues(file.Handler, values[idx]); err != nil {
 				return fmt.Errorf("%s: copy %s: %s", file.Path, field.PluralName(), err)
 			}
 		}
-		file.Changed = true
+		files[i].Changed = true
 	}
 	return nil
 }

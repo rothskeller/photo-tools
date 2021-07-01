@@ -33,11 +33,11 @@ func (op *setOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *setOp) Run(files []MediaFile) error {
-	for _, file := range files {
+	for i, file := range files {
 		if err := op.field.SetValues(file.Handler, []interface{}{op.value}); err != nil {
 			return fmt.Errorf("%s: clear %s: %s", file.Path, op.field.PluralName(), err)
 		}
-		file.Changed = true
+		files[i].Changed = true
 	}
 	return nil
 }

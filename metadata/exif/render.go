@@ -144,7 +144,7 @@ func (p *EXIF) renderIFD(ifd *ifdt, base uint32) (out []byte, exifIFDPtr, gpsIFD
 		}
 		iop += 12
 	}
-	return out, exifIFDPtr, exifIFDPtr
+	return out, exifIFDPtr, gpsIFDPtr
 }
 
 // consumeRange finds the smallest range that will contain the desired size, and
@@ -257,14 +257,14 @@ func (p *EXIF) setASCIITag(ifd *ifdt, tnum uint16, val string) {
 func (p *EXIF) setRationalTag(ifd *ifdt, tnum uint16, val []uint32) {
 	tag := ifd.findTag(tnum)
 	if tag == nil {
-		tag = &tagt{tag: tnum, ttype: 2, count: 0, data: nil}
+		tag = &tagt{tag: tnum, ttype: 5, count: 0, data: nil}
 		p.addTag(ifd, tag)
 	}
 	tag.data = make([]byte, len(val)*4)
 	for i := range val {
 		p.enc.PutUint32(tag.data[i*4:], val[i])
 	}
-	tag.count = uint32(len(val))
+	tag.count = uint32(len(val) / 2)
 	ifd.dirty = true
 }
 

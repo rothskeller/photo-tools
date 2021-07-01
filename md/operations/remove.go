@@ -28,7 +28,7 @@ func (op *removeOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *removeOp) Run(files []MediaFile) error {
-	for _, file := range files {
+	for i, file := range files {
 		// Get the current values.
 		values := op.field.GetValues(file.Handler)
 		// Remove the one we were asked to remove.
@@ -44,7 +44,7 @@ func (op *removeOp) Run(files []MediaFile) error {
 			if err := op.field.SetValues(file.Handler, values[:j]); err != nil {
 				return fmt.Errorf("%s: remove %s: %s", file.Path, op.field.Name(), err)
 			}
-			file.Changed = true
+			files[i].Changed = true
 		}
 	}
 	return nil

@@ -20,7 +20,6 @@ func init() {
 }
 
 func NewModel(name string) xmp.Model {
-	println(name)
 	return &MPInfo{}
 }
 

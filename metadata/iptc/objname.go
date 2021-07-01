@@ -10,7 +10,7 @@ const MaxObjectNameLen = 64
 const idObjectName uint16 = 0x0205
 
 // ObjectName returns the value of the Object Name tag.
-func (p *IPTC) ObjectName() string { return p.ObjectName() }
+func (p *IPTC) ObjectName() string { return p.objectName }
 
 func (p *IPTC) getObjectName() {
 	if dset := p.findDSet(idObjectName); dset != nil {

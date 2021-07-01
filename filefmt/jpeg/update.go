@@ -56,12 +56,19 @@ func (h *JPEG) SaveMetadata() (err error) {
 		switch s.marker {
 		case 0xD8: // SOI
 			if err = writeSegment(out, s); err == nil {
+				for _, s := range h.jfif {
+					if err == nil {
+						err = writeSegment(out, &s)
+					}
+				}
 				if err = writeEXIFSegment(out, h.exif); err == nil {
 					if err = writeXMPSegment(out, h.xmp); err == nil {
 						err = writeIPTCSegment(out, h.iptc)
 					}
 				}
 			}
+		case 0xE0:
+			err = maybeWriteAPP0Segment(out, s)
 		case 0xE1:
 			err = maybeWriteAPP1Segment(out, s)
 		case 0xED:
@@ -236,6 +243,15 @@ func writeIPTCSegment(out io.Writer, i *iptc.IPTC) (err error) {
 	}
 	_, err = out.Write(buf)
 	return err
+}
+
+func maybeWriteAPP0Segment(out io.Writer, s *segment) (err error) {
+	if s.size >= 5 && bytes.HasPrefix(s.buf, []byte("JFIF\000")) {
+		return nil
+	} else if s.size >= 5 && bytes.HasPrefix(s.buf, []byte("JFXX\000")) {
+		return nil
+	}
+	return writeSegment(out, s)
 }
 
 func maybeWriteAPP1Segment(out io.Writer, s *segment) (err error) {

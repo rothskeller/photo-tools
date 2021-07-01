@@ -18,6 +18,7 @@ func NewHandler(path string) (h *JPEG) {
 // JPEG is a JPEG file handler.
 type JPEG struct {
 	path     string
+	jfif     []segment
 	exif     *exif.EXIF
 	iptc     *iptc.IPTC
 	xmp      *xmp.XMP

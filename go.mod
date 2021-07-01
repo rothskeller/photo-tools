@@ -3,6 +3,7 @@ module github.com/rothskeller/photo-tools
 go 1.14
 
 require (
+	github.com/beevik/etree v1.1.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	golang.org/x/image v0.0.0-20200618115811-c13761719519

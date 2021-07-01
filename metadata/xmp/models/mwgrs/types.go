@@ -16,7 +16,8 @@ func (x *RegionList) UnmarshalXMP(d *xmp.Decoder, n *xmp.Node, model xmp.Model) 
 }
 
 type RegionStruct struct {
-	Type string `xmp:"mwg-rs:Type"`
-	Name string `xmp:"mwg-rs:Name"`
-	Area string `xmp:"mwg-rs:Area,omit"`
+	Type     string `xmp:"mwg-rs:Type"`
+	Name     string `xmp:"mwg-rs:Name"`
+	Area     string `xmp:"mwg-rs:Area,omit"`
+	Rotation string `xmp:"mwg-rs:Rotation,omit"`
 }

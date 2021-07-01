@@ -67,6 +67,7 @@ func (p *EXIF) SetUserComment(v string) error {
 	if v == p.userComment {
 		return nil
 	}
+	p.userComment = v
 	if p.exifIFD == nil && p.userComment != "" {
 		p.addEXIFIFD()
 	}

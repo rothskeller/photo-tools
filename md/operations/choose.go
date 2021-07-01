@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/rothskeller/photo-tools/md/fields"
@@ -29,9 +30,6 @@ func (op *chooseOp) parseArgs(args []string) (remainingArgs []string, err error)
 	if op.field = fields.ParseField(args[0]); op.field == nil {
 		return nil, errors.New("choose: missing field name")
 	}
-	if op.field.Multivalued() {
-		return nil, fmt.Errorf("choose: not supported for %q", op.field.Name())
-	}
 	return args[1:], nil
 }
 
@@ -44,7 +42,6 @@ func (op *chooseOp) Check(batches [][]MediaFile) error { return nil }
 func (op *chooseOp) Run(files []MediaFile) error {
 	var (
 		values []interface{}
-		newv   interface{}
 		newvs  []interface{}
 		scan   *bufio.Scanner
 		line   string
@@ -54,8 +51,8 @@ func (op *chooseOp) Run(files []MediaFile) error {
 	fmt.Fprintln(tw, "#\tFILE\tTAG\tVALUE")
 	for _, file := range files {
 		tagNames, tagValues := op.field.GetTags(file.Handler)
-		values = append(values, tagValues...)
 		for i, tag := range tagNames {
+			values = append(values, tagValues[i])
 			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.Path, tag, escapeString(op.field.RenderValue(tagValues[i])))
 		}
 		if len(tagNames) == 0 {
@@ -77,29 +74,61 @@ RETRY:
 	if line = scan.Text(); line == "" {
 		return nil
 	}
-	// Parse the response.  Is it a line number?
-	if lnum, err := strconv.Atoi(line); err == nil {
-		if lnum == 0 {
-			newvs = nil
-		} else if lnum > 0 && lnum <= len(values) {
-			newvs = []interface{}{values[lnum-1]}
-		} else {
-			fmt.Printf("ERROR: no such line %s.\n", line)
-			goto RETRY
+	// Parse the response.  Is it a line number list?
+	if nums, showedErr := parseLineNumberSet(line, len(values)); showedErr {
+		goto RETRY
+	} else if len(nums) == 1 && nums[0] == 0 {
+		newvs = nil
+	} else if len(nums) != 0 {
+		newvs = make([]interface{}, len(nums))
+		for i := range nums {
+			newvs[i] = values[nums[i]-1]
 		}
-	} else { // Not a line number; is it a valid value for the field?
-		if newv, err = op.field.ParseValue(line); err != nil {
+	} else { // Not a line number list; is it a valid value for the field?
+		if newv, err := op.field.ParseValue(line); err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			goto RETRY
+		} else {
+			newvs = []interface{}{newv}
 		}
-		newvs = []interface{}{newv}
 	}
-	// Set this value on all files in the batch.
-	for _, file := range files {
+	// Set these value(s) on all files in the batch.
+	for i, file := range files {
 		if err := op.field.SetValues(file.Handler, newvs); err != nil {
 			return fmt.Errorf("%s: choose %s: %s", file.Path, op.field.Name(), err)
 		}
-		file.Changed = true
+		files[i].Changed = true
 	}
 	return nil
+}
+
+func parseLineNumberSet(s string, max int) (nums []int, showedError bool) {
+	var (
+		err   error
+		seen  = make(map[int]bool)
+		parts = strings.Fields(s)
+	)
+	nums = make([]int, len(parts))
+	for i := range parts {
+		if nums[i], err = strconv.Atoi(parts[i]); err != nil {
+			return nil, false
+		}
+		if nums[i] < 0 {
+			return nil, false
+		}
+		if nums[i] == 0 && i != 0 {
+			fmt.Println("ERROR: 0 must appear alone, not with other line numbers")
+			return nil, true
+		}
+		if nums[i] > max {
+			fmt.Printf("ERROR: no such line number %d\n", nums[i])
+			return nil, true
+		}
+		if seen[nums[i]] {
+			fmt.Printf("ERROR: line number %d repeated\n", nums[i])
+			return nil, true
+		}
+		seen[nums[i]] = true
+	}
+	return nums, false
 }

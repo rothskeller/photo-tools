@@ -209,10 +209,7 @@ func (dt DateTime) Equivalent(other DateTime) bool {
 	if dt.Empty() {
 		return true
 	}
-	if dt.date != other.date || dt.time != other.time {
-		return false
-	}
-	if dt.zone != "" && other.zone != "" && dt.zone != other.zone {
+	if dt.date != other.date || dt.time != other.time || dt.zone != other.zone {
 		return false
 	}
 	if dt.subsec != "" && other.subsec != "" && dt.subsec != other.subsec {

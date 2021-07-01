@@ -30,7 +30,7 @@ func (op *addOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *addOp) Run(files []MediaFile) error {
-	for _, file := range files {
+	for i, file := range files {
 		// Get the current values.
 		values := op.field.GetValues(file.Handler)
 		// Find out whether the value we're adding is already there.
@@ -47,7 +47,7 @@ func (op *addOp) Run(files []MediaFile) error {
 			if err := op.field.SetValues(file.Handler, values); err != nil {
 				return fmt.Errorf("%s: add %s: %s", file.Path, op.field.Name(), err)
 			}
-			file.Changed = true
+			files[i].Changed = true
 		}
 	}
 	return nil

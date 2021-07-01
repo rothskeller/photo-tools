@@ -43,13 +43,13 @@ func (op *resetOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *resetOp) Run(files []MediaFile) error {
-	for _, file := range files {
+	for i, file := range files {
 		for _, field := range op.fields {
 			values := field.GetValues(file.Handler)
 			if err := field.SetValues(file.Handler, values); err != nil {
 				return fmt.Errorf("%s: reset %s: %s", file.Path, field.PluralName(), err)
 			}
-			file.Changed = true
+			files[i].Changed = true
 		}
 	}
 	return nil

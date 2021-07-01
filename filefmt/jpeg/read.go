@@ -60,6 +60,12 @@ func (h *JPEG) ReadMetadata() {
 			return
 		}
 		switch marker {
+		case 0xE0: // APP0 segment, with JFIF or JFXX metadata
+			if len(buf) >= 5 && bytes.HasPrefix(buf, []byte("JFIF\000")) {
+				h.jfif = append(h.jfif, segment{marker: marker, size: size, buf: buf})
+			} else if len(buf) >= 5 && bytes.HasPrefix(buf, []byte("JFXX\000")) {
+				h.jfif = append(h.jfif, segment{marker: marker, size: size, buf: buf})
+			}
 		case 0xE1: // APP1 segment, with EXIF or XMP metadata
 			if len(buf) >= 6 && bytes.HasPrefix(buf, []byte("Exif\000\000")) {
 				h.exif = exif.Parse(buf[6:], uint32(mstart+6))

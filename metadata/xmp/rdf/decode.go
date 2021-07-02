@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
-	"github.com/davecgh/go-spew/spew"
 )
 
 // Constants for namespace URIs.
@@ -35,7 +34,6 @@ func ReadPacket(buf []byte) (p *Packet, err error) {
 	p = NewPacket()
 	doc = etree.NewDocument()
 	if err = doc.ReadFromBytes(buf); err != nil {
-		spew.Dump(buf)
 		return nil, err
 	}
 	if root, err = simplifyElement(doc.Root(), nsuris, p.nsprefixes); err != nil {
@@ -198,7 +196,7 @@ func (p *Packet) readURIValueElm(elm *element, value *Value) (err error) {
 	if len(elm.children) != 0 {
 		return fmt.Errorf("%s: element with rdf:resource attribute cannot have content", elm.path())
 	}
-	value.Value = uri
+	value.Value = URI(uri)
 	return nil
 }
 
@@ -295,7 +293,7 @@ func (p *Packet) readPTResourceValueElm(elm *element, value *Value) (err error) 
 // an rdf:value attribute or an rdf:value child element).
 func (p *Packet) readQualifiedValueElm(elm *element, value *Value) (err error) {
 	if val, ok := elm.attrs[Name{NSrdf, "value"}]; ok {
-		value.Value = Value{Value: val}
+		value.Value = val
 	} else {
 		for _, child := range elm.children {
 			if child.name.is(NSrdf, "value") {

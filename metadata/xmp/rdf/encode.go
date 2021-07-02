@@ -22,7 +22,6 @@ func (p *Packet) Render() (out []byte, err error) {
 	desc := p.renderStruct(root, p.Properties, true)
 	desc.CreateAttr("rdf:about", p.about)
 	doc.CreateProcInst("xpacket", `end="w"`)
-	doc.Indent(2)
 	if out, err = doc.WriteToBytes(); err != nil {
 		return nil, err
 	}
@@ -37,6 +36,7 @@ func (p *Packet) renderNamespaces(root *etree.Element) error {
 	if err := p.renderNamespacesStruct(p.Properties, nsuris); err != nil {
 		return err
 	}
+	delete(nsuris, "xml") // shouldn't emit an xmlns for it
 	var prefixes = make([]string, 0, len(nsuris))
 	for prefix := range nsuris {
 		prefixes = append(prefixes, prefix)
@@ -125,15 +125,23 @@ func (p *Packet) renderStruct(elm *etree.Element, str Struct, forceDesc bool) *e
 }
 
 func (p *Packet) renderValue(elm *etree.Element, name Name, value Value, canAttr bool) {
-	if len(value.Qualifiers) == 0 && canAttr {
+	var quals = value.Qualifiers
+
+	if len(quals) == 0 && canAttr {
 		if value, ok := value.Value.(string); ok {
 			elm.CreateAttr(p.prefixedName(name), value)
 			return
 		}
 	}
 	elm = elm.CreateElement(p.prefixedName(name))
-	if len(value.Qualifiers) != 0 {
-		p.renderStruct(elm, value.Qualifiers, false)
+	if langv, ok := quals[Name{NSxml, "lang"}]; ok && len(quals) == 1 {
+		if lang, ok := langv.Value.(string); ok {
+			elm.CreateAttr("xml:lang", lang)
+			quals = nil
+		}
+	}
+	if len(quals) != 0 {
+		p.renderStruct(elm, quals, false)
 		p.renderValue(elm, Name{NSrdf, "value"}, Value{Value: value.Value}, true)
 		return
 	}

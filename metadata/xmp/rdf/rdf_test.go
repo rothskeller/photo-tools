@@ -2,8 +2,6 @@ package rdf
 
 import (
 	"testing"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func Test1(t *testing.T) {
@@ -15,6 +13,10 @@ func Test1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	spew.Dump(p)
+	by, err := p.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	println(string(by))
 	t.Fatal("success")
 }

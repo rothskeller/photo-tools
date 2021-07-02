@@ -6,7 +6,7 @@ import "fmt"
 
 // A Packet represents the entire RDF packet.
 type Packet struct {
-	properties Struct
+	Properties Struct
 	nsprefixes map[string]string
 	about      string
 }
@@ -47,6 +47,11 @@ type Alt []Value
 
 // A Struct is an unordered set of name/value pairs.
 type Struct map[Name]Value
+
+// RegisterNamespace sets the namespace prefix to use for the specified URI.
+func (p *Packet) RegisterNamespace(prefix, uri string) {
+	p.nsprefixes[uri] = prefix
+}
 
 func (n Name) String() string {
 	return fmt.Sprintf("[%s]%s", n.Namespace, n.Name)

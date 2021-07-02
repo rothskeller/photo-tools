@@ -2,11 +2,10 @@
 package xmp
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/rothskeller/photo-tools/metadata"
-	"trimmer.io/go-xmp/xmp"
+	"github.com/rothskeller/photo-tools/metadata/xmp/rdf"
 )
 
 // XMP is a an XMP parser and generator.
@@ -34,7 +33,7 @@ type XMP struct {
 	xmpModifyDate           metadata.DateTime
 	Problems                []string
 
-	doc   *xmp.Document
+	rdf   *rdf.Packet
 	dirty bool
 }
 
@@ -42,7 +41,7 @@ type XMP struct {
 // doesn't already have one.
 func New() (p *XMP) {
 	p = new(XMP)
-	p.doc = xmp.NewDocument()
+	p.rdf = rdf.NewPacket()
 	p.dirty = true
 	return p
 }
@@ -52,9 +51,14 @@ func Parse(buf []byte) (p *XMP) {
 	var err error
 
 	p = new(XMP)
-	if p.doc, err = xmp.Read(bytes.NewReader(buf)); err != nil {
+	// I have found that some XMP blocks are null-terminated, for no
+	// obvious reason.  The XML parser doesn't like that.
+	for len(buf) != 0 && buf[len(buf)-1] == 0 {
+		buf = buf[:len(buf)-1]
+	}
+	if p.rdf, err = rdf.ReadPacket(buf); err != nil {
 		p.log("XMP parse error: %s", err)
-		p.doc = nil // just to be sure
+		return p
 	}
 	p.getDC()
 	p.getDigiKam()
@@ -70,8 +74,12 @@ func Parse(buf []byte) (p *XMP) {
 }
 
 // RemoveNamespace removes an entire XML namespace from the XMP block.
-func (p *XMP) RemoveNamespace(label, uri string) {
-	p.doc.RemoveNamespace(xmp.NewNamespace(label, uri, nil))
+func (p *XMP) RemoveNamespace(_, uri string) {
+	for name := range p.rdf.Properties {
+		if name.Namespace == uri {
+			delete(p.rdf.Properties, name)
+		}
+	}
 }
 
 // Dirty returns whether the XMP data have changed and need to be saved.
@@ -84,15 +92,14 @@ func (p *XMP) Dirty() bool {
 
 // Render renders and returns the encoded XMP block, reflecting the data that
 // was read, as subsequently modified by any SetXXX calls.
-func (p *XMP) Render() ([]byte, error) {
-	var buf bytes.Buffer
+func (p *XMP) Render() (buf []byte, err error) {
 	if len(p.Problems) != 0 {
 		panic("XMP Render with parse problems")
 	}
-	if err := xmp.NewEncoder(&buf).Encode(p.doc); err != nil {
-		return nil, fmt.Errorf("XMP.Encode: %s", err)
+	if buf, err = p.rdf.Render(); err != nil {
+		return nil, fmt.Errorf("XMP.Render: %s", err)
 	}
-	return buf.Bytes(), nil
+	return buf, nil
 }
 
 func (p *XMP) log(f string, args ...interface{}) {

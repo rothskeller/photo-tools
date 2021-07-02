@@ -1,12 +1,11 @@
 package xmp
 
 import (
-	"fmt"
-
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/xmp/models/tiff"
-	"trimmer.io/go-xmp/xmp"
 )
+
+const nsTIFF = "http://ns.adobe.com/tiff/1.0/"
+const pfxTIFF = "tiff"
 
 // TIFFArtist returns the value of the tiff:Artist tag.
 func (p *XMP) TIFFArtist() string { return p.tiffArtist }
@@ -18,63 +17,37 @@ func (p *XMP) TIFFDateTime() metadata.DateTime { return p.tiffDateTime }
 func (p *XMP) TIFFImageDescription() metadata.AltString { return p.tiffImageDescription }
 
 func (p *XMP) getTIFF() {
-	var model *tiff.TiffInfo
-
-	if p != nil && p.doc != nil {
-		model = tiff.FindModel(p.doc)
-	}
-	if model == nil {
-		return
-	}
-	p.tiffArtist = model.Artist
-	p.xmpDateTimeToMetadata(model.DateTime, &p.tiffDateTime)
-	p.tiffImageDescription = model.ImageDescription
+	p.tiffArtist = p.getString(p.rdf.Properties, pfxTIFF, nsTIFF, "Artist")
+	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxTIFF, nsTIFF, "DateTime"), &p.tiffDateTime)
+	p.tiffImageDescription = p.getAlt(p.rdf.Properties, pfxTIFF, nsTIFF, "ImageDescription")
 }
 
 // SetTIFFArtist sets the value of the tiff:Artist tag.
 func (p *XMP) SetTIFFArtist(v string) (err error) {
-	var model *tiff.TiffInfo
-
-	if model, err = tiff.MakeModel(p.doc); err != nil {
-		return fmt.Errorf("can't add tiff model to XMP: %s", err)
-	}
 	if v == p.tiffArtist {
 		return nil
 	}
 	p.tiffArtist = v
-	model.Artist = v
-	p.dirty = true
+	p.setString(p.rdf.Properties, nsTIFF, "Artist", v)
 	return nil
 }
 
 // SetTIFFDateTime sets the value of the tiff:DateTime tag.
 func (p *XMP) SetTIFFDateTime(v metadata.DateTime) (err error) {
-	var model *tiff.TiffInfo
-
-	if model, err = tiff.MakeModel(p.doc); err != nil {
-		return fmt.Errorf("can't add tiff model to XMP: %s", err)
-	}
 	if v.Equivalent(p.tiffDateTime) {
 		return nil
 	}
 	p.tiffDateTime = v
-	model.DateTime = v.String()
-	p.dirty = true
+	p.setString(p.rdf.Properties, nsTIFF, "DateTime", v.String())
 	return nil
 }
 
 // SetTIFFImageDescription sets the value of the tiff:ImageDescription tag.
-func (p *XMP) SetTIFFImageDescription(v xmp.AltString) (err error) {
-	var model *tiff.TiffInfo
-
-	if model, err = tiff.MakeModel(p.doc); err != nil {
-		return fmt.Errorf("can't add tiff model to XMP: %s", err)
-	}
-	if metadata.EqualAltStrings(v, p.tiffImageDescription) {
+func (p *XMP) SetTIFFImageDescription(v metadata.AltString) (err error) {
+	if v.Equal(p.tiffImageDescription) {
 		return nil
 	}
 	p.tiffImageDescription = v
-	model.ImageDescription = v
-	p.dirty = true
+	p.setAlt(p.rdf.Properties, nsTIFF, "ImageDescription", v)
 	return nil
 }

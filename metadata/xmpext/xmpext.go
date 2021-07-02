@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"trimmer.io/go-xmp/xmp"
+	"github.com/rothskeller/photo-tools/metadata/xmp/rdf"
 )
 
 // XMPExt is a pseudo-tracker for XMP extension segments in JPEG files.
@@ -57,27 +57,31 @@ func (h *XMPExt) Parse(buf []byte) *XMPExt {
 // in it.
 func (h *XMPExt) Check() {
 	var (
-		doc *xmp.Document
-		ns  xmp.NamespaceList
+		p   *rdf.Packet
 		err error
 	)
 	if h == nil || len(h.Problems) != 0 {
 		return
 	}
-	if doc, err = xmp.Read(bytes.NewReader(h.buf)); err != nil {
+	if p, err = rdf.ReadPacket(h.buf); err != nil {
 		h.Problems = append(h.Problems, "XMPExt: "+err.Error())
 		return
 	}
-	ns = doc.Namespaces()
-	if ns.ContainsName("dc") ||
-		ns.ContainsName("digiKam") ||
-		ns.ContainsName("exif") ||
-		ns.ContainsName("IptcxmpExt") ||
-		ns.ContainsName("lr") ||
-		ns.ContainsName("photoshop") ||
-		ns.ContainsName("tiff") ||
-		ns.ContainsName("xmp") {
-		h.Problems = append(h.Problems, "XMPExt: unsupported extension (contains namespaces that should be in main XMP)")
-	}
 	h.buf = nil // free the space, we're done with it
+	for name := range p.Properties {
+		switch name.Namespace {
+		case "http://purl.org/dc/elements/1.1/",
+			"http://www.digikam.org/ns/1.0/",
+			"http://ns.adobe.com/exif/1.0/",
+			"http://iptc.org/std/Iptc4xmpExt/2008-02-29/",
+			"http://ns.adobe.com/lightroom/1.0/",
+			"http://ns.microsoft.com/photo/1.2/",
+			"http://www.metadataworkinggroup.com/schemas/regions/",
+			"http://ns.adobe.com/photoshop/1.0/",
+			"http://ns.adobe.com/tiff/1.0/",
+			"http://ns.adobe.com/xap/1.0/":
+			h.Problems = append(h.Problems, "XMPExt: unsupported extension (contains namespaces that should be in main XMP)")
+			return
+		}
+	}
 }

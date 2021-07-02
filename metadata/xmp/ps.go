@@ -1,39 +1,25 @@
 package xmp
 
 import (
-	"fmt"
-
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/xmp/models/ps"
 )
+
+const nsPS = "http://ns.adobe.com/photoshop/1.0/"
+const pfxPS = "photoshop"
 
 // PSDateCreated returns the value of the photoshop:DateCreated tag.
 func (p *XMP) PSDateCreated() metadata.DateTime { return p.psDateCreated }
 
 func (p *XMP) getPS() {
-	var model *ps.PhotoshopInfo
-
-	if p != nil && p.doc != nil {
-		model = ps.FindModel(p.doc)
-	}
-	if model == nil {
-		return
-	}
-	p.xmpDateTimeToMetadata(model.DateCreated, &p.psDateCreated)
+	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxPS, nsPS, "DateCreated"), &p.psDateCreated)
 }
 
 // SetPSDateCreated sets the value of the photoshop:DateCreated tag.
 func (p *XMP) SetPSDateCreated(v metadata.DateTime) (err error) {
-	var model *ps.PhotoshopInfo
-
-	if model, err = ps.MakeModel(p.doc); err != nil {
-		return fmt.Errorf("can't add photoshop model to XMP: %s", err)
-	}
 	if v.Equivalent(p.psDateCreated) {
 		return nil
 	}
 	p.psDateCreated = v
-	model.DateCreated = v.String()
-	p.dirty = true
+	p.setString(p.rdf.Properties, nsPS, "DateCreated", v.String())
 	return nil
 }

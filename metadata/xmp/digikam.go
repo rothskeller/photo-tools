@@ -1,47 +1,34 @@
 package xmp
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/xmp/models/digikam"
-	"trimmer.io/go-xmp/xmp"
 )
+
+const nsDigiKam = "http://www.digikam.org/ns/1.0/"
 
 // DigiKamTagsList returns the values of the digiKam:TagsList tag.
 func (p *XMP) DigiKamTagsList() []metadata.Keyword { return p.digiKamTagsList }
 
 func (p *XMP) getDigiKam() {
-	var model *digikam.DigiKam
-
-	if p != nil && p.doc != nil {
-		model = digikam.FindModel(p.doc)
-	}
-	if model == nil || len(model.TagsList) == 0 {
-		return
-	}
-	for _, xkw := range model.TagsList {
+	var list = p.getStrings(p.rdf.Properties, "digiKam", nsDigiKam, "TagsList")
+	for _, xkw := range list {
 		p.digiKamTagsList = append(p.digiKamTagsList, strings.Split(xkw, "/"))
 	}
 }
 
 // SetDigiKamTagsList sets the values of the digiKam:TagsList tag.
 func (p *XMP) SetDigiKamTagsList(v []metadata.Keyword) error {
-	var (
-		model *digikam.DigiKam
-		tags  xmp.StringList
-		err   error
-	)
-	if model, err = digikam.MakeModel(p.doc); err != nil {
-		return fmt.Errorf("can't add digiKam model to XMP: %s", err)
-	}
+	var tags, old []string
+
+	old = p.getStrings(p.rdf.Properties, "digiKam", nsDigiKam, "TagsList")
 	for _, mkw := range v {
 		tags = append(tags, strings.Join(mkw, "/"))
 	}
-	if !stringSliceEqual(tags, model.TagsList) {
+	if !stringSliceEqual(tags, old) {
 		p.digiKamTagsList = v
-		model.TagsList = tags
+		p.setSeq(p.rdf.Properties, nsDigiKam, "TagsList", tags)
 		p.dirty = true
 	}
 	return nil

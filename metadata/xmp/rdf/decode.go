@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Constants for namespace URIs.
@@ -18,7 +19,7 @@ const (
 // NewPacket creates a new, empty RDF packet.
 func NewPacket() *Packet {
 	return &Packet{
-		properties: make(Struct),
+		Properties: make(Struct),
 		nsprefixes: map[string]string{NSxml: "xml"},
 	}
 }
@@ -34,6 +35,7 @@ func ReadPacket(buf []byte) (p *Packet, err error) {
 	p = NewPacket()
 	doc = etree.NewDocument()
 	if err = doc.ReadFromBytes(buf); err != nil {
+		spew.Dump(buf)
 		return nil, err
 	}
 	if root, err = simplifyElement(doc.Root(), nsuris, p.nsprefixes); err != nil {
@@ -91,10 +93,10 @@ func (p *Packet) readPropertyDescription(elm *element) (err error) {
 		if key.Namespace == NSrdf || key.Namespace == NSxml {
 			return fmt.Errorf("%s: unexpected attribute %s", elm.path(), key)
 		}
-		if _, ok := p.properties[key]; ok {
+		if _, ok := p.Properties[key]; ok {
 			return fmt.Errorf("multiple values for %s", key)
 		}
-		p.properties[key] = Value{Value: val}
+		p.Properties[key] = Value{Value: val}
 	}
 	for _, child := range elm.children {
 		if err = p.readProperty(child); err != nil {
@@ -110,14 +112,14 @@ func (p *Packet) readProperty(elm *element) (err error) {
 	if elm.name.Namespace == NSrdf || elm.name.Namespace == NSxml {
 		return fmt.Errorf("%s: unexpected element", elm.path())
 	}
-	if _, ok := p.properties[elm.name]; ok {
+	if _, ok := p.Properties[elm.name]; ok {
 		return fmt.Errorf("multiple values for %s", elm.path())
 	}
 	var value Value
 	if err = p.readValueElm(elm, &value); err != nil {
 		return err
 	}
-	p.properties[elm.name] = value
+	p.Properties[elm.name] = value
 	return nil
 }
 
@@ -260,6 +262,7 @@ func (p *Packet) readDescribedValueElm(elm *element, value *Value) (err error) {
 	if len(elm.children) != 1 || !elm.children[0].name.is(NSrdf, "Description") {
 		return nil
 	}
+	desc = elm.children[0]
 	// Don't need to check elm.text; that was done by readTextValueElm.
 	if len(elm.attrs) != 0 {
 		return fmt.Errorf("%s: element cannot have attributes", elm.path())

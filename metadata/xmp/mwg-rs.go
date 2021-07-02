@@ -1,26 +1,111 @@
 package xmp
 
 import (
-	"github.com/rothskeller/photo-tools/metadata/xmp/models/mwgrs"
+	"errors"
+
+	"github.com/rothskeller/photo-tools/metadata/xmp/rdf"
 )
+
+const nsMWGRS = "http://www.metadataworkinggroup.com/schemas/regions/"
+const pfxMWGRS = "mwg-rs"
 
 // MWGRSNames returns the values of the mwg-rs:Name tags for face regions.
 func (p *XMP) MWGRSNames() []string { return p.mwgrsNames }
 
 func (p *XMP) getMWGRS() {
-	var model *mwgrs.MWGRegions
-
-	if p != nil && p.doc != nil {
-		model = mwgrs.FindModel(p.doc)
-	}
-	if model == nil {
-		return
-	}
-	for _, r := range model.Regions.RegionList {
-		if r.Type == "Face" && r.Name != "" {
-			p.mwgrsNames = append(p.mwgrsNames, r.Name)
+	if val, ok := p.rdf.Properties[rdf.Name{Namespace: nsMWGRS, Name: "Regions"}]; ok {
+		switch val := val.Value.(type) {
+		case rdf.Struct:
+			if bag, ok := val[rdf.Name{Namespace: nsMWGRS, Name: "RegionList"}]; ok {
+				switch bag := bag.Value.(type) {
+				case rdf.Bag:
+					p.mwgrsNames = make([]string, 0, len(bag))
+					for _, reg := range bag {
+						switch reg := reg.Value.(type) {
+						case rdf.Struct:
+							if typ, ok := reg[rdf.Name{Namespace: nsMWGRS, Name: "Type"}]; ok {
+								switch typ := typ.Value.(type) {
+								case string:
+									if typ != "Face" {
+										continue
+									}
+								default:
+									p.log("mwg-rs:Type has wrong data type")
+								}
+							}
+							if name, ok := reg[rdf.Name{Namespace: nsMWGRS, Name: "Name"}]; ok {
+								switch name := name.Value.(type) {
+								case string:
+									p.mwgrsNames = append(p.mwgrsNames, name)
+								default:
+									p.log("mwg-rs:Name has wrong data type")
+								}
+							}
+						default:
+							p.log("mwg-rs:RegionList has wrong data type")
+						}
+					}
+				default:
+					p.log("mwg-rs:RegionList has wrong data type")
+				}
+			}
+		default:
+			p.log("mwg-rs:Regions has wrong data type")
 		}
 	}
 }
 
-// Note: there is no SetMWGRSNames, because this library cannot set those tags.
+// SetMWGRSNames sets the values of the mwg-rs:Name tag.  Note however, that it
+// cannot add any tags (because it doesn't have the information to do so
+// completely); it can only remove them.
+func (p *XMP) SetMWGRSNames(v []string) (err error) {
+	var (
+		bag       rdf.Bag
+		nextInBag int
+		nextInV   int
+	)
+	if val, ok := p.rdf.Properties[rdf.Name{Namespace: nsMWGRS, Name: "Regions"}]; ok {
+		switch val := val.Value.(type) {
+		case rdf.Struct:
+			if val, ok := val[rdf.Name{Namespace: nsMWGRS, Name: "RegionList"}]; ok {
+				switch val := val.Value.(type) {
+				case rdf.Bag:
+					bag = val
+				}
+			}
+		}
+	}
+	if len(bag) == 0 && len(v) == 0 {
+		return nil
+	}
+	if len(bag) == 0 {
+		goto NOADD
+	}
+	if len(v) == 0 {
+		delete(p.rdf.Properties, rdf.Name{Namespace: nsMWGRS, Name: "Regions"})
+		p.dirty = true
+		return nil
+	}
+	for _, oldv := range bag {
+		if t, ok := oldv.Value.(rdf.Struct)[rdf.Name{Namespace: nsMWGRS, Name: "Type"}]; !ok || t.Value.(string) != "Face" {
+			bag[nextInBag] = oldv
+			nextInBag++
+		} else if n, ok := oldv.Value.(rdf.Struct)[rdf.Name{Namespace: nsMWGRS, Name: "Name"}]; ok {
+			if oname := n.Value.(string); oname == v[nextInV] {
+				bag[nextInBag] = oldv
+				nextInBag, nextInV = nextInBag+1, nextInV+1
+			}
+		} else {
+			bag[nextInBag] = oldv
+			nextInBag++
+		}
+	}
+	if nextInV < len(v) {
+		goto NOADD
+	}
+	bag = bag[:nextInBag]
+	p.dirty = true
+	return nil
+NOADD:
+	return errors.New("mwg-rs:RegionList: cannot add face region")
+}

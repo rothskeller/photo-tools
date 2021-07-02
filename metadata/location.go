@@ -12,26 +12,26 @@ type Location struct {
 // Empty returns true if the value contains no data.
 func (loc Location) Empty() bool {
 	return loc.CountryCode == "" &&
-		EmptyAltString(loc.CountryName) &&
-		EmptyAltString(loc.State) &&
-		EmptyAltString(loc.City) &&
-		EmptyAltString(loc.Sublocation)
+		loc.CountryName.Empty() &&
+		loc.State.Empty() &&
+		loc.City.Empty() &&
+		loc.Sublocation.Empty()
 }
 
 // Equal returns true if the receiver is equal to the argument.
 func (loc Location) Equal(other Location) bool {
 	return loc.CountryCode == other.CountryCode &&
-		EqualAltStrings(loc.CountryName, other.CountryName) &&
-		EqualAltStrings(loc.State, other.State) &&
-		EqualAltStrings(loc.City, other.City) &&
-		EqualAltStrings(loc.Sublocation, other.Sublocation)
+		loc.CountryName.Equal(other.CountryName) &&
+		loc.State.Equal(other.State) &&
+		loc.City.Equal(other.City) &&
+		loc.Sublocation.Equal(other.Sublocation)
 }
 
 // Copy copies the argument Location into the receiver Location.
 func (loc Location) Copy(other Location) {
 	loc.CountryCode = other.CountryCode
-	loc.CountryName = CopyAltString(other.CountryName)
-	loc.State = CopyAltString(other.State)
-	loc.City = CopyAltString(other.City)
-	loc.Sublocation = CopyAltString(other.Sublocation)
+	loc.CountryName = other.CountryName.Copy()
+	loc.State = other.State.Copy()
+	loc.City = other.City.Copy()
+	loc.Sublocation = other.Sublocation.Copy()
 }

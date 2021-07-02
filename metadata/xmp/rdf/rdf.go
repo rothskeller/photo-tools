@@ -14,15 +14,8 @@ type Packet struct {
 // A Value represents a value in an RDF file.  It comprises zero or more
 // qualifiers, plus a simple value.
 type Value struct {
-	Qualifiers []Qualifier
+	Qualifiers map[Name]Value
 	Value      SimpleValue
-}
-
-// A Qualifier represents a qualifier in an RDF file.  It has a name and a
-// value.
-type Qualifier struct {
-	Name  Name
-	Value Value
 }
 
 // A Name is the name for a property, a structure field, or a qualifier.  It has

@@ -2,12 +2,12 @@
 // (and limited to) the syntax described in the Adobe XMP Specification, Part 1.
 package rdf
 
+import "fmt"
+
 // A Packet represents the entire RDF packet.
 type Packet struct {
 	properties Struct
 	nsprefixes map[string]string
-	nsuris     map[string]string
-	nsstack    []map[string]string
 	about      string
 }
 
@@ -47,3 +47,12 @@ type Alt []Value
 
 // A Struct is an unordered set of name/value pairs.
 type Struct map[Name]Value
+
+func (n Name) String() string {
+	return fmt.Sprintf("[%s]%s", n.Namespace, n.Name)
+}
+
+// is tests a name for equality.
+func (n Name) is(space, local string) bool {
+	return n.Namespace == space && n.Name == local
+}

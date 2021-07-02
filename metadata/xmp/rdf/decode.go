@@ -20,7 +20,6 @@ func NewPacket() *Packet {
 	return &Packet{
 		properties: make(Struct),
 		nsprefixes: map[string]string{NSxml: "xml"},
-		nsuris:     map[string]string{"xml": NSxml},
 	}
 }
 
@@ -28,28 +27,25 @@ func NewPacket() *Packet {
 // error if the packet is invalid.
 func ReadPacket(buf []byte) (p *Packet, err error) {
 	var (
-		doc  *etree.Document
-		root *etree.Element
+		doc    *etree.Document
+		root   *element
+		nsuris = map[string]string{"xml": NSxml}
 	)
 	p = NewPacket()
 	doc = etree.NewDocument()
 	if err = doc.ReadFromBytes(buf); err != nil {
 		return nil, err
 	}
-	if err = simplifyDoc(&doc.Element); err != nil {
+	if root, err = simplifyElement(doc.Root(), nsuris, p.nsprefixes); err != nil {
 		return nil, err
 	}
-	if root, err = expectOneElement(&doc.Element); err != nil {
-		return nil, err
-	}
-	p.pushElementNamespaces(root)
-	if p.nsuris[root.Space] == NSx && root.Tag == "xmpmeta" {
-		if root, err = expectOneElement(root); err != nil {
-			return nil, err
+	if root.name.is(NSx, "xmpmeta") {
+		if len(root.children) != 1 {
+			return nil, fmt.Errorf("%s: expected one rdf:RDF child element", root.path())
 		}
-		p.pushElementNamespaces(root)
+		root = root.children[0]
 	}
-	if p.nsuris[root.Space] != NSrdf || root.Tag != "RDF" {
+	if !root.name.is(NSrdf, "RDF") {
 		return nil, errors.New("XMP root element must be rdf:RDF")
 	}
 	if err = p.readRDF(root); err != nil {
@@ -59,98 +55,79 @@ func ReadPacket(buf []byte) (p *Packet, err error) {
 }
 
 // readRDF reads the root RDF element.
-func (p *Packet) readRDF(elm *etree.Element) (err error) {
-	for _, attr := range elm.Attr {
-		if attr.Space == "-STR-RDF-Lib" {
-			return fmt.Errorf("%s: unexpected text content", elm.FullTag())
-		}
-		if attr.Space != "xmlns" {
-			return fmt.Errorf("%s: unexpected attribute %s", elm.FullTag(), attr.FullKey())
-		}
+func (p *Packet) readRDF(elm *element) (err error) {
+	if elm.text != "" {
+		return fmt.Errorf("%s: unexpected text content", elm.path())
 	}
-	for _, child := range elm.ChildElements() {
-		p.pushElementNamespaces(child)
-		if p.nsuris[child.Space] != NSrdf || child.Tag != "Description" {
-			return fmt.Errorf("%s: unexpected child element %s", elm.FullTag(), child.FullTag())
+	if len(elm.attrs) != 0 {
+		return fmt.Errorf("%s: cannot have attributes", elm.path())
+	}
+	for _, child := range elm.children {
+		if !child.name.is(NSrdf, "Description") {
+			return fmt.Errorf("%s: unexpected child element %s", elm.path(), child.name)
 		}
-		if err = p.readPropertyDescription(elm); err != nil {
+		if err = p.readPropertyDescription(child); err != nil {
 			return err
 		}
-		p.popElementNamespaces(child)
 	}
 	return nil
 }
 
 // readPropertyDescription handles a top-level rdf:Description element.
-func (p *Packet) readPropertyDescription(elm *etree.Element) (err error) {
-	for _, attr := range elm.Attr {
-		if attr.Space == "xmlns" {
-			continue
-		}
-		if attr.Space == "-STR-RDF-Lib" {
-			return fmt.Errorf("%s: unexpected text content", elm.FullTag())
-		}
-		var nsuri = p.nsuris[attr.Space]
-		if nsuri == "" {
-			return fmt.Errorf("%s: %s: unregistered namespace", elm.FullTag(), attr.FullKey())
-		}
-		if nsuri == NSrdf && attr.Key == "about" {
-			if p.about != "" && attr.Value != "" && p.about != attr.Value {
+func (p *Packet) readPropertyDescription(elm *element) (err error) {
+	if elm.text != "" {
+		return fmt.Errorf("%s: unexpected text content", elm.path())
+	}
+	for key, val := range elm.attrs {
+		if key.is(NSrdf, "about") {
+			if p.about != "" && val != "" && p.about != val {
 				return errors.New("rdf:about: inconsistent values")
 			}
-			if attr.Value != "" {
-				p.about = attr.Value
+			if val != "" {
+				p.about = val
 			}
 			continue
 		}
-		if nsuri == NSrdf || nsuri == NSxml {
-			return fmt.Errorf("%s: unexpected attribute %s", elm.FullTag(), attr.FullKey())
+		if key.Namespace == NSrdf || key.Namespace == NSxml {
+			return fmt.Errorf("%s: unexpected attribute %s", elm.path(), key)
 		}
-		var name = Name{nsuri, attr.Key}
-		if _, ok := p.properties[name]; ok {
-			return fmt.Errorf("multiple values for %s", attr.FullKey())
+		if _, ok := p.properties[key]; ok {
+			return fmt.Errorf("multiple values for %s", key)
 		}
-		p.properties[name] = Value{Value: attr.Value}
+		p.properties[key] = Value{Value: val}
 	}
-	for _, child := range elm.ChildElements() {
-		p.pushElementNamespaces(child)
+	for _, child := range elm.children {
 		if err = p.readProperty(child); err != nil {
 			return err
 		}
-		p.popElementNamespaces(child)
 	}
 	return nil
 }
 
 // readProperty handles a property definition element, as an immediate child of
 // a top-level rdf:Description element.
-func (p *Packet) readProperty(elm *etree.Element) (err error) {
-	var nsuri = p.nsuris[elm.Space]
-	if nsuri == "" {
-		return fmt.Errorf("%s: unregistered namespace", elm.FullTag())
+func (p *Packet) readProperty(elm *element) (err error) {
+	if elm.name.Namespace == NSrdf || elm.name.Namespace == NSxml {
+		return fmt.Errorf("%s: unexpected element", elm.path())
 	}
-	if nsuri == NSrdf || nsuri == NSxml {
-		return fmt.Errorf("%s: unexpected element", elm.FullTag())
-	}
-	var name = Name{nsuri, elm.Tag}
-	if _, ok := p.properties[name]; ok {
-		return fmt.Errorf("multiple values for %s", elm.FullTag())
+	if _, ok := p.properties[elm.name]; ok {
+		return fmt.Errorf("multiple values for %s", elm.path())
 	}
 	var value Value
 	if err = p.readValueElm(elm, &value); err != nil {
 		return err
 	}
-	p.properties[name] = value
+	p.properties[elm.name] = value
 	return nil
 }
 
 // readNQValueElm reads a value from an rdf:value element.  It's the same as
 // readValueElm except that it disallows a qualified value.
-func (p *Packet) readNQValueElm(elm *etree.Element, value *Value) (err error) {
+func (p *Packet) readNQValueElm(elm *element, value *Value) (err error) {
 	err = p.readValueElm(elm, value)
 	if err == nil && len(value.Qualifiers) != 0 {
 		*value = Value{}
-		err = fmt.Errorf("%s: nested qualifiers not allowed", elm.FullTag())
+		err = fmt.Errorf("%s: nested qualifiers not allowed", elm.path())
 	}
 	return
 }
@@ -161,135 +138,89 @@ func (p *Packet) readNQValueElm(elm *etree.Element, value *Value) (err error) {
 //   - An array element (rdf:li)
 //   - A qualifier element, under a qualified value's rdf:Description
 //   - A qualified value (rdf:value)
-func (p *Packet) readValueElm(elm *etree.Element, value *Value) (err error) {
-	if err = p.readTextValueElm(elm, value); err != nil || value.Value != nil {
-		return
-	}
-	if err = p.readURIValueElm(elm, value); err != nil || value.Value != nil {
-		return
-	}
-	if err = p.readArrayValueElm(elm, value); err != nil || value.Value != nil {
-		return
-	}
-	if err = p.readDescribedValueElm(elm, value); err != nil || value.Value != nil {
-		return
-	}
-	if err = p.readQualifiedValueElm(elm, value); err != nil || value.Value != nil {
-		return
-	}
-	if err = p.readStructureValueElm(elm, value); err != nil || value.Value != nil {
-		return
-	}
-	return fmt.Errorf("%s: invalid value element", elm.FullTag())
-}
-
-// readTextValueElm examines elm to see if it is a text value (i.e., an element
-// with a -STR-RDF-Lib:CharData attribute.  If it's not, value is left unchanged
-// and err is nil.  If it is a text value, but has unwanted attributes or
-// content, an error is returned.  Otherwise value is set and nil is returned.
-// This method will also return an (empty) text value for elements with no
-// attributes and no content.
-func (p *Packet) readTextValueElm(elm *etree.Element, value *Value) (err error) {
-	var (
-		lang   etree.Attr
-		text   etree.Attr
-		others bool
-	)
-	// Look for an -STR-RDF-Lib:CharData attribute.
-	for _, attr := range elm.Attr {
-		switch {
-		case attr.Space == "xmlns":
-			break
-		case p.nsuris[attr.Space] == NSxml && attr.Key == "lang":
-			lang = attr
-		case attr.Space == "-STR-RDF-Lib" && attr.Key == "CharData":
-			text = attr
-		default:
-			others = true
+func (p *Packet) readValueElm(elm *element, value *Value) (err error) {
+	if lang, ok := elm.attrs[Name{NSxml, "lang"}]; ok {
+		delete(elm.attrs, Name{NSxml, "lang"})
+		if value.Qualifiers == nil {
+			value.Qualifiers = make(map[Name]Value)
 		}
+		value.Qualifiers[Name{NSxml, "lang"}] = Value{Value: lang}
 	}
-	if text.Key == "" && (others || len(elm.Child) != 0) { // not a text value
-		return
+	err = p.readTextValueElm(elm, value)
+	if err == nil && value.Value == nil {
+		err = p.readURIValueElm(elm, value)
 	}
-	if others {
-		return fmt.Errorf("%s: text value element cannot have other attributes", elm.FullTag())
+	if err == nil && value.Value == nil {
+		err = p.readArrayValueElm(elm, value)
 	}
-	value.Value = URI(text.Value)
-	if lang.Key != "" {
-		value.Qualifiers = map[Name]Value{{NSxml, "lang"}: {Value: lang.Value}}
+	if err == nil && value.Value == nil {
+		err = p.readDescribedValueElm(elm, value)
 	}
-	return
+	if err == nil && value.Value == nil {
+		err = p.readPTResourceValueElm(elm, value)
+	}
+	if err == nil && value.Value == nil {
+		err = p.readQualifiedValueElm(elm, value)
+	}
+	if err == nil && value.Value == nil {
+		err = p.readStructureValueElm(elm, value)
+	}
+	if err == nil && value.Value == nil {
+		err = fmt.Errorf("%s: invalid value element", elm.path())
+	}
+	return err
 }
 
-// readURIValueElm examines elm to see if it is a URI value (i.e., an element
-// with an rdf:resource attribute).  If it's not, value is left unchanged and
-// err is nil.  If it is a URI value, but illegally coded, an error is returned.
-// Otherwise value is set and nil is returned.
-func (p *Packet) readURIValueElm(elm *etree.Element, value *Value) (err error) {
-	var (
-		lang     etree.Attr
-		resource etree.Attr
-		others   bool
-	)
-	// Look for an rdf:resource attribute.
-	for _, attr := range elm.Attr {
-		switch {
-		case attr.Space == "xmlns":
-			break
-		case p.nsuris[attr.Space] == NSxml && attr.Key == "lang":
-			lang = attr
-		case p.nsuris[attr.Space] == NSrdf && attr.Key == "resource":
-			resource = attr
-		default:
-			others = true
-		}
+// readTextValueElm examines elm to see if it is a text value.
+func (p *Packet) readTextValueElm(elm *element, value *Value) (err error) {
+	if elm.text == "" && (len(elm.attrs) != 0 || len(elm.children) != 0) {
+		return nil
 	}
-	if resource.Key == "" { // not a URI value
-		return
+	if len(elm.attrs) != 0 {
+		return fmt.Errorf("%s: text value element cannot have attributes", elm.path())
 	}
-	if others || len(elm.Child) != 0 {
-		return fmt.Errorf("%s: rdf:resource cannot have other attributes or content", elm.FullTag())
-	}
-	value.Value = URI(resource.Value)
-	if lang.Key != "" {
-		value.Qualifiers = map[Name]Value{{NSxml, "lang"}: {Value: lang.Value}}
-	}
-	return
+	value.Value = elm.text
+	return nil
 }
 
-// readArrayValueElm examines elm to see if it is an array value (i.e., a single
-// child element of type rdf:Alt, rdf:Bag, or rdf:Seq).  If it's not, value is
-// left unchanged and err is nil.  If it is an array value, but illegally coded,
-// an error is returned.  Otherwise value is set and nil is returned.
-func (p *Packet) readArrayValueElm(elm *etree.Element, value *Value) (err error) {
+// readURIValueElm examines elm to see if it is a URI value.
+func (p *Packet) readURIValueElm(elm *element, value *Value) (err error) {
+	uri, ok := elm.attrs[Name{NSrdf, "resource"}]
+	if !ok {
+		return nil
+	}
+	// Don't need to check elm.text; that was done by readTextValueElm.
+	if len(elm.attrs) != 1 {
+		return fmt.Errorf("%s: element with rdf:resource attribute cannot have other attributes", elm.path())
+	}
+	if len(elm.children) != 0 {
+		return fmt.Errorf("%s: element with rdf:resource attribute cannot have content", elm.path())
+	}
+	value.Value = uri
+	return nil
+}
+
+// readArrayValueElm examines elm to see if it is an array value
+func (p *Packet) readArrayValueElm(elm *element, value *Value) (err error) {
 	var (
-		aryelm *etree.Element
+		aryelm *element
 		ary    []Value
-		lang   etree.Attr
 	)
-	if len(elm.Child) != 1 {
-		return // can't be an array; they only have one child element.
+	if len(elm.children) != 1 {
+		return nil
 	}
-	aryelm = elm.Child[0].(*etree.Element)
-	p.pushElementNamespaces(aryelm)
-	if p.nsuris[aryelm.Space] != NSrdf || (aryelm.Tag != "Alt" && aryelm.Tag != "Bag" && aryelm.Tag != "Seq") {
-		p.popElementNamespaces(aryelm)
-		return // not an array
+	aryelm = elm.children[0]
+	if !aryelm.name.is(NSrdf, "Alt") && !aryelm.name.is(NSrdf, "Bag") && !aryelm.name.is(NSrdf, "Seq") {
+		return nil
 	}
-	for _, attr := range elm.Attr {
-		if attr.Space == "xmlns" {
-			continue
-		}
-		if p.nsuris[attr.Space] == NSxml && attr.Key == "lang" {
-			lang = attr
-			continue
-		}
-		return fmt.Errorf("%s: unexpected attribute %s", elm.FullTag(), attr.FullKey())
+	// Don't need to check elm.text; that was done by readTextValueElm.
+	if len(elm.attrs) != 0 {
+		return fmt.Errorf("%s: element with array child cannot have attributes", elm.path())
 	}
 	if ary, err = p.readArrayListElm(aryelm); err != nil {
 		return err
 	}
-	switch aryelm.Tag {
+	switch aryelm.name.Name {
 	case "Alt":
 		value.Value = Alt(ary)
 	case "Bag":
@@ -297,369 +228,224 @@ func (p *Packet) readArrayValueElm(elm *etree.Element, value *Value) (err error)
 	case "Seq":
 		value.Value = Seq(ary)
 	}
-	if lang.Key != "" {
-		value.Qualifiers = map[Name]Value{{NSxml, "lang"}: {Value: lang.Value}}
-	}
-	p.popElementNamespaces(aryelm)
 	return nil
 }
 
 // readArrayListElm reads an rdf:Alt, rdf:Bag, or rdf:Seq element.
-func (p *Packet) readArrayListElm(elm *etree.Element) (ary []Value, err error) {
-	for _, attr := range elm.Attr {
-		if attr.Space == "xmlns" {
-			continue
-		}
-		if attr.Space == "-STR-RDF-Lib" {
-			return nil, fmt.Errorf("%s: unexpected text content", elm.FullTag())
-		}
-		return nil, fmt.Errorf("%s: unexpected attribute %s", elm.FullTag(), attr.FullKey())
+func (p *Packet) readArrayListElm(elm *element) (ary []Value, err error) {
+	if elm.text != "" {
+		return nil, fmt.Errorf("%s: unexpected text content", elm.path())
 	}
-	for _, lielm := range elm.ChildElements() {
-		p.pushElementNamespaces(lielm)
-		if p.nsuris[lielm.Space] != NSrdf || lielm.Tag != "li" {
-			return nil, fmt.Errorf("%s: unexpected child element %s", elm.FullTag(), lielm.FullTag())
+	if len(elm.attrs) != 0 {
+		return nil, fmt.Errorf("%s: element cannot have attributes", elm.path())
+	}
+	for _, lielm := range elm.children {
+		if !lielm.name.is(NSrdf, "li") {
+			return nil, fmt.Errorf("%s: unexpected child element %s", elm.path(), lielm.name)
 		}
 		var val Value
 		if err = p.readValueElm(lielm, &val); err != nil {
 			return nil, err
 		}
 		ary = append(ary, val)
-		p.popElementNamespaces(lielm)
 	}
 	return ary, nil
 }
 
 // readDescribedValueElm examines elm to see if it contains a value description
-// (i.e., a single rdf:Description child element).  If not, value is left
-// unchades and err is nil.  If it is a described value, but illegal coded, an
-// error is returned.  Otherwise value is set and nil is returned.
-func (p *Packet) readDescribedValueElm(elm *etree.Element, value *Value) (err error) {
-	var (
-		desc *etree.Element
-		lang etree.Attr
-	)
-	if len(elm.Child) != 1 {
-		return // can't be a described value; they only have one child element.
+// (i.e., a single rdf:Description child element).
+func (p *Packet) readDescribedValueElm(elm *element, value *Value) (err error) {
+	var desc *element
+
+	if len(elm.children) != 1 || !elm.children[0].name.is(NSrdf, "Description") {
+		return nil
 	}
-	desc = elm.Child[0].(*etree.Element)
-	p.pushElementNamespaces(desc)
-	if p.nsuris[desc.Space] != NSrdf || desc.Tag != "Description" {
-		p.popElementNamespaces(desc)
-		return // not a described value
+	// Don't need to check elm.text; that was done by readTextValueElm.
+	if len(elm.attrs) != 0 {
+		return fmt.Errorf("%s: element cannot have attributes", elm.path())
 	}
-	for _, attr := range elm.Attr {
-		if attr.Space == "xmlns" {
-			continue
-		}
-		if p.nsuris[attr.Space] == NSxml && attr.Key == "lang" {
-			lang = attr
-			continue
-		}
-		return fmt.Errorf("%s: unexpected attribute %s", elm.FullTag(), attr.FullKey())
+	err = p.readQualifiedValueElm(desc, value)
+	if err == nil && value.Value == nil {
+		err = p.readStructureValueElm(desc, value)
 	}
-	if err = p.readQualifiedValueElm(desc, value); err != nil {
-		return
-	} else if value.Value == nil {
-		if err = p.readStructureValueElm(elm, value); err != nil {
-			return
-		}
+	return err
+}
+
+// readPTResourceValueElm examines elm to see if it contains an rdf:parseType
+// Resource.
+func (p *Packet) readPTResourceValueElm(elm *element, value *Value) (err error) {
+	if val := elm.attrs[Name{NSrdf, "parseType"}]; val != "Resource" {
+		return nil
 	}
-	if lang.Key != "" {
-		if value.Qualifiers == nil {
-			value.Qualifiers = make(map[Name]Value)
-		}
-		value.Qualifiers[Name{NSxml, "lang"}] = Value{Value: lang.Value}
+	delete(elm.attrs, Name{NSrdf, "parseType"})
+	if len(elm.attrs) != 0 {
+		return fmt.Errorf("%s: element with rdf:parseType attribute cannot have other attributes", elm.path())
 	}
-	p.popElementNamespaces(desc)
-	return nil
+	err = p.readQualifiedValueElm(elm, value)
+	if err == nil && value.Value == nil {
+		err = p.readStructureValueElm(elm, value)
+	}
+	return err
 }
 
 // readQualifiedValueElm examines elm to see if it is a qualified value (i.e.,
-// an rdf:value attribute or an rdf:value child element.  If it's not, value is
-// left unchanged and err is nil.  If it is a qualified value, but illegally
-// coded, an error is returned.  Otherwise value is set and nil is returned.
-func (p *Packet) readQualifiedValueElm(elm *etree.Element, value *Value) (err error) {
-}
-
-// readStructureValueElm reads elm as a structure value.
-func (p *Packet) readStructureValueElm(elm *etree.Element, value *Value) (err error) {
-}
-
-/***/
-
-func (p *Packet) oreadValueElm(elm *etree.Element, qualOK bool) (value Value, err error) {
-	/*
-			var (
-				attrs    []etree.Attr
-				children []*etree.Element
-				chardata string
-				str      Struct
-			)
-			for _, attr := range elm.Attr {
-				switch {
-				case attr.Space == "xmlns":
-					break
-				case p.nsuris[attr.Space] == NSxml && attr.Key == "lang":
-					if value.Qualifiers != nil {
-						return Value{}, fmt.Errorf("%s: multiple values for %s", elm.FullTag(), attr.FullKey())
-					}
-					value.Qualifiers = make(map[Name]Value)
-					value.Qualifiers[Name{NSxml, "lang"}] = Value{Value: attr.Value}
-				default:
-					attrs = append(attrs, attr)
+// an rdf:value attribute or an rdf:value child element).
+func (p *Packet) readQualifiedValueElm(elm *element, value *Value) (err error) {
+	if val, ok := elm.attrs[Name{NSrdf, "value"}]; ok {
+		value.Value = Value{Value: val}
+	} else {
+		for _, child := range elm.children {
+			if child.name.is(NSrdf, "value") {
+				var val Value
+				if err = p.readNQValueElm(child, &val); err != nil {
+					return err
 				}
-			}
-			children, chardata = parseElement(elm)
-			// Case 1: no attributes and no children
-			if len(children) == 0 && len(attrs) == 0 {
-				value.Value = chardata
-				goto CHECKQUAL
-			}
-			if strings.TrimSpace(chardata) != "" {
-				return Value{}, fmt.Errorf("%s: unexpected text data", elm.FullTag())
-			}
-			// Case 2: single rdf:resource attribute and no children
-			if len(children) == 0 && len(attrs) == 1 && attrs[0].Key == "resource" && p.nsuris[attrs[0].Space] == NSrdf {
-				value.Value = URI(attrs[0].Value)
-				goto CHECKQUAL
-			}
-			// Case 3: single rdf:ParseType="Resource" attribute
-			if len(attrs) == 1 && attrs[0].Key == "ParseType" && attrs[0].Value == "Resource" && p.nsuris[attrs[0].Space] == NSrdf {
-				str = make(Struct)
-				for _, child := range children {
-					p.pushElementNamespaces(child)
-					switch nsuri := p.nsuris[child.Space]; nsuri {
-					case NSrdf, NSxml:
-						return Value{}, fmt.Errorf("%s: unexpected child element %s", elm.FullTag(), child.FullTag())
-					case "":
-						return Value{}, fmt.Errorf("%s: unregistered namespace", child.FullTag())
-					default:
-						if _, ok := str[Name{nsuri, child.Tag}]; ok {
-							return Value{}, fmt.Errorf("%s: multiple values for %s", elm.FullTag(), child.FullTag())
-						}
-						var cval Value
-						if cval, err = p.readValueElm(child, true); err != nil {
-							return Value{}, err
-						}
-						str[Name{nsuri, child.Tag}] = cval
-					}
-					p.popElementNamespaces(child)
-				}
-				value.Value = str
-				goto CHECKQUAL
-			}
-			if len(attrs) == 0 && len(children) == 1 {
-				var child = children[0]
-				p.pushElementNamespaces(child)
-				// Case 4: single rdf:Description child
-				if child.Tag == "Description" && p.nsuris[child.Space] == NSrdf {
-					if value.Value, err = p.readStructDescription(child); err != nil {
-						return Value{}, err
-					}
-					p.popElementNamespaces(child)
-					goto CHECKQUAL
-				}
-				// Case 5: single rdf:Alt, rdf:Bag, or rdf:Seq child
-				if (child.Tag == "Alt" || child.Tag == "Bag" || child.Tag == "Seq") && p.nsuris[child.Space] == NSrdf {
-					var vals []Value
-					if vals, err = p.readArray(child); err != nil {
-						return Value{}, err
-					}
-					switch child.Tag {
-					case "Alt":
-						value.Value = Alt(vals)
-					case "Bag":
-						value.Value = Bag(vals)
-					case "Seq":
-						value.Value = Seq(vals)
-					}
-					p.popElementNamespaces(child)
-					goto CHECKQUAL
-				}
-				p.popElementNamespaces(child)
-			}
-			// Case 6: structure type
-			str = make(Struct)
-			for _, attr := range attrs {
-				var nsuri = p.nsuris[attr.Space]
-				if nsuri == "" {
-					return Value{}, fmt.Errorf("%s: %s: unregistered namespace", elm.FullTag(), attr.FullKey())
-				}
-				if nsuri == NSrdf || nsuri == NSxml {
-					return Value{}, fmt.Errorf("%s: unrecognized attribute %s", elm.FullTag(), attr.FullKey())
-				}
-				if _, ok := str[Name{nsuri, attr.Key}]; ok {
-					return Value{}, fmt.Errorf("%s: multiple values for %s", elm.FullTag(), attr.FullKey())
-				}
-				str[Name{nsuri, attr.Key}] = Value{Value: attr.Value}
-			}
-			for _, child := range children {
-				p.pushElementNamespaces(child)
-				var nsuri = p.nsuris[child.Space]
-				if nsuri == "" {
-					return Value{}, fmt.Errorf("%s: %s: unregistered namespace", elm.FullTag(), child.FullTag())
-				}
-				if nsuri == NSrdf {
-					return Value{}, fmt.Errorf("%s: unrecognized child element %s", elm.FullTag(), child.FullTag())
-				}
-				if _, ok := str[Name{nsuri, child.Tag}]; ok {
-					return Value{}, fmt.Errorf("%s: multiple values for %s", elm.FullTag(), child.FullTag())
-				}
-				var qualOK = nsuri != NSrdf || child.Tag != "value"
-				if str[Name{nsuri, child.Tag}], err = p.readValueElm(child, qualOK); err != nil {
-					return Value{}, err
-				}
-				p.popElementNamespaces(child)
-			}
-		CHECKQUAL:
-			if str, ok := value.Value.(Struct); ok {
-				if qval, ok := str[Name{NSrdf, "value"}]; ok {
-					// This is not a structure, it's a qualified value.
-					if value.Qualifiers == nil {
-						value.Qualifiers = make(map[Name]Value)
-					}
-					for key, qual := range str {
-						if key.Namespace != NSrdf || key.Name != "value" {
-							if _, ok := value.Qualifiers[key]; ok {
-								return Value{}, fmt.Errorf("%s: multiple values for %s:%s", elm.FullTag(), p.nsprefixes[key.Namespace], key.Name)
-							}
-							value.Qualifiers[key] = qual
-						}
-					}
-					value.Value = qval
-				}
-			}
-			if len(value.Qualifiers) != 0 && !qualOK {
-				return Value{}, fmt.Errorf("%s: qualifiers not allowed here", elm.FullTag())
-			}
-			return value, nil
-	*/
-	panic("not here")
-}
-
-// readStructDescription reads an rdf:Description element for a structure or a
-// qualified value.  The value is returned as a structure in either case.
-func (p *Packet) readStructDescription(elm *etree.Element) (str Struct, err error) {
-	/*
-		str = make(Struct)
-		for _, attr := range elm.Attr {
-			if attr.Space == "xmlns" {
-				continue
-			}
-			var nsuri = p.nsuris[attr.Space]
-			if nsuri == "" {
-				return nil, fmt.Errorf("%s: %s: unregistered namespace", elm.FullTag(), attr.FullKey())
-			}
-			if _, ok := str[Name{nsuri, attr.Key}]; ok {
-				return nil, fmt.Errorf("%s: multiple values for %s", elm.FullTag(), attr.FullKey())
-			}
-			str[Name{nsuri, attr.Key}] = Value{Value: attr.Value}
-		}
-		var children []*etree.Element
-		if children, err = expectElements(elm); err != nil {
-			return nil, err
-		}
-		for _, child := range children {
-			p.pushElementNamespaces(child)
-			var nsuri = p.nsuris[child.Space]
-			if nsuri == "" {
-				return nil, fmt.Errorf("%s: %s: unregistered namespace", elm.FullTag(), child.FullTag())
-			}
-			if _, ok := str[Name{nsuri, child.Tag}]; ok {
-				return nil, fmt.Errorf("%s: multiple values for %s", elm.FullTag(), child.FullTag())
-			}
-			var qualOK = nsuri != NSrdf || child.Tag != "value"
-			if str[Name{nsuri, child.Tag}], err = p.readValueElm(child, qualOK); err != nil {
-				return nil, err
-			}
-			p.popElementNamespaces(child)
-		}
-		return str, nil
-	*/
-	panic("not here")
-}
-
-// pushElementNamespaces registers the namespaces named in xmlns attributes on
-// the element.  Any previous registrations of them are pushed on a stack, to be
-// restored by popElementNamespaces.
-func (p *Packet) pushElementNamespaces(elm *etree.Element) {
-	var was = make(map[string]string)
-
-	for _, attr := range elm.Attr {
-		if attr.Space == "xmlns" {
-			if old, ok := p.nsuris[attr.Key]; ok {
-				was[attr.Key] = old
-			}
-			p.nsuris[attr.Key] = attr.Value
-			p.nsprefixes[attr.Value] = attr.Key
-		}
-	}
-	p.nsstack = append(p.nsstack, was)
-}
-
-// popElementNamespace unregisters the namespaces named in xmlns attributes on
-// the element, restoring their previous registrations if any.
-func (p *Packet) popElementNamespaces(elm *etree.Element) {
-	var was map[string]string
-
-	was, p.nsstack = p.nsstack[len(p.nsstack)-1], p.nsstack[:len(p.nsstack)-1]
-	for _, attr := range elm.Attr {
-		if attr.Space == "xmlns" {
-			if old, ok := was[attr.Key]; ok {
-				p.nsuris[attr.Key] = old
-			} else {
-				delete(p.nsuris, attr.Key)
+				value.Value = val.Value
+				break
 			}
 		}
 	}
-}
-
-// simplifyDoc removes nodes from the document that will distract us: comments,
-// processing instructions, and directives.  It also removes whitespace-only
-// text nodes that are siblings of element nodes.  It raises an error if there
-// are any non-whitespace text nodes that are siblings of element nodes.  It
-// merges multiple text nodes (not siblings of element nodes) into a single one.
-func simplifyDoc(elm *etree.Element) error {
-	var (
-		seenElement bool
-		text        string
-	)
-	for i := 0; i < len(elm.Child); {
-		switch child := elm.Child[i].(type) {
-		case *etree.Element:
-			seenElement = true
-			if err := simplifyDoc(child); err != nil {
-				return err
-			}
-			i++
-		case *etree.CharData:
-			text += child.Data
-			elm.RemoveChild(child)
-		default:
-			elm.RemoveChild(child)
-		}
+	if value.Value == nil {
+		return nil
 	}
-	if strings.TrimSpace(text) != "" {
-		if seenElement {
-			return fmt.Errorf("invalid XML/RDF document: %s element has both element and text content", elm.FullTag())
+	if value.Qualifiers == nil {
+		value.Qualifiers = make(map[Name]Value)
+	}
+	for key, val := range elm.attrs {
+		if key.is(NSrdf, "value") {
+			continue
 		}
-		// Move the text content into an attribute.  Much easier for the
-		// rest of the code to assume that all children are elements.
-		elm.CreateAttr("-STR-RDF-Lib:CharData", text)
+		if key.Namespace == NSrdf || key.Namespace == NSxml {
+			return fmt.Errorf("%s: unexpected attribute %s", elm.path(), key)
+		}
+		value.Qualifiers[key] = Value{Value: val}
+	}
+	for _, child := range elm.children {
+		if child.name.is(NSrdf, "value") {
+			continue
+		}
+		if child.name.Namespace == NSrdf || child.name.Namespace == NSxml {
+			return fmt.Errorf("%s: unexpected child element %s", elm.path(), child.name)
+		}
+		var val Value
+		if err = p.readValueElm(child, &val); err != nil {
+			return err
+		}
+		value.Qualifiers[child.name] = val
 	}
 	return nil
 }
 
-// expectOneElement returns the child element from the supplied parent; it
-// raises an error if the parent has no child or multiple children.
-func expectOneElement(parent *etree.Element) (child *etree.Element, err error) {
-	switch len(parent.Child) {
-	case 0:
-		return nil, fmt.Errorf("%s:%s is missing its required child element", parent.Space, parent.Tag)
-	case 1:
-		return parent.Child[0].(*etree.Element), nil
-	default:
-		return nil, fmt.Errorf("%s:%s cannot have multiple child elements", parent.Space, parent.Tag)
+// readStructureValueElm reads elm as a structure value.  It always fills in
+// value, unless it returns an error.
+func (p *Packet) readStructureValueElm(elm *element, value *Value) (err error) {
+	var str = make(Struct)
+
+	for key, val := range elm.attrs {
+		if key.Namespace == NSrdf || key.Namespace == NSxml {
+			return fmt.Errorf("%s: unexpected attribute %s", elm.path(), key)
+		}
+		str[key] = Value{Value: val}
 	}
+	for _, child := range elm.children {
+		if child.name.Namespace == NSrdf || child.name.Namespace == NSxml {
+			return fmt.Errorf("%s: unexpected child element %s", elm.path(), child.name)
+		}
+		var val Value
+		if err = p.readValueElm(child, &val); err != nil {
+			return err
+		}
+		str[child.name] = val
+	}
+	value.Value = str
+	return nil
+}
+
+// An element is a simplified version of an etree.Element.  The document tree is
+// converted into this element form in order to make the parsing algorithms
+// simpler.
+type element struct {
+	name     Name
+	attrs    map[Name]string
+	children []*element
+	text     string
+	parent   *element
+}
+
+// simplifyElement recursively converts an XML/RDF etree.Element into a
+// package-local element structure.  In the process, it updates the nsprefixes
+// map, which maps from namespace URI to the namespace prefix used for it in the
+// document.  nsuris is a reverse map which can be seeded with namespace URIs
+// for predefined prefixes (generally just "xml").
+func simplifyElement(rdfe *etree.Element, nsuris, nsprefixes map[string]string) (se *element, err error) {
+	var (
+		nsuri      string
+		saveNSuris = make(map[string]string)
+	)
+	for _, attr := range rdfe.Attr {
+		if attr.Space != "xmlns" {
+			continue
+		}
+		if old, ok := nsuris[attr.Key]; ok {
+			saveNSuris[attr.Key] = old
+		}
+		nsuris[attr.Key] = attr.Value
+		nsprefixes[attr.Value] = attr.Key
+	}
+	if nsuri = nsuris[rdfe.Space]; nsuri == "" {
+		return nil, fmt.Errorf("%s: unregistered namespace", rdfe.FullTag())
+	}
+	se = &element{
+		name:  Name{nsuri, rdfe.Tag},
+		attrs: make(map[Name]string),
+	}
+	for _, child := range rdfe.Child {
+		switch child := child.(type) {
+		case *etree.Element:
+			if ce, err := simplifyElement(child, nsuris, nsprefixes); err == nil {
+				ce.parent = se
+				se.children = append(se.children, ce)
+			} else {
+				return nil, err
+			}
+		case *etree.CharData:
+			se.text += child.Data
+		}
+	}
+	if len(se.children) != 0 {
+		if strings.TrimSpace(se.text) != "" {
+			return nil, fmt.Errorf("%s: cannot have both child elements and text content", rdfe.FullTag())
+		}
+		se.text = ""
+	}
+	for _, attr := range rdfe.Attr {
+		if attr.Space == "xmlns" {
+			continue
+		}
+		if nsuri = nsuris[attr.Space]; nsuri == "" {
+			return nil, fmt.Errorf("%s: %s: unregistered namespace", rdfe.FullTag(), attr.FullKey())
+		}
+		se.attrs[Name{nsuri, attr.Key}] = attr.Value
+	}
+	for _, attr := range rdfe.Attr {
+		if attr.Space != "xmlns" {
+			continue
+		}
+		delete(nsuris, attr.Key)
+	}
+	for key, val := range saveNSuris {
+		nsuris[key] = val
+	}
+	return se, nil
+}
+
+func (e *element) path() string {
+	var list []string
+	for ; e != nil; e = e.parent {
+		list = append(list, e.name.Name)
+	}
+	for i, j := 0, len(list)-1; i < j; i, j = i+1, j-1 {
+		list[i], list[j] = list[j], list[i]
+	}
+	return strings.Join(list, "/")
 }

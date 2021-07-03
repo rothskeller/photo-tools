@@ -44,7 +44,7 @@ func (p *XMP) setAlt(in rdf.Struct, ns, name string, as metadata.AltString) {
 		for i := range as {
 			values[i] = rdf.Value{
 				Qualifiers: rdf.Struct{{Namespace: rdf.NSxml, Name: "lang"}: {Value: as[i].Lang}},
-				Value:      rdf.Value{Value: as[i].Value},
+				Value:      as[i].Value,
 			}
 		}
 		in[rdf.Name{Namespace: ns, Name: name}] = rdf.Value{Value: rdf.Alt(values)}

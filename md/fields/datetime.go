@@ -2,6 +2,7 @@ package fields
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/metadata"
@@ -36,7 +37,13 @@ func (f *datetimeField) ParseValue(s string) (interface{}, error) {
 // RenderValue takes a value for the field and renders it in string form for
 // display.
 func (f *datetimeField) RenderValue(v interface{}) string {
-	return v.(*metadata.DateTime).String()
+	var str = v.(*metadata.DateTime).String()
+	var date = str[:10]
+	var time = str[11:]
+	time = strings.Replace(time, "+", " +", -1)
+	time = strings.Replace(time, "-", " -", -1)
+	time = strings.Replace(time, "Z", " Z", -1)
+	return date + " " + time
 }
 
 // EqualValue compares two values for equality.  (This is only called for

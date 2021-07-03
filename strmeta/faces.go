@@ -83,10 +83,7 @@ func SetFaces(h filefmt.FileHandler, v []string) error {
 			return err
 		}
 		// Now repeat the exact same thing for the mwg-rs tag.
-		list = list[:0]
-		for _, face := range v {
-			faces[face] = true
-		}
+		list = nil
 		for _, face := range xmp.MWGRSNames() {
 			if _, ok := faces[face]; ok {
 				list = append(list, face)

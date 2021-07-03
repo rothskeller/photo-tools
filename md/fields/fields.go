@@ -86,6 +86,8 @@ func ParseField(arg string) Field {
 		return CaptionField
 	case "datetime", "date", "time", "d":
 		return DateTimeField
+	case "face", "faces", "f":
+		return FacesField
 	case "gps", "g":
 		return GPSField
 	case "keyword", "keywords", "kw", "k":

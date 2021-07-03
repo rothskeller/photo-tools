@@ -61,19 +61,15 @@ func (p *XMP) getMWGRS() {
 // completely); it can only remove them.
 func (p *XMP) SetMWGRSNames(v []string) (err error) {
 	var (
+		regions   rdf.Struct
 		bag       rdf.Bag
 		nextInBag int
 		nextInV   int
 	)
 	if val, ok := p.rdf.Properties[rdf.Name{Namespace: nsMWGRS, Name: "Regions"}]; ok {
-		switch val := val.Value.(type) {
-		case rdf.Struct:
-			if val, ok := val[rdf.Name{Namespace: nsMWGRS, Name: "RegionList"}]; ok {
-				switch val := val.Value.(type) {
-				case rdf.Bag:
-					bag = val
-				}
-			}
+		regions = val.Value.(rdf.Struct)
+		if val, ok = regions[rdf.Name{Namespace: nsMWGRS, Name: "RegionList"}]; ok {
+			bag = val.Value.(rdf.Bag)
 		}
 	}
 	if len(bag) == 0 && len(v) == 0 {
@@ -84,6 +80,7 @@ func (p *XMP) SetMWGRSNames(v []string) (err error) {
 	}
 	if len(v) == 0 {
 		delete(p.rdf.Properties, rdf.Name{Namespace: nsMWGRS, Name: "Regions"})
+		p.mwgrsNames = v
 		p.dirty = true
 		return nil
 	}
@@ -92,7 +89,7 @@ func (p *XMP) SetMWGRSNames(v []string) (err error) {
 			bag[nextInBag] = oldv
 			nextInBag++
 		} else if n, ok := oldv.Value.(rdf.Struct)[rdf.Name{Namespace: nsMWGRS, Name: "Name"}]; ok {
-			if oname := n.Value.(string); oname == v[nextInV] {
+			if nextInV < len(v) && n.Value.(string) == v[nextInV] {
 				bag[nextInBag] = oldv
 				nextInBag, nextInV = nextInBag+1, nextInV+1
 			}
@@ -104,7 +101,11 @@ func (p *XMP) SetMWGRSNames(v []string) (err error) {
 	if nextInV < len(v) {
 		goto NOADD
 	}
-	bag = bag[:nextInBag]
+	if nextInBag == len(bag) {
+		return nil // nothing removed
+	}
+	regions[rdf.Name{Namespace: nsMWGRS, Name: "RegionList"}] = rdf.Value{Value: bag[:nextInBag]}
+	p.mwgrsNames = v
 	p.dirty = true
 	return nil
 NOADD:

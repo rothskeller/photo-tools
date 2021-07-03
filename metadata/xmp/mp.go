@@ -57,12 +57,14 @@ func (p *XMP) getMP() {
 // information to do so completely); it can only remove them.
 func (p *XMP) SetMPRegPersonDisplayNames(v []string) (err error) {
 	var (
-		bag       rdf.Bag
-		nextInBag int
-		nextInV   int
+		regionInfo rdf.Struct
+		bag        rdf.Bag
+		nextInBag  int
+		nextInV    int
 	)
 	if val, ok := p.rdf.Properties[rdf.Name{Namespace: nsMP, Name: "RegionInfo"}]; ok {
-		if val, ok := val.Value.(rdf.Struct)[rdf.Name{Namespace: nsMPRI, Name: "Regions"}]; ok {
+		regionInfo = val.Value.(rdf.Struct)
+		if val, ok = regionInfo[rdf.Name{Namespace: nsMPRI, Name: "Regions"}]; ok {
 			bag = val.Value.(rdf.Bag)
 		}
 	}
@@ -74,6 +76,7 @@ func (p *XMP) SetMPRegPersonDisplayNames(v []string) (err error) {
 	}
 	if len(v) == 0 {
 		delete(p.rdf.Properties, rdf.Name{Namespace: nsMP, Name: "RegionInfo"})
+		p.mpRegPersonDisplayNames = v
 		p.dirty = true
 		return nil
 	}
@@ -81,7 +84,7 @@ func (p *XMP) SetMPRegPersonDisplayNames(v []string) (err error) {
 		if n, ok := oldv.Value.(rdf.Struct)[rdf.Name{Namespace: nsMPReg, Name: "PersonDisplayName"}]; !ok {
 			bag[nextInBag] = oldv
 			nextInBag++
-		} else if n.Value.(string) == v[nextInV] {
+		} else if nextInV < len(v) && n.Value.(string) == v[nextInV] {
 			bag[nextInBag] = oldv
 			nextInBag, nextInV = nextInBag+1, nextInV+1
 		}
@@ -89,7 +92,11 @@ func (p *XMP) SetMPRegPersonDisplayNames(v []string) (err error) {
 	if nextInV < len(v) {
 		goto NOADD
 	}
-	bag = bag[:nextInBag]
+	if nextInBag == len(bag) {
+		return nil // nothing removed
+	}
+	regionInfo[rdf.Name{Namespace: nsMPRI, Name: "Regions"}] = rdf.Value{Value: bag[:nextInBag]}
+	p.mpRegPersonDisplayNames = v
 	p.dirty = true
 	return nil
 NOADD:

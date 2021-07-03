@@ -53,6 +53,7 @@ func (p *XMP) getMWGRS() {
 			p.log("mwg-rs:Regions has wrong data type")
 		}
 	}
+	p.rdf.RegisterNamespace(pfxMWGRS, nsMWGRS)
 }
 
 // SetMWGRSNames sets the values of the mwg-rs:Name tag.  Note however, that it

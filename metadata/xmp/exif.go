@@ -5,6 +5,7 @@ import (
 )
 
 const nsEXIF = "http://ns.adobe.com/exif/1.0/"
+const pfxEXIF = "exif"
 
 // EXIFDateTimeDigitized returns the value of the exif:DateTimeDigitized tag.
 func (p *XMP) EXIFDateTimeDigitized() metadata.DateTime { return p.exifDateTimeDigitized }
@@ -19,17 +20,18 @@ func (p *XMP) EXIFGPSCoords() metadata.GPSCoords { return p.exifGPSCoords }
 func (p *XMP) EXIFUserComments() []string { return p.exifUserComments }
 
 func (p *XMP) getEXIF() {
-	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, "exif", nsEXIF, "DateTimeDigitized"), &p.exifDateTimeDigitized)
-	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, "exif", nsEXIF, "DateTimeOriginal"), &p.exifDateTimeOriginal)
+	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "DateTimeDigitized"), &p.exifDateTimeDigitized)
+	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "DateTimeOriginal"), &p.exifDateTimeOriginal)
 	if err := p.exifGPSCoords.ParseXMP(
-		p.getString(p.rdf.Properties, "exif", nsEXIF, "GPSLatitude"),
-		p.getString(p.rdf.Properties, "exif", nsEXIF, "GPSLongitude"),
-		p.getString(p.rdf.Properties, "exif", nsEXIF, "GPSAltitudeRef"),
-		p.getString(p.rdf.Properties, "exif", nsEXIF, "GPSAltitude"),
+		p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "GPSLatitude"),
+		p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "GPSLongitude"),
+		p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "GPSAltitudeRef"),
+		p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "GPSAltitude"),
 	); err != nil {
 		p.log("invalid GPS coordinates")
 	}
-	p.exifUserComments = p.getStrings(p.rdf.Properties, "exif", nsEXIF, "UserComment")
+	p.exifUserComments = p.getStrings(p.rdf.Properties, pfxEXIF, nsEXIF, "UserComment")
+	p.rdf.RegisterNamespace(pfxEXIF, nsEXIF)
 }
 
 // SetEXIFDateTimeDigitized sets the value of the exif:DateTimeDigitized tag.

@@ -20,6 +20,7 @@ func (p *XMP) getTIFF() {
 	p.tiffArtist = p.getString(p.rdf.Properties, pfxTIFF, nsTIFF, "Artist")
 	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxTIFF, nsTIFF, "DateTime"), &p.tiffDateTime)
 	p.tiffImageDescription = p.getAlt(p.rdf.Properties, pfxTIFF, nsTIFF, "ImageDescription")
+	p.rdf.RegisterNamespace(pfxTIFF, nsTIFF)
 }
 
 // SetTIFFArtist sets the value of the tiff:Artist tag.

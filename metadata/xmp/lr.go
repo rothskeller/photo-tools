@@ -17,6 +17,7 @@ func (p *XMP) getLR() {
 	for _, kw := range kws {
 		p.lrHierarchicalSubject = append(p.lrHierarchicalSubject, strings.Split(kw, "|"))
 	}
+	p.rdf.RegisterNamespace(pfxLR, nsLR)
 }
 
 // SetLRHierarchicalSubject sets the values of the lr:HierarchicalSubject tag.

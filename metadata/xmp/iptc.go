@@ -39,6 +39,7 @@ func (p *XMP) getIPTC() {
 			p.log("Iptc4xmpExt:LocationShown has wrong data type")
 		}
 	}
+	p.rdf.RegisterNamespace(pfxIPTC, nsIPTC)
 }
 
 func (p *XMP) getLocationFromStruct(str rdf.Struct) (loc metadata.Location) {

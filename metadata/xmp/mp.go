@@ -7,8 +7,11 @@ import (
 )
 
 const nsMP = "http://ns.microsoft.com/photo/1.2/"
+const pfxMP = "MP"
 const nsMPRI = "http://ns.microsoft.com/photo/1.2/t/RegionInfo#"
+const pfxMPRI = "MPRI"
 const nsMPReg = "http://ns.microsoft.com/photo/1.2/t/Region#"
+const pfxMPReg = "MPReg"
 
 // MPRegPersonDisplayNames returns the values of the MPReg:PersonDisplayName tag.
 func (p *XMP) MPRegPersonDisplayNames() []string { return p.mpRegPersonDisplayNames }
@@ -44,6 +47,9 @@ func (p *XMP) getMP() {
 			p.log("MP:RegionInfo has wrong data type")
 		}
 	}
+	p.rdf.RegisterNamespace(pfxMP, nsMP)
+	p.rdf.RegisterNamespace(pfxMPRI, nsMPRI)
+	p.rdf.RegisterNamespace(pfxMPReg, nsMPReg)
 }
 
 // SetMPRegPersonDisplayNames sets the values of the MPReg:PersonDisplayName

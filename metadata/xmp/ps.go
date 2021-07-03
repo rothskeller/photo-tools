@@ -12,6 +12,7 @@ func (p *XMP) PSDateCreated() metadata.DateTime { return p.psDateCreated }
 
 func (p *XMP) getPS() {
 	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxPS, nsPS, "DateCreated"), &p.psDateCreated)
+	p.rdf.RegisterNamespace(pfxPS, nsPS)
 }
 
 // SetPSDateCreated sets the value of the photoshop:DateCreated tag.

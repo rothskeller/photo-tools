@@ -20,6 +20,7 @@ func (p *XMP) getXMP() {
 	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxXMP, nsXMP, "CreateDate"), &p.xmpCreateDate)
 	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxXMP, nsXMP, "MetadataDate"), &p.xmpMetadataDate)
 	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxXMP, nsXMP, "ModifyDate"), &p.xmpModifyDate)
+	p.rdf.RegisterNamespace(pfxXMP, nsXMP)
 }
 
 // SetXMPCreateDate sets the value of the xmp:CreateDate tag.

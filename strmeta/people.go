@@ -179,7 +179,40 @@ func SetPeople(h filefmt.FileHandler, v []Person) error {
 			return fmt.Errorf("cannot remove %q: face regions are not removable with this tool", face)
 		}
 	}
-	return setFilteredKeywords(h, kws, personPredicate)
+	if err := setFilteredKeywords(h, kws, personPredicate); err != nil {
+		return err
+	}
+	if xmp := h.XMP(false); xmp != nil {
+		if list := xmp.MPRegPersonDisplayNames(); len(list) != 0 {
+			j := 0
+			for _, name := range list {
+				if faces[name] {
+					list[j] = name
+					j++
+				}
+			}
+			if j < len(list) {
+				if err := xmp.SetMPRegPersonDisplayNames(list[:j]); err != nil {
+					return err
+				}
+			}
+		}
+		if list := xmp.MWGRSNames(); len(list) != 0 {
+			j := 0
+			for _, name := range list {
+				if faces[name] {
+					list[j] = name
+					j++
+				}
+			}
+			if j < len(list) {
+				if err := xmp.SetMWGRSNames(list[:j]); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // personPredicate is the predicate satisfied by keyword tags that encode person

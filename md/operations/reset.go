@@ -23,6 +23,7 @@ func (op *resetOp) parseArgs(args []string) (remainingArgs []string, err error) 
 			fields.ArtistField,
 			fields.CaptionField,
 			fields.DateTimeField,
+			fields.FacesField,
 			fields.GPSField,
 			fields.GroupsField,
 			fields.KeywordsField,

@@ -38,6 +38,39 @@ func stringEqualMax(a, b string, bmax int) bool {
 	return false
 }
 
+// stringSliceEqualUnordered compares two string slices and determines whether
+// they contain the same strings, not necessarily in order.
+func stringSliceEqualUnordered(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, aval := range a {
+		var found = false
+		for _, bval := range b {
+			if aval == bval {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	for _, bval := range b {
+		var found = false
+		for _, aval := range a {
+			if aval == bval {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 func tagsForStringList(tags, values []string, label string, ss []string) (newt, newv []string) {
 	if len(ss) == 0 {
 		tags = append(tags, label)

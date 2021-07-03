@@ -29,6 +29,7 @@ func (op *tagsOp) parseArgs(args []string) (remainingArgs []string, err error) {
 			fields.LocationField,
 			fields.PlacesField,
 			fields.PeopleField,
+			fields.FacesField,
 			fields.GroupsField,
 			fields.TopicsField,
 			fields.KeywordsField,

@@ -52,6 +52,25 @@ func (f *peopleField) GetValues(h filefmt.FileHandler) []interface{} {
 	return ifcs
 }
 
+// GetValuesNoFaces is a special case: it returns only those people values that
+// don't also have face values.  It is used by "show" when showing both the
+// people and face fields, to avoid redundancy.
+func (f *peopleField) GetValuesNoFaces(h filefmt.FileHandler) []interface{} {
+	var people = strmeta.GetPeople(h)
+	var faces = strmeta.GetFaces(h)
+	var facemap = make(map[string]bool, len(faces))
+	for _, face := range faces {
+		facemap[face] = true
+	}
+	var ifcs = make([]interface{}, 0, len(people))
+	for _, person := range people {
+		if !facemap[person.Name] {
+			ifcs = append(ifcs, person)
+		}
+	}
+	return ifcs
+}
+
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).

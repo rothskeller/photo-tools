@@ -102,6 +102,7 @@ The possible field names (and allowed abbreviations) are:
     artist    (a)
     caption   (c)
     datetime  (d, date, time)
+    face      (f, faces)
     gps       (g)
     group     (groups)
     keyword   (k, kw, keywords)
@@ -128,6 +129,11 @@ seconds can be omitted. The time zone can be omitted, indicating that it is
 unknown. `Z` can be used on input, and is always used on output, in place of
 `+00:00` or `-00:00` to represent UTC.
 
+The `face` field applies only to images; it is the list of people names
+associated with face regions in the image. See Special Behaviors, below, for
+the relationship between the `face` and `person` fields. Note that this tool
+cannot add face regions; it can only recognize them and remove them.
+
 The `gps` field is the GPS coordinates of the location where the media was
 captured (or, if not known exactly, the place where they should be shown on a
 map). It is represented as two or three signed floating point numbers separated
@@ -135,12 +141,15 @@ by commas. The first two are the latitude and longitude in degrees. If a third
 one is present, it is the altitude, and must be followed by a suffix of `m`
 (meters) or `ft` (feet). (On output, altitude is always reported in feet.)
 
+The `group` field contains a list of groups (teams, organizations, etc.) that
+are depicted in the media. Group names are hierarchical, with components
+separated by slashes.
+
 The `keyword` field contains a list of keywords associated with the media.
-Keywords are hierarchical, with components separated by slashes. The `group`,
-`place`, and `topic` fields are shorthand for `keyword` with the first component
-of the value assumed to be `Groups`, `Places`, and `Topics`, respectively. The
-`person` field works similarly, with a prefix of `People`, but merges facial
-recognition regions tagged in the media into the list of person keywords.
+Keywords are hierarchical, with components separated by slashes. Note that
+while values of the `group`, `person`, `place`, and `topic` are stored in
+underlying metadata as keywords, they are not reported or managed by the
+`keyword` field. The `keyword` field only reports and acts on other keywords.
 
 The `location` field contains a textual description of the location of the
 media. It has the form
@@ -148,9 +157,57 @@ media. It has the form
     countrycode / countryname / state / city / sublocation
 
 Parts that are unused can be left blank, and trailing slashes can be omitted.
-Spaces around the slashes are optional and insignificant.
+Spaces around the slashes are optional and insignificant. English-language names
+should be used when they exist. See Special Behaviors, below for the
+relationship between the `location` and `place` fields.
+
+The `person` field contains a list of names of people (or in a few cases, pets)
+who are depicted in the media. People should be listed by full name, as they
+are informally addressed. See Special Behaviors, below, for the relationship
+between the `face` and `person` fields.
+
+The `place` field contains a list of places relating to the media: the place
+where it was captured and/or the place(s) depicted in it. Places are
+hierarchical, with components separated by slashes. See Special Behaviors,
+below, for the relationship between the `location` and `place` fields. The
+components of a place typically include:
+
+- Country name (spelled out unless it is "USA")
+- State, province, or similar region of the country (spelled out) (if applicable)
+- Region within the state (currently only used with CA and HI)
+- City name, or name of similarly prominent location (park, monument)
+- Refinements within the city or similar location (landmorks)
+
+If the name of a place is different in English from its name as spoken by the
+people who live there, the `place` field should contain two values for that
+place, one with each name.
 
 The `title` field contains a one-line, short title for the media, expressed in
 title case. While some metadata tags allow for titles to be provided in
 multiple languages, `md` treats it as a language-invariant, single-value field
 (presumed to be English).
+
+The `topic` field contains a list of topics of the media (activities, events,
+etc.). Topic names are hierarchical, with components separated by slashes.
+
+## Special Behaviors
+
+The `face` and `person` fields are related; for every face region, there should
+be a like-named person keyword. The following special behaviors apply:
+
+- The `show` operation does not show values of the `person` field for which
+  corresponding values of the `face` field are also being shown.
+- Face regions without a corresponding person keyword are flagged by `show` and
+  `check` as inconsistencies.
+- Removing a person value also removes any corresponding face region.
+
+The `location` and `place` fields are related; if a media has a location, it
+should also have a congruent place value, such that the countryname, state,
+city, and sublocation components of the location appear as components of the
+place value, in the same order but possibly interspersed with other components
+of the place value. The following special behaviors apply:
+
+- Locations without a congruent place value are flagged by `show` and `check` as
+  inconsistencies.
+- Changing the place values will clear the location unless it is congruent with
+  one of the resulting place values.

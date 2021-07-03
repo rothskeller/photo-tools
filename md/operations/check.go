@@ -29,6 +29,7 @@ func (op *checkOp) parseArgs(args []string) (remainingArgs []string, err error) 
 			fields.GPSField,
 			fields.PlacesField,
 			fields.PeopleField,
+			fields.FacesField,
 			fields.GroupsField,
 			fields.TopicsField,
 			fields.TitleField,

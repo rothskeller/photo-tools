@@ -11,8 +11,8 @@ func GetCaption(h fileHandler) string {
 		if def := xmp.DCDescription().Default(); def != "" {
 			return def
 		}
-		if len(xmp.EXIFUserComments()) != 0 {
-			return xmp.EXIFUserComments()[0]
+		if def := xmp.EXIFUserComment().Default(); def != "" {
+			return def
 		}
 		if def := xmp.TIFFImageDescription().Default(); def != "" {
 			return def
@@ -38,10 +38,7 @@ func GetCaption(h fileHandler) string {
 func GetCaptionTags(h fileHandler) (tags, values []string) {
 	if xmp := h.XMP(false); xmp != nil {
 		tags, values = tagsForAltString(tags, values, "XMP  dc:Description", xmp.DCDescription())
-		for _, v := range xmp.EXIFUserComments() {
-			tags = append(tags, "XMP  exif:UserComment")
-			values = append(values, v)
-		}
+		tags, values = tagsForAltString(tags, values, "XMP  exif:UserComment", xmp.EXIFUserComment())
 		tags, values = tagsForAltString(tags, values, "XMP  tiff:ImageDescription", xmp.TIFFImageDescription())
 	}
 	if exif := h.EXIF(); exif != nil {
@@ -76,11 +73,11 @@ func CheckCaption(ref, h fileHandler) (res CheckResult) {
 		default:
 			return ChkConflictingValues
 		}
-		switch len(xmp.EXIFUserComments()) {
+		switch len(xmp.EXIFUserComment()) {
 		case 0:
 			break
 		case 1:
-			if xmp.EXIFUserComments()[0] != value {
+			if xmp.EXIFUserComment()[0].Value != value {
 				return ChkConflictingValues
 			}
 			res = ChkIncorrectlyTagged

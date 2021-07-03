@@ -16,8 +16,8 @@ func (p *XMP) EXIFDateTimeOriginal() metadata.DateTime { return p.exifDateTimeOr
 // EXIFGPSCoords returns the values of the exif:GPS* tags.
 func (p *XMP) EXIFGPSCoords() metadata.GPSCoords { return p.exifGPSCoords }
 
-// EXIFUserComments returns the values of the exif:UserComment tag.
-func (p *XMP) EXIFUserComments() []string { return p.exifUserComments }
+// EXIFUserComment returns the values of the exif:UserComment tag.
+func (p *XMP) EXIFUserComment() metadata.AltString { return p.exifUserComment }
 
 func (p *XMP) getEXIF() {
 	p.xmpDateTimeToMetadata(p.getString(p.rdf.Properties, pfxEXIF, nsEXIF, "DateTimeDigitized"), &p.exifDateTimeDigitized)
@@ -30,7 +30,7 @@ func (p *XMP) getEXIF() {
 	); err != nil {
 		p.log("invalid GPS coordinates")
 	}
-	p.exifUserComments = p.getStrings(p.rdf.Properties, pfxEXIF, nsEXIF, "UserComment")
+	p.exifUserComment = p.getAlt(p.rdf.Properties, pfxEXIF, nsEXIF, "UserComment")
 	p.rdf.RegisterNamespace(pfxEXIF, nsEXIF)
 }
 
@@ -69,11 +69,11 @@ func (p *XMP) SetEXIFGPSCoords(v metadata.GPSCoords) (err error) {
 }
 
 // SetEXIFUserComments sets the values of the exif:UserComment tag.
-func (p *XMP) SetEXIFUserComments(v []string) (err error) {
-	if stringSliceEqual(v, p.exifUserComments) {
+func (p *XMP) SetEXIFUserComments(v metadata.AltString) (err error) {
+	if v.Equal(p.exifUserComment) {
 		return nil
 	}
-	p.exifUserComments = v
-	p.setBag(p.rdf.Properties, nsEXIF, "UserComment", v)
+	p.exifUserComment = v
+	p.setAlt(p.rdf.Properties, nsEXIF, "UserComment", v)
 	return nil
 }

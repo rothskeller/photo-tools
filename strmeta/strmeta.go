@@ -56,7 +56,7 @@ func tagsForAltString(tags, values []string, label string, as metadata.AltString
 		values = append(values, "")
 	}
 	for i, ls := range as {
-		if i == 0 && ls.Lang == "" {
+		if i == 0 && (ls.Lang == "" || ls.Lang == "x-default") {
 			tags = append(tags, label)
 		} else {
 			tags = append(tags, fmt.Sprintf("%s[%s]", label, ls.Lang))

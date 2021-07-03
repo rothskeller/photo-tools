@@ -18,7 +18,7 @@ type XMP struct {
 	exifDateTimeOriginal    metadata.DateTime
 	exifDateTimeDigitized   metadata.DateTime
 	exifGPSCoords           metadata.GPSCoords
-	exifUserComments        []string
+	exifUserComment         metadata.AltString
 	iptcLocationCreated     metadata.Location
 	iptcLocationsShown      []metadata.Location
 	lrHierarchicalSubject   []metadata.Keyword

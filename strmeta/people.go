@@ -7,99 +7,34 @@ import (
 
 	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/xmp"
 )
 
-// A Person represents a person depicted in a media file.
-type Person struct {
-	// Name is the person's full name, as I would normally address them.
-	Name string
-	// FaceRegion indicates whether the media file has an area marked as
-	// being this person's face.
-	FaceRegion bool
-}
-
-// Parse parses a person.
-func (g *Person) Parse(s string) error {
-	g.FaceRegion = false
-	if strings.HasSuffix(s, " [F]") {
-		// We shouldn't see this on input, but since we want Parse and
-		// String to be a faithful round trip, we should handle it.
-		s = s[:len(s)-4]
-		g.FaceRegion = true
-	}
-	g.Name = strings.TrimSpace(s)
-	return nil
-}
-
-// String returns the formatted string form of the person name, suitable for
-// input to Parse.
-func (g Person) String() string {
-	if g.Name != "" && g.FaceRegion {
-		return g.Name + " [F]"
-	}
-	return g.Name
-}
-
-// Empty returns whether the person name is empty.
-func (g Person) Empty() bool { return g.Name == "" }
-
-// Equal returns whether two person names are equal.
-func (g Person) Equal(other Person) bool {
-	return g.Name == other.Name
-	// Disregard the FaceRegion flag.
-}
-
 // GetPeople returns the highest priority person values.
-func GetPeople(h filefmt.FileHandler) []Person {
+func GetPeople(h filefmt.FileHandler) (people []string) {
 	kws := getFilteredKeywords(h, personPredicate, false)
-	people := make([]Person, 0, len(kws))
-	pmap := make(map[string]*Person)
-	for i := range kws {
-		name := kws[i][1]
-		if name != "" && pmap[name] == nil {
-			people = append(people, Person{Name: name})
-			pmap[name] = &people[len(people)-1]
+	pmap := make(map[string]bool)
+	for _, kw := range kws {
+		name := kw[1]
+		if name != "" && !pmap[name] {
+			people = append(people, name)
+			pmap[name] = true
 		}
 	}
-	if xmp := h.XMP(false); xmp != nil {
-		var faces []string
-		if len(xmp.MPRegPersonDisplayNames()) != 0 {
-			faces = xmp.MPRegPersonDisplayNames()
-		} else {
-			faces = xmp.MWGRSNames()
-		}
-		for _, face := range faces {
-			if pmap[face] != nil {
-				pmap[face].FaceRegion = true
-			} else {
-				people = append(people, Person{Name: face, FaceRegion: true})
-				pmap[face] = &people[len(people)-1]
-			}
+	for _, face := range GetFaces(h) {
+		if !pmap[face] {
+			people = append(people, face)
+			pmap[face] = true
 		}
 	}
 	return people
 }
 
 // GetPersonTags returns all of the person tags and their values.
-func GetPersonTags(h filefmt.FileHandler) (tags []string, values []Person) {
+func GetPersonTags(h filefmt.FileHandler) (tags []string, values []string) {
 	tags, kws := getFilteredKeywordTags(h, personPredicate)
-	values = make([]Person, len(kws))
+	values = make([]string, len(kws))
 	for i := range kws {
-		values[i].Name = kws[i][1]
-	}
-	if xmp := h.XMP(false); xmp != nil {
-		for _, face := range xmp.MPRegPersonDisplayNames() {
-			tags = append(tags, "XMP  MP:Regions")
-			values = append(values, Person{Name: face})
-			// Note, we do not set FaceRegion to true, because that
-			// would result in printing a [F] suffix, which is
-			// rendundant given that the tag name is being shown.
-		}
-		for _, face := range xmp.MWGRSNames() {
-			tags = append(tags, "XMP  mwg-rs:RegionInfo")
-			values = append(values, Person{Name: face})
-		}
+		values[i] = kws[i][1]
 	}
 	return tags, values
 }
@@ -107,110 +42,63 @@ func GetPersonTags(h filefmt.FileHandler) (tags []string, values []Person) {
 // CheckPeople determines whether the people are tagged correctly, and are
 // consistent with the reference.
 func CheckPeople(ref, h filefmt.FileHandler) (res CheckResult) {
-	var (
-		xmp  *xmp.XMP
-		pmap map[string]bool
-	)
 	if res = checkFilteredKeywords(ref, h, personPredicate); res == ChkConflictingValues {
 		return res
 	}
-	xmp = h.XMP(false)
-	if xmp == nil || (len(xmp.MPRegPersonDisplayNames()) == 0 && len(xmp.MWGRSNames()) == 0) {
-		return res
-	}
-	if len(xmp.MPRegPersonDisplayNames()) != 0 && len(xmp.MWGRSNames()) != 0 && len(xmp.MPRegPersonDisplayNames()) != len(xmp.MWGRSNames()) {
-		return ChkConflictingValues
-	}
-	pmap = make(map[string]bool)
-	for _, p := range getFilteredKeywords(ref, personPredicate, false) {
-		pmap[p[1]] = true
-	}
-	for _, f := range xmp.MPRegPersonDisplayNames() {
-		if !pmap[f] {
-			return ChkConflictingValues
+	// Also check whether all face regions have corresponding people tags.
+	// If not, it's reported as IncorrectlyTagged.
+	var faces = GetFaces(ref)
+	var people = getFilteredKeywords(h, personPredicate, false)
+	for _, face := range faces {
+		var found = false
+		for _, person := range people {
+			if person[1] == face {
+				found = true
+				break
+			}
+		}
+		if !found {
+			res = ChkIncorrectlyTagged
+			break
 		}
 	}
-	for _, f := range xmp.MWGRSNames() {
-		if !pmap[f] {
-			return ChkConflictingValues
-		}
-	}
-	if len(xmp.MPRegPersonDisplayNames()) != len(xmp.MWGRSNames()) { // i.e., one of them is zero and the other isn't
-		return ChkIncorrectlyTagged
-	}
-	return res // the result from checking the keywords
+	return res
 }
 
 // SetPeople sets the person tags.
-func SetPeople(h filefmt.FileHandler, v []Person) error {
+func SetPeople(h filefmt.FileHandler, v []string) error {
 	var (
-		kws   = make([]metadata.Keyword, len(v))
-		names = make(map[string]bool)
-		faces = make(map[string]bool)
+		facelist []string
+		kws      = make([]metadata.Keyword, len(v))
+		names    = make(map[string]bool)
+		faces    = make(map[string]bool)
 	)
-	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.MPRegPersonDisplayNames()) != 0 {
-			for _, f := range xmp.MPRegPersonDisplayNames() {
-				faces[f] = false
-			}
-		} else {
-			for _, f := range xmp.MWGRSNames() {
-				faces[f] = false
-			}
-		}
+	for _, face := range GetFaces(h) {
+		faces[face] = false
 	}
 	for i, g := range v {
-		if g.Empty() {
+		if strings.TrimSpace(g) == "" {
 			return errors.New("empty person not allowed")
 		}
-		if names[g.Name] {
-			return fmt.Errorf("cannot list name %q twice", g.Name)
+		if names[g] {
+			return fmt.Errorf("cannot list name %q twice", g)
 		}
-		names[g.Name] = true
-		if _, ok := faces[g.Name]; ok {
-			faces[g.Name] = true
-		} else if g.FaceRegion {
-			return fmt.Errorf("cannot add face region for %q", g.Name)
+		names[g] = true
+		if _, ok := faces[g]; ok {
+			faces[g] = true
 		}
-		kws[i] = append(metadata.Keyword{"People"}, v[i].Name)
+		kws[i] = append(metadata.Keyword{"People"}, v[i])
 	}
 	for face, seen := range faces {
-		if !seen {
-			return fmt.Errorf("cannot remove %q: face regions are not removable with this tool", face)
+		if seen {
+			facelist = append(facelist, face)
 		}
 	}
 	if err := setFilteredKeywords(h, kws, personPredicate); err != nil {
 		return err
 	}
-	if xmp := h.XMP(false); xmp != nil {
-		if list := xmp.MPRegPersonDisplayNames(); len(list) != 0 {
-			j := 0
-			for _, name := range list {
-				if faces[name] {
-					list[j] = name
-					j++
-				}
-			}
-			if j < len(list) {
-				if err := xmp.SetMPRegPersonDisplayNames(list[:j]); err != nil {
-					return err
-				}
-			}
-		}
-		if list := xmp.MWGRSNames(); len(list) != 0 {
-			j := 0
-			for _, name := range list {
-				if faces[name] {
-					list[j] = name
-					j++
-				}
-			}
-			if j < len(list) {
-				if err := xmp.SetMWGRSNames(list[:j]); err != nil {
-					return err
-				}
-			}
-		}
+	if err := SetFaces(h, facelist); err != nil {
+		return err
 	}
 	return nil
 }

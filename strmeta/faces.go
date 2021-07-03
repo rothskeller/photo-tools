@@ -3,18 +3,28 @@ package strmeta
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/rothskeller/photo-tools/filefmt"
 )
 
-// GetFaces returns the names of face regions from the highest priority face
-// region tag.
-func GetFaces(h fileHandler) []string {
+// GetFaces returns the names of face regions.  Since we can't add regions, we
+// don't use the highest priority tag; we use the union of both tags.
+func GetFaces(h fileHandler) (faces []string) {
 	if xmp := h.XMP(false); xmp != nil {
-		if len(xmp.MPRegPersonDisplayNames()) != 0 {
-			return xmp.MPRegPersonDisplayNames()
+		var fmap = make(map[string]bool)
+		for _, face := range xmp.MPRegPersonDisplayNames() {
+			fmap[face] = true
 		}
-		return xmp.MWGRSNames()
+		for _, face := range xmp.MWGRSNames() {
+			fmap[face] = true
+		}
+		faces = make([]string, 0, len(fmap))
+		for face := range fmap {
+			faces = append(faces, face)
+		}
+		sort.Strings(faces)
+		return faces
 	}
 	return nil
 }
@@ -38,41 +48,17 @@ func GetFaceTags(h filefmt.FileHandler) (tags []string, values []string) {
 // consistent with the reference.
 func CheckFaces(ref, h filefmt.FileHandler) (res CheckResult) {
 	var value = GetFaces(ref)
-
-	if xmp := h.XMP(false); xmp != nil {
-		if !stringSliceEqualUnordered(value, xmp.MPRegPersonDisplayNames()) {
-			if len(xmp.MPRegPersonDisplayNames()) != 0 {
-				return ChkConflictingValues
-			}
-			res = ChkIncorrectlyTagged
+	var local = GetFaces(h)
+	if !stringSliceEqual(value, local) {
+		if len(local) != 0 {
+			return ChkConflictingValues
 		}
-		if !stringSliceEqualUnordered(value, xmp.MWGRSNames()) {
-			if len(xmp.MWGRSNames()) != 0 {
-				return ChkConflictingValues
-			}
-			res = ChkIncorrectlyTagged
-		}
+		return ChkIncorrectlyTagged
 	}
-	// We also want to call them inconsistently tagged if there are missing
-	// person tags for them.
-	var people = getFilteredKeywords(ref, personPredicate, false)
-	for _, face := range value {
-		var found = false
-		for _, kw := range people {
-			if face == kw[1] {
-				found = true
-				break
-			}
-		}
-		if !found {
-			res = ChkIncorrectlyTagged
-			break
-		}
+	if len(value) != 0 {
+		return ChkPresent
 	}
-	if res == 0 && len(value) != 0 {
-		res = ChkPresent
-	}
-	return res
+	return ChkOptionalAbsent
 }
 
 // SetFaces sets the face region tags.  It can only remove existing tags; it

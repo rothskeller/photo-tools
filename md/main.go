@@ -19,14 +19,27 @@ func main() {
 	for _, batch := range batches {
 		for _, op := range ops {
 			if err := op.Run(batch); err != nil {
-				panic("not sure how to handle errors here; revisit once I know what's possible") // TODO
+				fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+				sawError = true
 			}
 		}
-		for _, file := range batch {
-			if file.Changed {
-				if err := file.Handler.SaveMetadata(); err != nil {
-					fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
-					sawError = true
+	}
+	for _, op := range ops {
+		if op, ok := op.(interface{ Finish() error }); ok {
+			if err := op.Finish(); err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+				sawError = true
+			}
+		}
+	}
+	if !sawError {
+		for _, batch := range batches {
+			for _, file := range batch {
+				if file.Changed {
+					if err := file.Handler.SaveMetadata(); err != nil {
+						fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
+						sawError = true
+					}
 				}
 			}
 		}

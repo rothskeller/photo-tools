@@ -15,7 +15,8 @@ func newCheckOp() Operation { return new(checkOp) }
 // each field.
 type checkOp struct {
 	fieldListOp
-	hasRun bool
+	out       *tabwriter.Writer
+	lastCount int
 }
 
 // parseArgs parses the arguments for the operation, returning the remaining
@@ -48,29 +49,38 @@ func (op *checkOp) Check(batches [][]MediaFile) error { return nil }
 
 // Run executes the operation against the listed media files (one batch).
 func (op *checkOp) Run(files []MediaFile) error {
-	if op.hasRun { // put a newline between batches for readability
-		fmt.Println()
+	if op.out == nil {
+		op.out = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+		fmt.Fprint(op.out, "FILE")
+		for _, field := range op.fields {
+			fmt.Fprintf(op.out, "\t%s", field.ShortLabel())
+		}
+		fmt.Fprintln(op.out)
+	} else if op.lastCount > 1 || len(files) > 1 {
+		for range op.fields {
+			fmt.Fprint(op.out, "\t")
+		}
+		fmt.Fprintln(op.out)
 	}
-	out := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprint(out, "FILE")
-	for _, field := range op.fields {
-		fmt.Fprintf(out, "\t%s", field.ShortLabel())
-	}
-	fmt.Fprintln(out)
+	op.lastCount = len(files)
 	for _, file := range files {
-		fmt.Fprint(out, file.Path)
+		fmt.Fprint(op.out, file.Path)
 		for _, field := range op.fields {
 			result := field.CheckValues(files[0].Handler, file.Handler)
 			if result <= 0 || (result == strmeta.ChkPresent && !field.Multivalued()) {
-				fmt.Fprint(out, resultCodes[result])
+				fmt.Fprint(op.out, resultCodes[result])
 			} else {
-				fmt.Fprintf(out, "\t%2d", result)
+				fmt.Fprintf(op.out, "\t%2d", result)
 			}
 		}
-		fmt.Fprintln(out)
+		fmt.Fprintln(op.out)
 	}
-	out.Flush()
-	op.hasRun = true
+	return nil
+}
+
+// Finish finishes the operation after all batches have been processed.
+func (op *checkOp) Finish() error {
+	op.out.Flush()
 	return nil
 }
 

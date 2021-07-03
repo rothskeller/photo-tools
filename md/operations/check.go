@@ -24,17 +24,17 @@ func (op *checkOp) parseArgs(args []string) (remainingArgs []string, err error) 
 	remainingArgs, _ = op.fieldListOp.parseArgs(args)
 	if len(op.fields) == 0 {
 		op.fields = []fields.Field{
-			fields.TitleField,
-			fields.DateTimeField,
 			fields.ArtistField,
+			fields.DateTimeField,
 			fields.GPSField,
-			fields.LocationField,
 			fields.PlacesField,
 			fields.PeopleField,
 			fields.GroupsField,
 			fields.TopicsField,
-			fields.KeywordsField,
+			fields.TitleField,
 			fields.CaptionField,
+			fields.KeywordsField,
+			fields.LocationField,
 		}
 	}
 	return remainingArgs, nil

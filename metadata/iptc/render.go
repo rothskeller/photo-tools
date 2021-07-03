@@ -22,12 +22,13 @@ func (p *IPTC) Render() []byte {
 		panic("IPTC Render with parse problems")
 	}
 	var out bytes.Buffer
+	if p.dirty {
+		psirIPTC, psirHash := p.renderIPTC()
+		p.renderPSIR(&out, psirIPTC)
+		p.renderPSIR(&out, psirHash)
+	}
 	for _, psir := range p.psir {
-		if psir.id == iptcPSIRID && p.dirty {
-			psirIPTC, psirHash := p.renderIPTC()
-			p.renderPSIR(&out, psirIPTC)
-			p.renderPSIR(&out, psirHash)
-		} else if psir.id != iptcPSIRHash || !p.dirty {
+		if !p.dirty || (psir.id != iptcPSIRID && psir.id != iptcPSIRHash) {
 			p.renderPSIR(&out, psir)
 		}
 	}

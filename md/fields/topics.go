@@ -64,11 +64,10 @@ func (f *topicsField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	return tags, ifcs
 }
 
-// CheckValues returns whether the values of the field in the target are tagged
-// correctly, and are consistent with the values of the field in the reference.
-func (f *topicsField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) (res strmeta.CheckResult) {
-	if res = strmeta.CheckTopics(ref, tgt); res == strmeta.ChkPresent {
-		res = strmeta.CheckResult(len(f.GetValues(ref)))
+// CheckValues returns whether the values of the field are tagged correctly.
+func (f *topicsField) CheckValues(h filefmt.FileHandler) (res strmeta.CheckResult) {
+	if res = strmeta.CheckTopics(h); res == strmeta.ChkPresent {
+		res = strmeta.CheckResult(len(f.GetValues(h)))
 	}
 	return res
 }

@@ -44,18 +44,10 @@ func GetFaceTags(h filefmt.FileHandler) (tags []string, values []string) {
 	return tags, values
 }
 
-// CheckFaces determines whether the face regions are tagged correctly, and are
-// consistent with the reference.
-func CheckFaces(ref, h filefmt.FileHandler) (res CheckResult) {
-	var value = GetFaces(ref)
-	var local = GetFaces(h)
-	if !stringSliceEqual(value, local) {
-		if len(local) != 0 {
-			return ChkConflictingValues
-		}
-		return ChkIncorrectlyTagged
-	}
-	if len(value) != 0 {
+// CheckFaces determines whether the face regions are tagged correctly.  (Except
+// it really doesn't check anything.)
+func CheckFaces(h filefmt.FileHandler) (res CheckResult) {
+	if len(GetFaces(h)) != 0 {
 		return ChkPresent
 	}
 	return ChkOptionalAbsent

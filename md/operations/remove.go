@@ -1,48 +1,44 @@
 package operations
 
-import "fmt"
+import (
+	"fmt"
 
-func newRemoveOp() Operation { return &removeOp{fieldValueOp{name: "remove"}} }
+	"github.com/rothskeller/photo-tools/md/fields"
+)
 
-// removeOp removes a value from a multi-valued field.
-type removeOp struct {
-	fieldValueOp
-}
+// Remove removes one or more values from a multi-valued field.
+func Remove(args []string, files []MediaFile) (err error) {
+	var field fields.Field
+	var toremove []interface{}
 
-// parseArgs parses the arguments for the operation, returning the remaining
-// argument list or an error.
-func (op *removeOp) parseArgs(args []string) (remainingArgs []string, err error) {
-	if remainingArgs, err = op.fieldValueOp.parseArgs(args); err != nil {
-		return nil, err
+	if field, toremove, err = parseFieldValues("remove", args); err != nil {
+		return err
 	}
-	if !op.field.Multivalued() {
-		return nil, fmt.Errorf("remove: not supported for %q", op.field.Name())
+	if !field.Multivalued() {
+		return fmt.Errorf("remove: not supported for %q", field.Name())
 	}
-	return remainingArgs, nil
-}
-
-// Check verifies that the operation is valid for the listed batches of media
-// files.  (Some operations require certain numbers of batches, certain numbers
-// of files per batch, certain media types, etc.).
-func (op *removeOp) Check(batches [][]MediaFile) error { return nil }
-
-// Run executes the operation against the listed media files (one batch).
-func (op *removeOp) Run(files []MediaFile) error {
 	for i, file := range files {
 		// Get the current values.
-		values := op.field.GetValues(file.Handler)
-		// Remove the one we were asked to remove.
+		values := field.GetValues(file.Handler)
+		// Remove the ones we were asked to remove.
 		j := 0
 		for _, v := range values {
-			if !op.field.EqualValue(v, op.value) {
+			var found = false
+			for _, rem := range toremove {
+				if field.EqualValue(v, rem) {
+					found = true
+					break
+				}
+			}
+			if !found {
 				values[j] = v
 				j++
 			}
 		}
-		// If we found it, set the new value list that leaves it out.
+		// If we found any, set the new value list that leaves it out.
 		if j < len(values) {
-			if err := op.field.SetValues(file.Handler, values[:j]); err != nil {
-				return fmt.Errorf("%s: remove %s: %s", file.Path, op.field.Name(), err)
+			if err := field.SetValues(file.Handler, values[:j]); err != nil {
+				return fmt.Errorf("%s: remove %s: %s", file.Path, field.Name(), err)
 			}
 			files[i].Changed = true
 		}

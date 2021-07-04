@@ -54,10 +54,9 @@ func GetTopicTags(h filefmt.FileHandler) (tags []string, values []Topic) {
 	return tags, values
 }
 
-// CheckTopics determines whether the topics are tagged correctly, and are
-// consistent with the reference.
-func CheckTopics(ref, h filefmt.FileHandler) CheckResult {
-	return checkFilteredKeywords(ref, h, topicPredicate)
+// CheckTopics determines whether the topics are tagged correctly.
+func CheckTopics(h filefmt.FileHandler) CheckResult {
+	return checkFilteredKeywords(h, topicPredicate)
 }
 
 // SetTopics sets the topic tags.

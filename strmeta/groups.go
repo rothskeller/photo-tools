@@ -55,10 +55,9 @@ func GetGroupTags(h filefmt.FileHandler) (tags []string, values []Group) {
 	return tags, values
 }
 
-// CheckGroups determines whether the groups are tagged correctly, and are
-// consistent with the reference.
-func CheckGroups(ref, h filefmt.FileHandler) CheckResult {
-	return checkFilteredKeywords(ref, h, groupPredicate)
+// CheckGroups determines whether the groups are tagged correctly.
+func CheckGroups(h filefmt.FileHandler) CheckResult {
+	return checkFilteredKeywords(h, groupPredicate)
 }
 
 // SetGroups sets the group tags.

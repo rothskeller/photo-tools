@@ -32,10 +32,9 @@ func GetTitleTags(h fileHandler) (tags, values []string) {
 	return tags, values
 }
 
-// CheckTitle determines whether the title is tagged correctly, and is
-// consistent with the reference.
-func CheckTitle(ref, h fileHandler) (res CheckResult) {
-	var value = GetTitle(ref)
+// CheckTitle determines whether the title is tagged correctly.
+func CheckTitle(h fileHandler) (res CheckResult) {
+	var value = GetTitle(h)
 
 	if xmp := h.XMP(false); xmp != nil {
 		switch len(xmp.DCTitle()) {

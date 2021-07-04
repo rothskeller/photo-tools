@@ -1,6 +1,7 @@
 package operations
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"text/tabwriter"
@@ -9,78 +10,47 @@ import (
 	"github.com/rothskeller/photo-tools/strmeta"
 )
 
-func newCheckOp() Operation { return new(checkOp) }
-
-// checkOp displays a table giving the tagging correctness and consistency of
-// each field.
-type checkOp struct {
-	fieldListOp
-	out       *tabwriter.Writer
-	lastCount int
+var checkFields = []fields.Field{
+	fields.ArtistField,
+	fields.DateTimeField,
+	fields.GPSField,
+	fields.PlacesField,
+	fields.PeopleField,
+	fields.FacesField,
+	fields.GroupsField,
+	fields.TopicsField,
+	fields.TitleField,
+	fields.CaptionField,
+	fields.KeywordsField,
+	fields.LocationField,
 }
 
-// parseArgs parses the arguments for the operation, returning the remaining
-// argument list or an error.
-func (op *checkOp) parseArgs(args []string) (remainingArgs []string, err error) {
-	remainingArgs, _ = op.fieldListOp.parseArgs(args)
-	if len(op.fields) == 0 {
-		op.fields = []fields.Field{
-			fields.ArtistField,
-			fields.DateTimeField,
-			fields.GPSField,
-			fields.PlacesField,
-			fields.PeopleField,
-			fields.FacesField,
-			fields.GroupsField,
-			fields.TopicsField,
-			fields.TitleField,
-			fields.CaptionField,
-			fields.KeywordsField,
-			fields.LocationField,
-		}
-	}
-	return remainingArgs, nil
-}
+// Check displays a table giving the tagging correctness of each field.
+func Check(args []string, files []MediaFile) (err error) {
+	var out *tabwriter.Writer
 
-// Check verifies that the operation is valid for the listed batches of media
-// files.  (Some operations require certain numbers of batches, certain numbers
-// of files per batch, certain media types, etc.).
-func (op *checkOp) Check(batches [][]MediaFile) error { return nil }
-
-// Run executes the operation against the listed media files (one batch).
-func (op *checkOp) Run(files []MediaFile) error {
-	if op.out == nil {
-		op.out = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
-		fmt.Fprint(op.out, "FILE")
-		for _, field := range op.fields {
-			fmt.Fprintf(op.out, "\t%s", field.ShortLabel())
-		}
-		fmt.Fprintln(op.out)
-	} else if op.lastCount > 1 || len(files) > 1 {
-		for range op.fields {
-			fmt.Fprint(op.out, "\t")
-		}
-		fmt.Fprintln(op.out)
+	if len(args) != 0 {
+		return errors.New("check: excess arguments")
 	}
-	op.lastCount = len(files)
+	out = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+	fmt.Fprint(out, "FILE")
+	for _, field := range checkFields {
+		fmt.Fprintf(out, "\t%s", field.ShortLabel())
+	}
+	fmt.Fprintln(out)
 	for _, file := range files {
-		fmt.Fprint(op.out, file.Path)
-		for _, field := range op.fields {
-			result := field.CheckValues(files[0].Handler, file.Handler)
+		fmt.Fprint(out, file.Path)
+		for _, field := range checkFields {
+			result := field.CheckValues(file.Handler)
 			if result <= 0 || (result == strmeta.ChkPresent && !field.Multivalued()) {
-				fmt.Fprint(op.out, resultCodes[result])
+				fmt.Fprint(out, resultCodes[result])
 			} else {
-				fmt.Fprintf(op.out, "\t%2d", result)
+				fmt.Fprintf(out, "\t%2d", result)
 			}
 		}
-		fmt.Fprintln(op.out)
+		fmt.Fprintln(out)
 	}
-	return nil
-}
-
-// Finish finishes the operation after all batches have been processed.
-func (op *checkOp) Finish() error {
-	op.out.Flush()
+	out.Flush()
 	return nil
 }
 

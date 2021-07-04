@@ -55,10 +55,9 @@ func GetPlaceTags(h filefmt.FileHandler) (tags []string, values []Place) {
 	return tags, values
 }
 
-// CheckPlaces determines whether the places are tagged correctly, and are
-// consistent with the reference.
-func CheckPlaces(ref, h filefmt.FileHandler) (res CheckResult) {
-	res = checkFilteredKeywords(ref, h, placePredicate)
+// CheckPlaces determines whether the places are tagged correctly.
+func CheckPlaces(h filefmt.FileHandler) (res CheckResult) {
+	res = checkFilteredKeywords(h, placePredicate)
 	if res == ChkOptionalAbsent {
 		return ChkExpectedAbsent
 	}

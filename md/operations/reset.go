@@ -6,20 +6,16 @@ import (
 	"github.com/rothskeller/photo-tools/md/fields"
 )
 
-func newResetOp() Operation { return new(resetOp) }
-
-// resetOp resets the values of one or more fields to their primary value, thus
+// Reset resets the values of one or more fields to their primary value(s), thus
 // clearing up any inconsistencies or tagging errors.
-type resetOp struct {
-	fieldListOp
-}
+func Reset(args []string, files []MediaFile) (err error) {
+	var fieldlist []fields.Field
 
-// parseArgs parses the arguments for the operation, returning the remaining
-// argument list or an error.
-func (op *resetOp) parseArgs(args []string) (remainingArgs []string, err error) {
-	remainingArgs, _ = op.fieldListOp.parseArgs(args)
-	if len(op.fields) == 0 {
-		op.fields = []fields.Field{
+	if fieldlist, err = parseFieldList("reset", args); err != nil {
+		return err
+	}
+	if len(fieldlist) == 0 {
+		fieldlist = []fields.Field{
 			fields.ArtistField,
 			fields.CaptionField,
 			fields.DateTimeField,
@@ -34,18 +30,8 @@ func (op *resetOp) parseArgs(args []string) (remainingArgs []string, err error) 
 			fields.TopicsField,
 		}
 	}
-	return remainingArgs, nil
-}
-
-// Check verifies that the operation is valid for the listed batches of media
-// files.  (Some operations require certain numbers of batches, certain numbers
-// of files per batch, certain media types, etc.).
-func (op *resetOp) Check(batches [][]MediaFile) error { return nil }
-
-// Run executes the operation against the listed media files (one batch).
-func (op *resetOp) Run(files []MediaFile) error {
 	for i, file := range files {
-		for _, field := range op.fields {
+		for _, field := range fieldlist {
 			values := field.GetValues(file.Handler)
 			if err := field.SetValues(file.Handler, values); err != nil {
 				return fmt.Errorf("%s: reset %s: %s", file.Path, field.PluralName(), err)

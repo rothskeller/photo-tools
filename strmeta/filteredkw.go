@@ -98,17 +98,16 @@ func getFilteredKeywordTags(h filefmt.FileHandler, pred keywordFilter) (tags []s
 }
 
 // checkFilteredKeywords determines whether the keywords satisfying the
-// specified filter are tagged correctly, and are consistent with those in the
-// reference media file.
-func checkFilteredKeywords(ref, tgt filefmt.FileHandler, pred keywordFilter) (res CheckResult) {
+// specified filter are tagged correctly.
+func checkFilteredKeywords(h filefmt.FileHandler, pred keywordFilter) (res CheckResult) {
 	var (
-		values   = getFilteredKeywords(ref, pred, false)
+		values   = getFilteredKeywords(h, pred, false)
 		valuemap = make(map[string]bool)
 	)
 	for _, kw := range values {
 		valuemap[kw.String()] = true
 	}
-	if xmp := tgt.XMP(false); xmp != nil {
+	if xmp := h.XMP(false); xmp != nil {
 		res = checkFilteredHierarchicalKeywords(valuemap, xmp.DigiKamTagsList(), pred)
 		if r := checkFilteredHierarchicalKeywords(valuemap, xmp.LRHierarchicalSubject(), pred); r < res {
 			res = r

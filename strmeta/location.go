@@ -207,10 +207,9 @@ func addUnique(list []string, val string) []string {
 	return append(list, val)
 }
 
-// CheckLocation determines whether the location is tagged correctly, and is
-// consistent with the reference.
-func CheckLocation(ref, h fileHandler) (res CheckResult) {
-	var value = GetLocation(ref)
+// CheckLocation determines whether the location is tagged correctly.
+func CheckLocation(h fileHandler) (res CheckResult) {
+	var value = GetLocation(h)
 
 	xmp := h.XMP(false)
 	if xmp != nil {

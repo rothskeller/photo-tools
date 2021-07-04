@@ -40,9 +40,8 @@ value. Exceptions: empty tags are not returned if the entire metadata block
 containing them is absent from the media file, or if the tag is marked `[rm]` in
 the field descriptions below.
 
-`CheckXXX(ref, tgt filefmt.FileHandler) CheckResult` returns an indicator of
-whether the field value(s) are tagged correctly in tgt, and whether its value(s)
-are consistent with the value(s) of the tag in ref.
+`CheckXXX(h filefmt.FileHandler) CheckResult` returns an indicator of whether
+the field value(s) are tagged correctly.
 
 `SetXXX(h filefmt.FileHandler, value valuetype) error` sets the value of the
 field, in all of the underlying tags that support it (except those marked `[rm]`
@@ -117,6 +116,20 @@ The date and time come from the following tags, in priority order:
     XMP  xmp:MetadataDate         [rm]
     IPTC DateTimeCreated          [set]
     IPTC DigitalCreationDateTime  [set] [rm]
+
+## Faces Field
+
+The face regions of a (photo) media indicate portions of the photo that contain
+a person's face. In this library, the faces field is stored as a list of names
+of people who have face regions.
+
+The face regions come from the union of the following tags:
+
+    XMP  MP:RegionInfo/MPRI:Regions[]/MPReg:PersonDisplayName
+    XMP  mwg-rs:Regions/mwg-rs:RegionList[]/mwg-rs:Name
+
+This library does not know how to add face regions; all such attempts fail. It
+can only recognize them and remove them.
 
 ## GPSCoords Field
 
@@ -227,14 +240,8 @@ order:
     XMP  dc:Subject              [flat]
     IPTC Keywords                [flat] [max]
 
-In addition, people values may also be stored in tags describing face regions:
-
-    XMP  MP:RegionInfo/MPRI:Regions/MPReg:PersonDisplayName  [ro]
-    XMP  mwg-rs:RegionInfo/Regions/Name                      [ro]
-
-People values that are stored as face regions cannot be changed by this library.
-Any attempt to remove one will fail. People values added using this library
-will not have face regions.
+In addition, all names associated with face regions (see Faces Field, above) are
+reported as person names.
 
 NOTE: although people values are stored in keyword metadata tags, they are not
 considered to be keywords in my metadata model, and they are not returned or

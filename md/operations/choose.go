@@ -12,48 +12,36 @@ import (
 	"github.com/rothskeller/photo-tools/md/fields"
 )
 
-func newChooseOp() Operation { return new(chooseOp) }
-
-// chooseOp displays all of the tagged values for a field, lets the user choose
-// one (or type a new value), and then sets the field to that value across all
-// files in the batch.
-type chooseOp struct {
-	field fields.Field
-}
-
-// parseArgs parses the arguments for the operation, returning the remaining
-// argument list or an error.
-func (op *chooseOp) parseArgs(args []string) (remainingArgs []string, err error) {
-	if len(args) == 0 {
-		return nil, errors.New("choose: missing field name")
-	}
-	if op.field = fields.ParseField(args[0]); op.field == nil {
-		return nil, errors.New("choose: missing field name")
-	}
-	return args[1:], nil
-}
-
-// Check verifies that the operation is valid for the listed batches of media
-// files.  (Some operations require certain numbers of batches, certain numbers
-// of files per batch, certain media types, etc.).
-func (op *chooseOp) Check(batches [][]MediaFile) error { return nil }
-
-// Run executes the operation against the listed media files (one batch).
-func (op *chooseOp) Run(files []MediaFile) error {
+// Choose displays all of the tagged values for a field, lets the user choose
+// one or more (or type new values), and then sets the field to those values
+// across all target files.
+func Choose(args []string, files []MediaFile) (err error) {
 	var (
+		field  fields.Field
 		values []interface{}
 		newvs  []interface{}
 		scan   *bufio.Scanner
 		line   string
 		tw     = tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
 	)
+	switch len(args) {
+	case 0:
+		return errors.New("choose: missing field name")
+	case 1:
+		break
+	default:
+		return errors.New("choose: excess arguments")
+	}
+	if field = fields.ParseField(args[0]); field == nil {
+		return fmt.Errorf("choose: %q is not a recognized field name", args[0])
+	}
 	// Print the tag table.
 	fmt.Fprintln(tw, "#\tFILE\tTAG\tVALUE")
 	for _, file := range files {
-		tagNames, tagValues := op.field.GetTags(file.Handler)
+		tagNames, tagValues := field.GetTags(file.Handler)
 		for i, tag := range tagNames {
 			values = append(values, tagValues[i])
-			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.Path, tag, escapeString(op.field.RenderValue(tagValues[i])))
+			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.Path, tag, escapeString(field.RenderValue(tagValues[i])))
 		}
 		if len(tagNames) == 0 {
 			fmt.Fprintf(tw, "\t%s\t(none)\t\n", file.Path)
@@ -64,9 +52,9 @@ func (op *chooseOp) Run(files []MediaFile) error {
 	scan = bufio.NewScanner(os.Stdin)
 RETRY:
 	if len(values) != 0 {
-		fmt.Printf("Enter a new value for %s, or 0 to clear, 1-%d to copy, or nothing to skip.\n? ", op.field.Name(), len(values))
+		fmt.Printf("Enter a new value for %s, or 0 to clear, 1-%d to copy, or nothing to skip.\n? ", field.Name(), len(values))
 	} else {
-		fmt.Printf("Enter a new value for %s, 0 to clear, or nothing to skip.\n? ", op.field.Name())
+		fmt.Printf("Enter a new value for %s, 0 to clear, or nothing to skip.\n? ", field.Name())
 	}
 	if !scan.Scan() {
 		return scan.Err()
@@ -84,18 +72,21 @@ RETRY:
 		for i := range nums {
 			newvs[i] = values[nums[i]-1]
 		}
-	} else { // Not a line number list; is it a valid value for the field?
-		if newv, err := op.field.ParseValue(line); err != nil {
-			fmt.Printf("ERROR: %s\n", err)
-			goto RETRY
-		} else {
-			newvs = []interface{}{newv}
+	} else { // Not a line number list; is it a set of valid values for the field?
+		list := strings.Split(line, ";")
+		for _, item := range list {
+			if newv, err := field.ParseValue(strings.TrimSpace(item)); err != nil {
+				fmt.Printf("ERROR: %s\n", err)
+				goto RETRY
+			} else {
+				newvs = append(newvs, newv)
+			}
 		}
 	}
 	// Set these value(s) on all files in the batch.
 	for i, file := range files {
-		if err := op.field.SetValues(file.Handler, newvs); err != nil {
-			return fmt.Errorf("%s: choose %s: %s", file.Path, op.field.Name(), err)
+		if err := field.SetValues(file.Handler, newvs); err != nil {
+			return fmt.Errorf("%s: choose %s: %s", file.Path, field.Name(), err)
 		}
 		files[i].Changed = true
 	}
@@ -103,32 +94,60 @@ RETRY:
 }
 
 func parseLineNumberSet(s string, max int) (nums []int, showedError bool) {
-	var (
-		err   error
-		seen  = make(map[int]bool)
-		parts = strings.Fields(s)
-	)
-	nums = make([]int, len(parts))
-	for i := range parts {
-		if nums[i], err = strconv.Atoi(parts[i]); err != nil {
-			return nil, false
+	var seen = make(map[int]bool)
+
+	nums = ParseNumberList(s)
+	switch len(nums) {
+	case 0:
+		return nil, false
+	case 1:
+		if nums[0] == 0 {
+			return nums, false // otherwise it would be rejected below
 		}
-		if nums[i] < 0 {
-			return nil, false
-		}
-		if nums[i] == 0 && i != 0 {
-			fmt.Println("ERROR: 0 must appear alone, not with other line numbers")
+	}
+	for _, num := range nums {
+		if num == 0 || num >= max {
+			fmt.Printf("ERROR: no such line number %d\n", num)
 			return nil, true
 		}
-		if nums[i] > max {
-			fmt.Printf("ERROR: no such line number %d\n", nums[i])
+		if seen[num] {
+			fmt.Printf("ERROR: line number %d repeated\n", num)
 			return nil, true
 		}
-		if seen[nums[i]] {
-			fmt.Printf("ERROR: line number %d repeated\n", nums[i])
-			return nil, true
-		}
-		seen[nums[i]] = true
+		seen[num] = true
 	}
 	return nums, false
+}
+
+// ParseNumberList parses a string containing a space-separated list of
+// non-negative integers and/or ranges of non-negative integers.  It returns nil
+// if the input does not look like such a list.
+func ParseNumberList(s string) (list []int) {
+	var parts = strings.Fields(s)
+	for _, part := range parts {
+		if len(part) == 0 {
+			continue
+		}
+		idx := strings.IndexByte(part, '-')
+		if idx < 0 {
+			if num, err := strconv.Atoi(part); err == nil {
+				list = append(list, num)
+			} else {
+				return nil
+			}
+		} else {
+			num1, err := strconv.Atoi(part[:idx])
+			if err != nil {
+				return nil
+			}
+			num2, err := strconv.Atoi(part[idx+1:])
+			if err != nil || num2 < num1 {
+				return nil
+			}
+			for i := num1; i <= num2; i++ {
+				list = append(list, i)
+			}
+		}
+	}
+	return list
 }

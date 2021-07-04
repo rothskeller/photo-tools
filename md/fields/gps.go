@@ -82,9 +82,7 @@ func (f *gpsField) SetValues(h filefmt.FileHandler, v []interface{}) error {
 	}
 }
 
-// CheckValues returns whether the values of the field in the target are
-// tagged correctly, and are consistent with the values of the field in
-// the reference.
-func (f *gpsField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
-	return strmeta.CheckGPSCoords(ref, tgt)
+// CheckValues returns whether the values of the field are tagged correctly.
+func (f *gpsField) CheckValues(h filefmt.FileHandler) strmeta.CheckResult {
+	return strmeta.CheckGPSCoords(h)
 }

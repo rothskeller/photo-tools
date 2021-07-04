@@ -9,41 +9,30 @@ import (
 	"github.com/rothskeller/photo-tools/md/fields"
 )
 
-func newWriteOp() Operation { return new(writeOp) }
+// Write sets the caption on a media file, reading it from standard input.
+func Write(args []string, files []MediaFile) (err error) {
+	var value string
 
-// writeOp sets the caption on a media file, reading it from standard input.
-type writeOp struct {
-	value string
-}
-
-// parseArgs parses the arguments for the operation, returning the remaining
-// argument list or an error.
-func (op *writeOp) parseArgs(args []string) (remainingArgs []string, err error) {
-	if len(args) == 0 {
-		return nil, errors.New("write: missing field name")
+	switch len(args) {
+	case 0:
+		return errors.New("write: missing field name")
+	case 1:
+		break
+	default:
+		return errors.New("write: excess arguments")
 	}
 	if field := fields.ParseField(args[0]); field == nil {
-		return nil, errors.New("write: missing field name")
+		return errors.New("write: missing field name")
 	} else if field != fields.CaptionField {
-		return nil, fmt.Errorf("write: not supported for %q", field.Name())
+		return fmt.Errorf("write: not supported for %q", field.Name())
 	}
 	if by, err := io.ReadAll(os.Stdin); err == nil {
-		op.value = string(by)
+		value = string(by)
 	} else {
-		return args[1:], fmt.Errorf("write: standard input: %s", err)
+		return fmt.Errorf("write: standard input: %s", err)
 	}
-	return args[1:], nil
-}
-
-// Check verifies that the operation is valid for the listed batches of media
-// files.  (Some operations require certain numbers of batches, certain numbers
-// of files per batch, certain media types, etc.).
-func (op *writeOp) Check(batches [][]MediaFile) error { return nil }
-
-// Run executes the operation against the listed media files (one batch).
-func (op *writeOp) Run(files []MediaFile) error {
 	for i, file := range files {
-		if err := fields.CaptionField.SetValues(file.Handler, []interface{}{op.value}); err != nil {
+		if err := fields.CaptionField.SetValues(file.Handler, []interface{}{value}); err != nil {
 			return fmt.Errorf("%s: write caption: %s", file.Path, err)
 		}
 		files[i].Changed = true

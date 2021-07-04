@@ -41,10 +41,9 @@ func GetCreatorTags(h fileHandler) (tags, values []string) {
 	return tags, values
 }
 
-// CheckCreator determines whether the creator is tagged correctly, and is
-// consistent with the reference.
-func CheckCreator(ref, h fileHandler) (res CheckResult) {
-	var value = GetCreator(ref)
+// CheckCreator determines whether the creator is tagged correctly.
+func CheckCreator(h fileHandler) (res CheckResult) {
+	var value = GetCreator(h)
 
 	if xmp := h.XMP(false); xmp != nil {
 		switch len(xmp.DCCreator()) {

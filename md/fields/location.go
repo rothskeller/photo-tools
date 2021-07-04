@@ -80,8 +80,7 @@ func (f *locationField) SetValues(h filefmt.FileHandler, v []interface{}) error 
 	}
 }
 
-// CheckValues returns whether the values of the field in the target are tagged
-// correctly, and are consistent with the values of the field in the reference.
-func (f *locationField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) strmeta.CheckResult {
-	return strmeta.CheckLocation(ref, tgt)
+// CheckValues returns whether the values of the field are tagged correctly.
+func (f *locationField) CheckValues(h filefmt.FileHandler) strmeta.CheckResult {
+	return strmeta.CheckLocation(h)
 }

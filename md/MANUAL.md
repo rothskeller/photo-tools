@@ -3,32 +3,111 @@
 The `md` command reads and manipulates media file metadata, following the
 conventions I use in my media library.
 
-    usage: md [batch] [operation...] file...
+    usage: md [file-selection] [operation]
 
-Files and operations may occur in any order, but there must be at least one
-file. If no operation is given, `show all` is assumed. Operations are applied
-in sequence, left to right.
+## File Selection
+
+`md` remembers a set of files, and a targeted subset of them, from one
+invocation to the next. When `md` is invoked without any file selection
+arguments, it acts on the targeted subset of the remembered set.
+
+The remembered set is cleared whenever `md` is invoked from a new working
+directory. If it is invoked from a new working directory without any file
+selection arguments, its remembered set and targeted subset default to
+containing all files in the new working directory that are of a supported type.
+In this default case, operations that would modify files are disallowed to
+prevent accidents.
+
+File selection on the command line can be a list of files (not necessarily all
+in the current directory), or one of the keywords `all`, `batch`, `next`,
+`prev`, or `select`. If files are listed on the command line, they become the
+new remembered set and targeted subset.
+
+The `all` keyword sets the targeted subset to the entire remembered set.
+
+The `batch` keyword sets the targeted subset to the first "batch" of files in
+the remembered set that have the same basename (i.e., the filenames are the
+same up to the first period).
+
+The `next` and `prev` keywords change the targeted subset to the next or
+previous batch, respectively, of files in the remembered set. They are valid
+if the current targeted subset resulted from a previous `batch`, `next`, or
+`prev` selection.
+
+The `select` keyword prints a numbered list of the files in the remembered set
+and allows the user to select, by number, which one(s) to include in the new
+targeted subset.
 
 ## Operations
 
 The possible operations are:
 
+    add fieldname values
+    check
+    choose fieldname
+    clear fieldname
+    copy [fieldname...]
+    read caption
+    remove fieldname values
+    reset [fieldname...]
+    set fieldname values
     show [fieldname...]
     tags [fieldname...]
-    check [fieldname...]
-    set fieldname value
-    add fieldname value
-    remove fieldname value
-    reset [fieldname...]
-    clear fieldname
-    choose fieldname
-    copy [fieldname...]
     write caption
-    read caption
 
-If no fields are named For the `show`, `tags`, `check`, `reset`, or `copy`
-operations, or if they are given a field name of `all`, they act on all known
-fields.
+Operation names can be abbreviated as long as they remain unique. If no
+operation is given on the command line, `check` is assumed.
+
+If no fields are named for the `copy`, `reset`, `show`, or `tags` operations, or
+if they are given a field name of `all`, they act on all known fields.
+
+All command line arguments after the field name for `add`, `remove`, and `set`
+operations are joined together with a single space (to minimize the need for
+quoting on the command line). The result is then split on semicolons into
+individual values for the field. Whitespace around the values is ignored.
+
+The `add` operation adds the specified value(s) to the list of values for the
+named field, in each of the target files. It is valid only for fields that can
+have multiple values.
+
+The `check` operation verifies that all of the named files are correctly tagged.
+It displays a table with one row pernamed file and one column per field (plus
+the leftmost column for the file name). In each cell of this table, it displays
+one of the following:
+
+    '  ' for an optional field that is not set
+    '--' for an expected field that is not set
+    ' ✓' for a single-valued field that is set, and tagged correctly
+    ' 3' value count for a multi-valued field that is set, and tagged correctly
+    '!=' for a field whose tags don't agree with each other
+    '[]' for a field whose value isn't tagged correctly
+
+The `choose` operation displays all values of the named field in the target
+files, just like the `tags` operation. It then allows the user to choose one of
+those values (or manually enter some other value), which it applies to each of
+the target files just like the `set` operation.
+
+The `clear` operation removes all values of the specified field, and all
+corresponding metadata tags, from each of the target files.
+
+The `copy` operation requires at least two target files. It copies the values of
+the named fields (or all fields) from the first target file to all of the other
+target files.
+
+The `read caption` operation is like `show caption`, except that the caption is
+written to standard output without any table formatting.
+
+The `remove` operation removes the specified value(s) from the list of values
+for the named field, in each of the target files. It is valid only for fields
+that can have multiple values.
+
+The `reset` operation corrects the tagging of the named fields (or all fields)
+in all target files, using the value(s) from the highest priority metadata tag
+for those fields (i.e., the same one shown by `show`, generally the first one
+listed by `tags`).
+
+The `set` operation removes all values of the named field, and then adds the
+specified value(s), in each of the target files.
 
 The `show` operation displays the value of each named field (or all fields) in
 each named file. They are shown in a table with file name, field name, and
@@ -40,77 +119,27 @@ each named file. They are shown in a table with file name, metadata tag name,
 and metadata tag value columns. All values of all metadata tags for the
 requested fields are shown.
 
-The `check` operation verifies that all of the named files are correctly tagged,
-and have the same values, for the named fields (or all fields). It displays a
-table with one row per named file and one column per named field (plus the
-leftmost column for the file name). In each cell of this table, it displays one
-of the following:
-
-    '  ' for an optional field that is not set
-    '--' for an expected field that is not set
-    ' ✓' for a single-valued field that is set, and tagged correctly
-    ' 3' value count for a multi-valued field that is set, and tagged correctly
-    '!=' for a field whose tags don't agree with each other, or don't agree with
-         the field in the first-named file
-    '[]' for a field whose value isn't tagged correctly
-
-The `set` operation removes all values of the named field, and then adds the
-specified value, in each of the named files. As a safety precaution,
-`set keyword` is not allowed.
-
-The `add` operation adds the specified value to the list of values for the named
-field, in each of the named files. It is valid only for fields that can have
-multiple values.
-
-The `remove` operation removes the specified value from the list of values for
-the named field, in each of the named files. It is valid only for fields that
-can have multiple values.
-
-The `reset` operation corrects the tagging of the named fields (or all fields)
-in all named files, using the value(s) from the highest priority metadata tag
-for those fields (i.e., the same one shown by `show`, generally the first one
-listed by `tags`).
-
-The `clear` operation removes all values of the specified field, and all
-corresponding metadata tags, from each of the named files.
-
-The `choose` operation displays all values of the named field in the named
-files, just like the `tags` operation. It then allows the user to choose one of
-those values (or manually enter some other value), which it applies to each of
-the named files just like the `set` operation. The `choose` operation is not
-valid for fields that can have multiple values.
-
-The `copy` operation requires at least two named files. It copies the values of
-the named fields (or all fields) from the first named file to all of the other
-named files.
-
-The `read caption` operation is like `show caption`, except that the caption is
-written to standard output without any table formatting.
-
 The `write caption` operation is like `set caption`, except that the value is
 read from standard input rather than taken on the command line.
 
-If the `batch` prefix is given, the named files are batched by basename, and the
-operations are run against each batch separately. This is really only useful for
-the `check` and `choose` operations, although it also produces cosmetic
-differences in the output of the `show` and `tags` operations.
-
 ## Fields
 
-The possible field names (and allowed abbreviations) are:
+The possible field names (and allowed variations) are:
 
-    artist    (a)
-    caption   (c)
-    datetime  (d, date, time)
-    face      (f, faces)
-    gps       (g)
-    group     (groups)
-    keyword   (k, kw, keywords)
-    location  (l, loc)
-    person    (people)
-    place     (places)
-    title     (t)
-    topic     (topics)
+    artist
+    caption
+    datetime  (time)
+    face
+    gps
+    group
+    keyword   (kw)
+    location
+    person
+    place
+    title
+    topic
+
+Field names can be abbreviated as long as they remain unique.
 
 The `artist` field is the name of the person who captured the original media,
 e.g. "Steven Roth". When appropriate, it could be a company name, or a person's

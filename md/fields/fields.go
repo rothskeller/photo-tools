@@ -40,10 +40,9 @@ type Field interface {
 	GetTags(h filefmt.FileHandler) ([]string, []interface{})
 	// SetValues sets all of the values of the field.
 	SetValues(h filefmt.FileHandler, v []interface{}) error
-	// CheckValues returns whether the values of the field in the target are
-	// tagged correctly, and are consistent with the values of the field in
-	// the reference.
-	CheckValues(ref, tgt filefmt.FileHandler) strmeta.CheckResult
+	// CheckValues returns whether the values of the field are tagged
+	// correctly.
+	CheckValues(h filefmt.FileHandler) strmeta.CheckResult
 }
 
 // baseField is, in effect, an abstract base class for fields, providing methods
@@ -80,29 +79,29 @@ func (f *baseField) Multivalued() bool { return f.multivalued }
 // it returns nil.  This function does not handle "all".
 func ParseField(arg string) Field {
 	switch arg {
-	case "artist", "a":
+	case "artist", "a", "ar", "art", "arti", "artis":
 		return ArtistField
-	case "caption", "c":
+	case "caption", "c", "ca", "cap", "capt", "capti", "captio":
 		return CaptionField
-	case "datetime", "date", "time", "d":
+	case "datetime", "d", "da", "dat", "date", "datet", "dateti", "datetim", "dt", "time", "tim":
 		return DateTimeField
-	case "face", "faces", "f":
+	case "faces", "f", "fa", "fac", "face":
 		return FacesField
-	case "gps", "g":
+	case "gps", "gp":
 		return GPSField
-	case "keyword", "keywords", "kw", "k":
-		return KeywordsField
-	case "location", "loc", "l":
-		return LocationField
-	case "title", "t":
-		return TitleField
-	case "group", "groups":
+	case "groups", "gr", "gro", "grou", "group":
 		return GroupsField
-	case "person", "people":
+	case "keywords", "k", "ke", "key", "keyw", "keywo", "keywor", "keyword", "kw":
+		return KeywordsField
+	case "location", "l", "lo", "loc", "loca", "locat", "locati", "locatio":
+		return LocationField
+	case "person", "pe", "per", "pers", "perso", "people", "peo", "peop", "peopl":
 		return PeopleField
-	case "place", "places":
+	case "places", "pl", "pla", "plac", "place":
 		return PlacesField
-	case "topic", "topics":
+	case "title", "tit", "titl":
+		return TitleField
+	case "topics", "to", "top", "topi", "topic":
 		return TopicsField
 	}
 	return nil

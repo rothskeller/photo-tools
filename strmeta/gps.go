@@ -30,10 +30,9 @@ func GetGPSCoordsTags(h fileHandler) (tags []string, values []metadata.GPSCoords
 	return tags, values
 }
 
-// CheckGPSCoords determines whether the GPS coordinates are tagged correctly,
-// and are consistent with the reference.
-func CheckGPSCoords(ref, h fileHandler) (res CheckResult) {
-	var value = GetGPSCoords(ref)
+// CheckGPSCoords determines whether the GPS coordinates are tagged correctly.
+func CheckGPSCoords(h fileHandler) (res CheckResult) {
+	var value = GetGPSCoords(h)
 
 	if xmp := h.XMP(false); xmp != nil {
 		if !xmp.EXIFGPSCoords().Empty() {

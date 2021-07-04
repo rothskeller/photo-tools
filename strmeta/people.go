@@ -39,15 +39,14 @@ func GetPersonTags(h filefmt.FileHandler) (tags []string, values []string) {
 	return tags, values
 }
 
-// CheckPeople determines whether the people are tagged correctly, and are
-// consistent with the reference.
-func CheckPeople(ref, h filefmt.FileHandler) (res CheckResult) {
-	if res = checkFilteredKeywords(ref, h, personPredicate); res == ChkConflictingValues {
+// CheckPeople determines whether the people are tagged correctly.
+func CheckPeople(h filefmt.FileHandler) (res CheckResult) {
+	if res = checkFilteredKeywords(h, personPredicate); res == ChkConflictingValues {
 		return res
 	}
 	// Also check whether all face regions have corresponding people tags.
 	// If not, it's reported as IncorrectlyTagged.
-	var faces = GetFaces(ref)
+	var faces = GetFaces(h)
 	var people = getFilteredKeywords(h, personPredicate, false)
 	for _, face := range faces {
 		var found = false

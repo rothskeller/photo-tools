@@ -100,10 +100,9 @@ func GetDateTimeTags(h fileHandler) (tags []string, values []metadata.DateTime) 
 	return tags, values
 }
 
-// CheckDateTime determines whether the date/time is tagged correctly, and is
-// consistent with the reference.
-func CheckDateTime(ref, h fileHandler) (res CheckResult) {
-	var value = GetDateTime(ref)
+// CheckDateTime determines whether the date/time is tagged correctly.
+func CheckDateTime(h fileHandler) (res CheckResult) {
+	var value = GetDateTime(h)
 
 	if exif := h.EXIF(); exif != nil {
 		if !exif.DateTimeOriginal().Empty() {

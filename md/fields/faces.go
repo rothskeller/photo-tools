@@ -42,11 +42,10 @@ func (f *facesField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	return tags, ifcs
 }
 
-// CheckValues returns whether the values of the field in the target are tagged
-// correctly, and are consistent with the values of the field in the reference.
-func (f *facesField) CheckValues(ref filefmt.FileHandler, tgt filefmt.FileHandler) (res strmeta.CheckResult) {
-	if res = strmeta.CheckFaces(ref, tgt); res == strmeta.ChkPresent {
-		res = strmeta.CheckResult(len(f.GetValues(ref)))
+// CheckValues returns whether the values of the field are tagged correctly.
+func (f *facesField) CheckValues(h filefmt.FileHandler) (res strmeta.CheckResult) {
+	if res = strmeta.CheckFaces(h); res == strmeta.ChkPresent {
+		res = strmeta.CheckResult(len(f.GetValues(h)))
 	}
 	return res
 }

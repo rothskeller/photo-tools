@@ -56,10 +56,9 @@ func GetCaptionTags(h fileHandler) (tags, values []string) {
 	return tags, values
 }
 
-// CheckCaption determines whether the caption is tagged correctly, and is
-// consistent with the reference.
-func CheckCaption(ref, h fileHandler) (res CheckResult) {
-	var value = GetCaption(ref)
+// CheckCaption determines whether the caption is tagged correctly.
+func CheckCaption(h fileHandler) (res CheckResult) {
+	var value = GetCaption(h)
 	if xmp := h.XMP(false); xmp != nil {
 		switch len(xmp.DCDescription()) {
 		case 0:

@@ -61,10 +61,9 @@ func GetKeywordTags(h filefmt.FileHandler) (tags []string, values []Keyword) {
 	return tags, values
 }
 
-// CheckKeywords determines whether the keywords are tagged correctly, and are
-// consistent with the reference.
-func CheckKeywords(ref, h filefmt.FileHandler) (res CheckResult) {
-	if res = checkFilteredKeywords(ref, h, keywordPredicate); res == ChkConflictingValues {
+// CheckKeywords determines whether the keywords are tagged correctly.
+func CheckKeywords(h filefmt.FileHandler) (res CheckResult) {
+	if res = checkFilteredKeywords(h, keywordPredicate); res == ChkConflictingValues {
 		return res
 	}
 	// Check on the "keywords" field also checks the consistency of the flat
@@ -74,7 +73,7 @@ func CheckKeywords(ref, h filefmt.FileHandler) (res CheckResult) {
 		values []metadata.Keyword
 		refmap = make(map[string]bool)
 	)
-	values = getFilteredKeywords(ref, allKeywordsFilter, true)
+	values = getFilteredKeywords(h, allKeywordsFilter, true)
 	for _, kw := range values {
 		if len(kw) != 0 {
 			refmap[kw[len(kw)-1]] = true

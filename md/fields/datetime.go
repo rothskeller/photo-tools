@@ -38,6 +38,9 @@ func (f *datetimeField) ParseValue(s string) (interface{}, error) {
 // display.
 func (f *datetimeField) RenderValue(v interface{}) string {
 	var str = v.(*metadata.DateTime).String()
+	if str == "" {
+		return str
+	}
 	var date = str[:10]
 	var time = str[11:]
 	time = strings.Replace(time, "+", " +", -1)

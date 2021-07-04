@@ -27,6 +27,13 @@ func (p *XMP) getMP() {
 					for _, reg := range bag {
 						switch reg := reg.Value.(type) {
 						case rdf.Struct:
+							if _, ok := reg[rdf.Name{Namespace: nsMPReg, Name: "Rectangle"}]; !ok {
+								// digiKam tends to create region entries for anyone who has a face
+								// in *any* photo, but omits the rectangle if they don't have a face
+								// in *this* photo.  For our purposes, if there's no rectangle, it
+								// doesn't count.
+								continue
+							}
 							if name, ok := reg[rdf.Name{Namespace: nsMPReg, Name: "PersonDisplayName"}]; ok {
 								switch name := name.Value.(type) {
 								case string:

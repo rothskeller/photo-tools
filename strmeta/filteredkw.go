@@ -73,7 +73,7 @@ func getFilteredKeywordTags(h filefmt.FileHandler, pred keywordFilter) (tags []s
 		}
 		for _, kw := range xmp.LRHierarchicalSubject() {
 			if pred(kw) {
-				tags = append(tags, "XMP  lr:HirerchicalSubject")
+				tags = append(tags, "XMP  lr:hierchicalSubject")
 				values = append(values, kw)
 			}
 		}

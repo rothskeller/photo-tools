@@ -44,7 +44,7 @@ func Copy(args []string, files []MediaFile) (err error) {
 				return fmt.Errorf("%s: copy %s: %s", file.Path, field.PluralName(), err)
 			}
 		}
-		files[i].Changed = true
+		files[i+1].Changed = true
 	}
 	return nil
 }

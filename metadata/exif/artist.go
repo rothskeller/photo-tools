@@ -10,11 +10,14 @@ const tagArtist uint16 = 0x13B
 func (p *EXIF) Artist() []string { return p.artist }
 
 func (p *EXIF) getArtist() {
-	tag := p.ifd0.findTag(tagArtist)
+	tag := p.ifd0.Tag(tagArtist)
 	if tag == nil {
 		return
 	}
-	alist := p.asciiAt(tag, "Artist")
+	alist, err := tag.AsString()
+	if err != nil {
+		p.log("Artist: %s", err)
+	}
 	// According to the Exif specification, this is a semicolon-separated
 	// list of artists; each one may be quoted with quotes if it contains a
 	// semicolon or a quote; quotes in the keyword are doubled.  This parser
@@ -64,7 +67,7 @@ func (p *EXIF) SetArtist(v []string) error {
 	}
 	p.artist = v
 	if len(p.artist) == 0 {
-		p.deleteTag(p.ifd0, tagArtist)
+		p.ifd0.DeleteTag(tagArtist)
 		return nil
 	}
 	var encoded = make([]string, 0, len(p.artist))
@@ -74,6 +77,6 @@ func (p *EXIF) SetArtist(v []string) error {
 		}
 		encoded = append(encoded, a)
 	}
-	p.setASCIITag(p.ifd0, tagArtist, strings.Join(encoded, "; "))
+	p.ifd0.AddTag(tagArtist).SetString(strings.Join(encoded, "; "))
 	return nil
 }

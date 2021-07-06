@@ -21,44 +21,49 @@ var charsetUnknown = []byte("\000\000\000\000\000\000\000\000")
 func (p *EXIF) UserComment() string { return p.userComment }
 
 func (p *EXIF) getUserComment() {
-	idt := p.exifIFD.findTag(tagUserComment)
-	if idt == nil {
+	tag := p.exifIFD.Tag(tagUserComment)
+	if tag == nil {
 		return
 	}
-	if idt.ttype != 7 || idt.count < 8 {
-		p.log(idt.doff, "UserComment is ill-formed")
+	data, err := tag.AsUnknown()
+	if err != nil {
+		p.log("UserComment: %s", err)
+		return
+	}
+	if len(data) < 8 {
+		p.log("UserComment: wrong length")
 		return
 	}
 	switch {
-	case bytes.Equal(idt.data[:8], charsetASCII):
+	case bytes.Equal(data[:8], charsetASCII):
 		// I've found that comments are often padded with nulls (or
 		// even composed entirely of them).  We don't want those.
-		p.userComment = strings.TrimRight(string(idt.data[8:]), "\000")
-	case bytes.Equal(idt.data[:8], charsetUnicode):
+		p.userComment = strings.TrimRight(string(data[8:]), "\000")
+	case bytes.Equal(data[:8], charsetUnicode):
 		// By the spec, this should be UCS-2.  In practice it may
 		// actually be UTF-16.  Reading it as UTF-16 handles both cases.
 		var enc encoding.Encoding
-		if p.enc == binary.BigEndian {
+		if p.tl.Encoding() == binary.BigEndian {
 			enc = unicode.UTF16(unicode.BigEndian, unicode.UseBOM)
 		} else {
 			enc = unicode.UTF16(unicode.LittleEndian, unicode.UseBOM)
 		}
-		u8, err := enc.NewDecoder().String(string(idt.data[8:]))
+		u8, err := enc.NewDecoder().String(string(data[8:]))
 		if err != nil || strings.ContainsRune(u8, utf8.RuneError) {
-			p.log(idt.doff, "UserComment is invalid UTF-16, ignoring")
+			p.log("UserComment is invalid UTF-16, ignoring")
 			return
 		}
 		p.userComment = u8
-	case bytes.Equal(idt.data[:8], charsetUnknown):
+	case bytes.Equal(data[:8], charsetUnknown):
 		// There's a decent chance this is actually UTF-8.  Let's try it.
-		var s = string(idt.data[8:])
+		var s = string(data[8:])
 		if !utf8.ValidString(s) {
-			p.log(idt.doff, "UserComment is in unknown character set, ignoring")
+			p.log("UserComment is in unknown character set, ignoring")
 			return
 		}
 		p.userComment = s
 	default:
-		p.log(idt.doff, "UserComment is in unknown character set, ignoring")
+		p.log("UserComment is in unknown character set, ignoring")
 	}
 }
 
@@ -72,13 +77,8 @@ func (p *EXIF) SetUserComment(v string) error {
 		p.addEXIFIFD()
 	}
 	if p.userComment == "" {
-		p.deleteTag(p.exifIFD, tagUserComment)
+		p.exifIFD.DeleteTag(tagUserComment)
 		return nil
-	}
-	tag := p.exifIFD.findTag(tagUserComment)
-	if tag == nil {
-		tag = &tagt{tag: tagUserComment, ttype: 7, count: 1, data: []byte{0}}
-		p.addTag(p.exifIFD, tag)
 	}
 	var encbytes []byte
 	if s := p.userComment; strings.IndexFunc(s, func(r rune) bool {
@@ -89,7 +89,7 @@ func (p *EXIF) SetUserComment(v string) error {
 		copy(encbytes[8:], []byte(s))
 	} else {
 		var enc encoding.Encoding
-		if p.enc == binary.BigEndian {
+		if p.tl.Encoding() == binary.BigEndian {
 			enc = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM)
 		} else {
 			enc = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
@@ -102,8 +102,6 @@ func (p *EXIF) SetUserComment(v string) error {
 		copy(encbytes, charsetUnicode)
 		copy(encbytes[8:], u16)
 	}
-	tag.data = encbytes
-	tag.count = uint32(len(encbytes))
-	p.exifIFD.dirty = true
+	p.exifIFD.AddTag(tagUserComment).SetUnknown(encbytes)
 	return nil
 }

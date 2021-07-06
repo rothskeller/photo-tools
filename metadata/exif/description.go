@@ -6,8 +6,12 @@ const tagImageDescription uint16 = 0x10E
 func (p *EXIF) ImageDescription() string { return p.imageDescription }
 
 func (p *EXIF) getImageDescription() {
-	if idt := p.ifd0.findTag(tagImageDescription); idt != nil {
-		p.imageDescription = p.asciiAt(idt, "ImageDescription")
+	var err error
+
+	if tag := p.ifd0.Tag(tagImageDescription); tag != nil {
+		if p.imageDescription, err = tag.AsString(); err != nil {
+			p.log("ImageDescription: %s", err)
+		}
 	}
 }
 
@@ -18,9 +22,9 @@ func (p *EXIF) SetImageDescription(v string) error {
 	}
 	p.imageDescription = v
 	if p.imageDescription == "" {
-		p.deleteTag(p.ifd0, tagImageDescription)
+		p.ifd0.DeleteTag(tagImageDescription)
 	} else {
-		p.setASCIITag(p.ifd0, tagImageDescription, p.imageDescription)
+		p.ifd0.AddTag(tagImageDescription).SetString(p.imageDescription)
 	}
 	return nil
 }

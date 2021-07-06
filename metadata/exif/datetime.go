@@ -2,6 +2,7 @@ package exif
 
 import (
 	"github.com/rothskeller/photo-tools/metadata"
+	"github.com/rothskeller/photo-tools/metadata/tifflike"
 )
 
 const (
@@ -76,49 +77,57 @@ func (p *EXIF) SetDateTimeOriginal(v metadata.DateTime) error {
 }
 
 // getDateTimeTagGroup returns the date and time from an exif tag triplet.
-func (p *EXIF) getDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, suffix string) (dt metadata.DateTime) {
-	dtot := dtifd.findTag(dttag)
+func (p *EXIF) getDateTimeTagGroup(dtifd *tifflike.IFD, dttag, ottag, ssttag uint16, suffix string) (dt metadata.DateTime) {
+	var err error
+
+	dtot := dtifd.Tag(dttag)
 	if dtot == nil {
 		return // empty DateTime
 	}
 	var dto, ssto, oto string
-	dto = p.asciiAt(dtot, "DateTime"+suffix)
+	if dto, err = dtot.AsString(); err != nil {
+		p.log("DateTime%s: %s", suffix, err)
+	}
 	if p.exifIFD != nil {
-		if sstot := p.exifIFD.findTag(ssttag); sstot != nil {
-			ssto = p.asciiAt(sstot, "SubSecTime"+suffix)
+		if sstot := p.exifIFD.Tag(ssttag); sstot != nil {
+			if ssto, err = sstot.AsString(); err != nil {
+				p.log("SubSecTime%s: %s", suffix, err)
+			}
 		}
-		if otot := p.exifIFD.findTag(ottag); otot != nil {
-			oto = p.asciiAt(otot, "OffsetTime"+suffix)
+		if otot := p.exifIFD.Tag(ottag); otot != nil {
+			if oto, err = otot.AsString(); err != nil {
+				p.log("OffsetTime%s: %s", suffix, err)
+			}
 		}
 	}
 	if err := dt.ParseEXIF(dto, ssto, oto); err != nil {
-		p.log(dtot.offset, "DateTime%s: %s", suffix, err)
+		p.log("DateTime%s: %s", suffix, err)
 	}
 	return dt
 }
 
 // setDateTimeTagGroup sets the exif {Date,SubSec,Offset}Time tags based
 // on the provided datetime string.
-func (p *EXIF) setDateTimeTagGroup(dtifd *ifdt, dttag, ottag, ssttag uint16, dt metadata.DateTime) {
+func (p *EXIF) setDateTimeTagGroup(dtifd *tifflike.IFD, dttag, ottag, ssttag uint16, dt metadata.DateTime) {
 	if dt.Empty() {
-		p.deleteTag(dtifd, dttag)
-		p.deleteTag(p.exifIFD, ottag)
-		p.deleteTag(p.exifIFD, ssttag)
+		dtifd.DeleteTag(dttag)
+		p.exifIFD.DeleteTag(ottag)
+		p.exifIFD.DeleteTag(ssttag)
 		return
 	}
 	dts, ssts, ots := dt.AsEXIF()
-	p.setASCIITag(dtifd, dttag, dts)
+	dtifd.AddTag(dttag).SetString(dts)
 	if p.exifIFD == nil && (ssts != "" || ots != "") {
 		p.addEXIFIFD()
 	}
 	if ssts != "" {
-		p.setASCIITag(p.exifIFD, ssttag, ssts)
+		p.exifIFD.AddTag(ssttag).SetString(ssts)
 	} else {
-		p.deleteTag(p.exifIFD, ssttag)
+		p.exifIFD.DeleteTag(ssttag)
 	}
 	if ots != "" {
-		p.setASCIITag(p.exifIFD, ottag, ots)
+		p.exifIFD.AddTag(ottag).SetString(ots)
 	} else {
-		p.deleteTag(p.exifIFD, ottag)
+		p.exifIFD.DeleteTag(ottag)
 	}
 }

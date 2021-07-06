@@ -6,51 +6,55 @@ import "github.com/rothskeller/photo-tools/metadata"
 func (p *EXIF) GPSCoords() metadata.GPSCoords { return p.gpsCoords }
 
 func (p *EXIF) getGPSCoords() {
-	latreft := p.gpsIFD.findTag(1)
-	latratt := p.gpsIFD.findTag(2)
-	longreft := p.gpsIFD.findTag(3)
-	longratt := p.gpsIFD.findTag(4)
+	var err error
+
+	latreft := p.gpsIFD.Tag(1)
+	latratt := p.gpsIFD.Tag(2)
+	longreft := p.gpsIFD.Tag(3)
+	longratt := p.gpsIFD.Tag(4)
 	if latreft == nil && latratt == nil && longreft == nil && longratt == nil {
 		return
 	}
-	if latreft == nil || latreft.ttype != 2 || latreft.count != 2 ||
-		latratt == nil || latratt.ttype != 5 || latratt.count != 3 ||
-		longreft == nil || longreft.ttype != 2 || longreft.count != 2 ||
-		longratt == nil || longratt.ttype != 5 || longratt.count != 3 {
-		p.log(p.gpsIFD.offset, "invalid GPS tags")
+	var latref, longref string
+	var latrat, longrat []uint32
+	latref, err = latreft.AsString()
+	if err == nil {
+		longref, err = longreft.AsString()
+	}
+	if err == nil {
+		latrat, err = longreft.AsRationals()
+	}
+	if err == nil {
+		longrat, err = longreft.AsRationals()
+	}
+	if err != nil || len(latref) != 1 || len(longref) != 1 || len(latrat) != 3 || len(longrat) != 3 {
+		p.log("invalid GPS tags")
 		return
 	}
-	latref := p.asciiAt(latreft, "GPSLatitudeRef")
-	longref := p.asciiAt(longreft, "GPSLongitudeRef")
-	latrat := p.exifRatToUint32(latratt.data)
-	longrat := p.exifRatToUint32(longratt.data)
 
+	var altrefs []byte
 	var altref byte
 	var altrat []uint32
-	altreft := p.gpsIFD.findTag(5)
-	altratt := p.gpsIFD.findTag(6)
+	altreft := p.gpsIFD.Tag(5)
+	altratt := p.gpsIFD.Tag(6)
 	if altratt != nil {
-		// Empirically, some JPEGs omit the altitude reference tag.
-		if (altreft != nil && (altreft.ttype != 1 || altreft.count > 1)) ||
-			altratt == nil || altratt.ttype != 5 || altratt.count != 1 {
-			p.log(p.gpsIFD.offset, "invalid GPS tags")
+		if altreft != nil {
+			altrefs, err = altreft.AsBytes()
+		}
+		if err == nil {
+			altrat, err = altratt.AsRationals()
+		}
+		if err != nil || len(altrefs) > 1 || len(altrat) != 2 {
+			p.log("invalid GPS tags")
 			return
 		}
-		if altreft != nil && altreft.count == 1 {
-			altref = altreft.data[0]
-		}
-		altrat = p.exifRatToUint32(altratt.data)
+	}
+	if len(altrefs) == 1 {
+		altref = altrefs[0]
 	}
 	if err := p.gpsCoords.ParseEXIF(latref, latrat, longref, longrat, altref, altrat); err != nil {
-		p.log(p.gpsIFD.offset, err.Error())
+		p.log(err.Error())
 	}
-}
-func (p *EXIF) exifRatToUint32(rat []byte) (u []uint32) {
-	u = make([]uint32, len(rat)/4)
-	for i := 0; i < len(rat); i += 4 {
-		u[i/4] = p.enc.Uint32(rat[i:])
-	}
-	return u
 }
 
 // SetGPSCoords sets the values of the GPS coordinate tags.
@@ -60,15 +64,14 @@ func (p *EXIF) SetGPSCoords(v metadata.GPSCoords) error {
 	}
 	p.gpsCoords = v
 	if p.gpsCoords.Empty() {
-		p.deleteTag(p.gpsIFD, 1)
-		p.deleteTag(p.gpsIFD, 2)
-		p.deleteTag(p.gpsIFD, 3)
-		p.deleteTag(p.gpsIFD, 4)
-		p.deleteTag(p.gpsIFD, 5)
-		p.deleteTag(p.gpsIFD, 6)
-		if p.gpsIFD != nil && len(p.gpsIFD.tags) == 1 && p.gpsIFD.tags[0].tag == 0 {
-			p.gpsIFD = nil
-			p.deleteTag(p.ifd0, tagGPSIFDOffset)
+		p.gpsIFD.DeleteTag(1)
+		p.gpsIFD.DeleteTag(2)
+		p.gpsIFD.DeleteTag(3)
+		p.gpsIFD.DeleteTag(4)
+		p.gpsIFD.DeleteTag(5)
+		p.gpsIFD.DeleteTag(6)
+		if p.gpsIFD != nil && p.gpsIFD.NextTag(1) == nil {
+			p.ifd0.DeleteTag(tagGPSIFDOffset)
 		}
 		return nil
 	}
@@ -76,16 +79,16 @@ func (p *EXIF) SetGPSCoords(v metadata.GPSCoords) error {
 		p.addGPSIFD()
 	}
 	latref, latrat, longref, longrat, altref, altrat := p.gpsCoords.AsEXIF()
-	p.setASCIITag(p.gpsIFD, 1, latref)
-	p.setRationalTag(p.gpsIFD, 2, latrat)
-	p.setASCIITag(p.gpsIFD, 3, longref)
-	p.setRationalTag(p.gpsIFD, 4, longrat)
+	p.gpsIFD.AddTag(1).SetString(latref)
+	p.gpsIFD.AddTag(2).SetRationals(latrat)
+	p.gpsIFD.AddTag(3).SetString(longref)
+	p.gpsIFD.AddTag(4).SetRationals(longrat)
 	if len(altrat) != 0 {
-		p.setByteTag(p.gpsIFD, 5, altref)
-		p.setRationalTag(p.gpsIFD, 6, altrat)
+		p.gpsIFD.AddTag(5).SetBytes([]byte{altref})
+		p.gpsIFD.AddTag(6).SetRationals(altrat)
 	} else {
-		p.deleteTag(p.gpsIFD, 5)
-		p.deleteTag(p.gpsIFD, 6)
+		p.gpsIFD.DeleteTag(5)
+		p.gpsIFD.DeleteTag(6)
 	}
 	return nil
 }

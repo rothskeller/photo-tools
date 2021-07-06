@@ -55,5 +55,5 @@ func Parse(buf []byte, offset uint32) (exif *EXIF) {
 
 func (p *EXIF) log(f string, args ...interface{}) {
 	s := fmt.Sprintf(f, args...)
-	p.Problems = append(p.Problems, fmt.Sprintf("EXIF %s", s))
+	p.Problems = append(p.Problems, fmt.Sprintf("EXIF: %s", s))
 }

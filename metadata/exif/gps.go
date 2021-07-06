@@ -22,12 +22,12 @@ func (p *EXIF) getGPSCoords() {
 		longref, err = longreft.AsString()
 	}
 	if err == nil {
-		latrat, err = longreft.AsRationals()
+		latrat, err = latratt.AsRationals()
 	}
 	if err == nil {
-		longrat, err = longreft.AsRationals()
+		longrat, err = longratt.AsRationals()
 	}
-	if err != nil || len(latref) != 1 || len(longref) != 1 || len(latrat) != 3 || len(longrat) != 3 {
+	if err != nil || len(latref) != 1 || len(longref) != 1 || len(latrat) != 6 || len(longrat) != 6 {
 		p.log("invalid GPS tags")
 		return
 	}

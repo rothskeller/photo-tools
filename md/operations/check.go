@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/rothskeller/photo-tools/md/fields"
+	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/strmeta"
 )
 
@@ -41,17 +42,20 @@ func Check(args []string, files []MediaFile) (err error) {
 	for _, file := range files {
 		fmt.Fprint(out, file.Path)
 		for _, field := range checkFields {
-			result := field.CheckValues(file.Handler)
-			if result <= 0 || (result == strmeta.ChkPresent && !field.Multivalued()) {
-				fmt.Fprint(out, resultCodes[result])
-			} else {
-				fmt.Fprintf(out, "\t%2d", result)
-			}
+			result := checkField(file.Provider, field)
+			fmt.Fprintf(out, "\t%s", result)
 		}
 		fmt.Fprintln(out)
 	}
 	out.Flush()
 	return nil
+}
+
+func checkField(p metadata.Provider, field fields.Field) string {
+	var canon = field.GetValues(p)
+	// TODO PROBLEM comparing the values return by Tags works fine for
+	// single-valued fields, but it isn't going to detect all problems with
+	// multi-valued fields.  How do we implement check in a provider model?
 }
 
 var resultCodes = map[strmeta.CheckResult]string{

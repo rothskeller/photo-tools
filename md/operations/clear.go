@@ -23,7 +23,7 @@ func Clear(args []string, files []MediaFile) (err error) {
 		return fmt.Errorf("clear: %q is not a recognized field name", args[0])
 	}
 	for i, file := range files {
-		if err := field.SetValues(file.Handler, nil); err != nil {
+		if err := field.SetValues(file.Provider, nil); err != nil {
 			return fmt.Errorf("%s: clear %s: %s", file.Path, field.PluralName(), err)
 		}
 		files[i].Changed = true

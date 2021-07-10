@@ -19,7 +19,7 @@ func Remove(args []string, files []MediaFile) (err error) {
 	}
 	for i, file := range files {
 		// Get the current values.
-		values := field.GetValues(file.Handler)
+		values := field.GetValues(file.Provider)
 		// Remove the ones we were asked to remove.
 		j := 0
 		for _, v := range values {
@@ -37,7 +37,7 @@ func Remove(args []string, files []MediaFile) (err error) {
 		}
 		// If we found any, set the new value list that leaves it out.
 		if j < len(values) {
-			if err := field.SetValues(file.Handler, values[:j]); err != nil {
+			if err := field.SetValues(file.Provider, values[:j]); err != nil {
 				return fmt.Errorf("%s: remove %s: %s", file.Path, field.Name(), err)
 			}
 			files[i].Changed = true

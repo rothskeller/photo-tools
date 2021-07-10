@@ -26,7 +26,7 @@ func Read(args []string, files []MediaFile) (err error) {
 	if len(files) != 1 {
 		return errors.New("read caption: only one file allowed")
 	}
-	caption := fields.CaptionField.GetValues(files[0].Handler)
+	caption := fields.CaptionField.GetValues(files[0].Provider)
 	if len(caption) != 0 {
 		str := fields.CaptionField.RenderValue(caption[0])
 		fmt.Print(str)

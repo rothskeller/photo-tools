@@ -3,9 +3,7 @@ package fields
 import (
 	"errors"
 
-	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/strmeta"
 )
 
 type gpsField struct {
@@ -40,18 +38,17 @@ func (f *gpsField) RenderValue(v interface{}) string {
 	return v.(*metadata.GPSCoords).String()
 }
 
-// EqualValue compares two values for equality.  (This is only called for
-// multivalued fields.)
+// EqualValue compares two values for equality.
 func (f *gpsField) EqualValue(a interface{}, b interface{}) bool {
-	panic("should not be called")
+	return a.(metadata.GPSCoords).Equivalent(b.(metadata.GPSCoords))
 }
 
 // GetValues returns all of the values of the field.  (For single-valued fields,
 // the return slice will have at most one entry.)  Empty values should not be
 // included.
-func (f *gpsField) GetValues(h filefmt.FileHandler) []interface{} {
-	if gps := strmeta.GetGPSCoords(h); !gps.Empty() {
-		return []interface{}{&gps}
+func (f *gpsField) GetValues(p metadata.Provider) []interface{} {
+	if gps := p.GPS(); !gps.Empty() {
+		return []interface{}{gps}
 	}
 	return nil
 }
@@ -59,11 +56,11 @@ func (f *gpsField) GetValues(h filefmt.FileHandler) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *gpsField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
-	if tags, values := strmeta.GetGPSCoordsTags(h); len(tags) != 0 {
+func (f *gpsField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+	if tags, values := p.GPSTags(); len(tags) != 0 {
 		var ivals = make([]interface{}, len(values))
 		for i := range values {
-			ivals[i] = &values[i]
+			ivals[i] = values[i]
 		}
 		return tags, ivals
 	}
@@ -71,18 +68,13 @@ func (f *gpsField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 }
 
 // SetValues sets all of the values of the field.
-func (f *gpsField) SetValues(h filefmt.FileHandler, v []interface{}) error {
+func (f *gpsField) SetValues(p metadata.Provider, v []interface{}) error {
 	switch len(v) {
 	case 0:
-		return strmeta.SetGPSCoords(h, metadata.GPSCoords{})
+		return p.SetGPS(metadata.GPSCoords{})
 	case 1:
-		return strmeta.SetGPSCoords(h, *v[0].(*metadata.GPSCoords))
+		return p.SetGPS(v[0].(metadata.GPSCoords))
 	default:
 		return errors.New("gps cannot have multiple values")
 	}
-}
-
-// CheckValues returns whether the values of the field are tagged correctly.
-func (f *gpsField) CheckValues(h filefmt.FileHandler) strmeta.CheckResult {
-	return strmeta.CheckGPSCoords(h)
 }

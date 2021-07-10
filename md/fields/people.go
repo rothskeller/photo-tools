@@ -1,8 +1,7 @@
 package fields
 
 import (
-	"github.com/rothskeller/photo-tools/filefmt"
-	"github.com/rothskeller/photo-tools/strmeta"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // peopleField is the field handler for people depicted in the media.
@@ -24,16 +23,16 @@ var PeopleField Field = &peopleField{
 // GetValues returns all of the values of the field.  (For single-valued fields,
 // the return slice will have at most one entry.)  Empty values should not be
 // included.
-func (f *peopleField) GetValues(h filefmt.FileHandler) []interface{} {
-	return stringSliceToInterfaceSlice(strmeta.GetPeople(h))
+func (f *peopleField) GetValues(p metadata.Provider) []interface{} {
+	return stringSliceToInterfaceSlice(p.People())
 }
 
 // GetValuesNoFaces is a special case: it returns only those people values that
 // don't also have face values.  It is used by "show" when showing both the
 // people and face fields, to avoid redundancy.
-func (f *peopleField) GetValuesNoFaces(h filefmt.FileHandler) []interface{} {
-	var people = strmeta.GetPeople(h)
-	var faces = strmeta.GetFaces(h)
+func (f *peopleField) GetValuesNoFaces(p metadata.Provider) []interface{} {
+	var people = p.People()
+	var faces = p.Faces()
 	var facemap = make(map[string]bool, len(faces))
 	for _, face := range faces {
 		facemap[face] = true
@@ -50,28 +49,16 @@ func (f *peopleField) GetValuesNoFaces(h filefmt.FileHandler) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *peopleField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
-	var tags, values = strmeta.GetPersonTags(h)
-	var ifcs = make([]interface{}, len(values))
-	for i := range values {
-		ifcs[i] = values[i]
-	}
-	return tags, ifcs
-}
-
-// CheckValues returns whether the values of the field are tagged correctly.
-func (f *peopleField) CheckValues(h filefmt.FileHandler) (res strmeta.CheckResult) {
-	if res = strmeta.CheckPeople(h); res == strmeta.ChkPresent {
-		res = strmeta.CheckResult(len(f.GetValues(h)))
-	}
-	return res
+func (f *peopleField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+	tags, values := p.PeopleTags()
+	return tags, stringSliceToInterfaceSlice(values)
 }
 
 // SetValues sets all of the values of the field.
-func (f *peopleField) SetValues(h filefmt.FileHandler, v []interface{}) error {
-	var people = make([]string, len(v))
+func (f *peopleField) SetValues(p metadata.Provider, v []interface{}) error {
+	values := make([]string, len(v))
 	for i := range v {
-		people[i] = v[i].(string)
+		values[i] = v[i].(string)
 	}
-	return strmeta.SetPeople(h, people)
+	return p.SetPeople(values)
 }

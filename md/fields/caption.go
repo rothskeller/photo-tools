@@ -3,8 +3,7 @@ package fields
 import (
 	"errors"
 
-	"github.com/rothskeller/photo-tools/filefmt"
-	"github.com/rothskeller/photo-tools/strmeta"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 type captionField struct {
@@ -27,9 +26,9 @@ var CaptionField Field = &captionField{
 // GetValues returns all of the values of the field.  (For single-valued fields,
 // the return slice will have at most one entry.)  Empty values should not be
 // included.
-func (f *captionField) GetValues(h filefmt.FileHandler) []interface{} {
-	if caption := strmeta.GetCaption(h); caption != "" {
-		return []interface{}{caption}
+func (f *captionField) GetValues(p metadata.Provider) []interface{} {
+	if value := p.Caption(); value != "" {
+		return []interface{}{value}
 	}
 	return nil
 }
@@ -37,26 +36,20 @@ func (f *captionField) GetValues(h filefmt.FileHandler) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *captionField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
-	if tags, values := strmeta.GetCaptionTags(h); len(tags) != 0 {
-		return tags, stringSliceToInterfaceSlice(values)
-	}
+func (f *captionField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+	tags, values := p.CaptionTags()
+	return tags, stringSliceToInterfaceSlice(values)
 	return nil, nil
 }
 
 // SetValues sets all of the values of the field.
-func (f *captionField) SetValues(h filefmt.FileHandler, v []interface{}) error {
+func (f *captionField) SetValues(p metadata.Provider, v []interface{}) error {
 	switch len(v) {
 	case 0:
-		return strmeta.SetCaption(h, "")
+		return p.SetCaption("")
 	case 1:
-		return strmeta.SetCaption(h, v[0].(string))
+		return p.SetCaption(v[0].(string))
 	default:
 		return errors.New("caption cannot have multiple values")
 	}
-}
-
-// CheckValues returns whether the values of the field are tagged correctly.
-func (f *captionField) CheckValues(h filefmt.FileHandler) strmeta.CheckResult {
-	return strmeta.CheckCaption(h)
 }

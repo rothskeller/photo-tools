@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/rothskeller/photo-tools/md/fields"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // Reset resets the values of one or more fields to their primary value(s), thus
@@ -32,8 +33,10 @@ func Reset(args []string, files []MediaFile) (err error) {
 	}
 	for i, file := range files {
 		for _, field := range fieldlist {
-			values := field.GetValues(file.Handler)
-			if err := field.SetValues(file.Handler, values); err != nil {
+			values := field.GetValues(file.Provider)
+			if err := field.SetValues(file.Provider, values); err == metadata.ErrNotSupported {
+				continue
+			} else if err != nil {
 				return fmt.Errorf("%s: reset %s: %s", file.Path, field.PluralName(), err)
 			}
 			files[i].Changed = true

@@ -1,50 +1,32 @@
 package fields
 
 import (
-	"github.com/rothskeller/photo-tools/filefmt"
-	"github.com/rothskeller/photo-tools/strmeta"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 type groupsField struct {
-	baseField
+	hierValueField
 }
 
 // GroupsField is the field handler for group names, i.e., groups of people
 // (organizations, teams, etc.) that are depicted in the media.
 var GroupsField Field = &groupsField{
-	baseField{
-		name:        "group",
-		pluralName:  "groups",
-		label:       "Group",
-		shortLabel:  "GR",
-		multivalued: true,
+	hierValueField{
+		baseField{
+			name:        "group",
+			pluralName:  "groups",
+			label:       "Group",
+			shortLabel:  "GR",
+			multivalued: true,
+		},
 	},
-}
-
-// ParseValue parses a string and returns a value for the field.  It returns an
-// error if the string is invalid.
-func (f *groupsField) ParseValue(s string) (interface{}, error) {
-	var v strmeta.Group
-	if err := v.Parse(s); err != nil {
-		return nil, err
-	}
-	return v, nil
-}
-
-// RenderValue takes a value for the field and renders it in string form for
-// display.
-func (f *groupsField) RenderValue(v interface{}) string { return v.(strmeta.Group).String() }
-
-// EqualValue compares two values for equality.
-func (f *groupsField) EqualValue(a interface{}, b interface{}) bool {
-	return a.(strmeta.Group).Equal(b.(strmeta.Group))
 }
 
 // GetValues returns all of the values of the field.  (For single-valued fields,
 // the return slice will have at most one entry.)  Empty values should not be
 // included.
-func (f *groupsField) GetValues(h filefmt.FileHandler) []interface{} {
-	var groups = strmeta.GetGroups(h)
+func (f *groupsField) GetValues(p metadata.Provider) []interface{} {
+	var groups = p.Groups()
 	var ifcs = make([]interface{}, len(groups))
 	for i := range groups {
 		ifcs[i] = groups[i]
@@ -55,8 +37,8 @@ func (f *groupsField) GetValues(h filefmt.FileHandler) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *groupsField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
-	var tags, values = strmeta.GetGroupTags(h)
+func (f *groupsField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+	var tags, values = p.GroupsTags()
 	var ifcs = make([]interface{}, len(values))
 	for i := range values {
 		ifcs[i] = values[i]
@@ -64,19 +46,11 @@ func (f *groupsField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
 	return tags, ifcs
 }
 
-// CheckValues returns whether the values of the field are tagged correctly.
-func (f *groupsField) CheckValues(h filefmt.FileHandler) (res strmeta.CheckResult) {
-	if res = strmeta.CheckGroups(h); res == strmeta.ChkPresent {
-		res = strmeta.CheckResult(len(f.GetValues(h)))
-	}
-	return res
-}
-
 // SetValues sets all of the values of the field.
-func (f *groupsField) SetValues(h filefmt.FileHandler, v []interface{}) error {
-	var groups = make([]strmeta.Group, len(v))
+func (f *groupsField) SetValues(p metadata.Provider, v []interface{}) error {
+	var values = make([]metadata.HierValue, len(v))
 	for i := range v {
-		groups[i] = v[i].(strmeta.Group)
+		values[i] = v[i].(metadata.HierValue)
 	}
-	return strmeta.SetGroups(h, groups)
+	return p.SetGroups(values)
 }

@@ -200,8 +200,8 @@ func (dt DateTime) Equal(other DateTime) bool {
 	return dt.date == other.date && dt.time == other.time && dt.subsec == other.subsec && dt.zone == other.zone
 }
 
-// Equivalent returns whether two DateTimes are equal, to the precision of the
-// least precise of the two.
+// Equivalent returns whether two DateTimes are equal, disregarding subseconds
+// if one of them lacks subseconds.
 func (dt DateTime) Equivalent(other DateTime) bool {
 	if dt.Empty() != other.Empty() {
 		return false

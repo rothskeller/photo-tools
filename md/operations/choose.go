@@ -38,7 +38,7 @@ func Choose(args []string, files []MediaFile) (err error) {
 	// Print the tag table.
 	fmt.Fprintln(tw, "#\tFILE\tTAG\tVALUE")
 	for _, file := range files {
-		tagNames, tagValues := field.GetTags(file.Handler)
+		tagNames, tagValues := field.GetTags(file.Provider)
 		for i, tag := range tagNames {
 			values = append(values, tagValues[i])
 			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.Path, tag, escapeString(field.RenderValue(tagValues[i])))
@@ -85,7 +85,7 @@ RETRY:
 	}
 	// Set these value(s) on all files in the batch.
 	for i, file := range files {
-		if err := field.SetValues(file.Handler, newvs); err != nil {
+		if err := field.SetValues(file.Provider, newvs); err != nil {
 			return fmt.Errorf("%s: choose %s: %s", file.Path, field.Name(), err)
 		}
 		files[i].Changed = true

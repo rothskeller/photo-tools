@@ -37,7 +37,7 @@ func Tags(args []string, files []MediaFile) (err error) {
 	fmt.Fprintln(tw, "FILE\tTAG\tVALUE")
 	for _, file := range files {
 		for _, field := range fieldlist {
-			tagNames, tagValues := field.GetTags(file.Handler)
+			tagNames, tagValues := field.GetTags(file.Provider)
 			for i, tag := range tagNames {
 				fmt.Fprintf(tw, "%s\t%s\t%s\n", file.Path, tag, escapeString(field.RenderValue(tagValues[i])))
 			}

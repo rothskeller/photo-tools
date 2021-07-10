@@ -16,7 +16,7 @@ func Set(args []string, files []MediaFile) (err error) {
 		return err
 	}
 	for i, file := range files {
-		if err := field.SetValues(file.Handler, toset); err != nil {
+		if err := field.SetValues(file.Provider, toset); err != nil {
 			return fmt.Errorf("%s: set %s: %s", file.Path, field.PluralName(), err)
 		}
 		files[i].Changed = true

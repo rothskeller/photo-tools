@@ -107,37 +107,32 @@ func TestDateTime_Parse(t *testing.T) {
 func TestDateTime_String(t *testing.T) {
 	tests := []struct {
 		name     string
-		receiver *DateTime
+		receiver DateTime
 		want     string
 	}{
 		{
-			"nil",
-			nil,
-			"",
-		},
-		{
 			"empty",
-			&DateTime{},
+			DateTime{},
 			"",
 		},
 		{
 			"datetime",
-			&DateTime{"D", "T", "", ""},
+			DateTime{"D", "T", "", ""},
 			"DTT",
 		},
 		{
 			"datetimesub",
-			&DateTime{"D", "T", "S", ""},
+			DateTime{"D", "T", "S", ""},
 			"DTT.S",
 		},
 		{
 			"datetimezone",
-			&DateTime{"D", "T", "", "Z"},
+			DateTime{"D", "T", "", "Z"},
 			"DTTZ",
 		},
 		{
 			"all",
-			&DateTime{"D", "T", "S", "Z"},
+			DateTime{"D", "T", "S", "Z"},
 			"DTT.SZ",
 		},
 	}

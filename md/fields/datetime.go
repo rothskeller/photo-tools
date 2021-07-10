@@ -4,9 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/strmeta"
 )
 
 type datetimeField struct {
@@ -49,18 +47,17 @@ func (f *datetimeField) RenderValue(v interface{}) string {
 	return date + " " + time
 }
 
-// EqualValue compares two values for equality.  (This is only called for
-// multivalued fields.)
+// EqualValue compares two values for equality.
 func (f *datetimeField) EqualValue(a interface{}, b interface{}) bool {
-	panic("should not be called")
+	return a.(metadata.DateTime).Equivalent(b.(metadata.DateTime))
 }
 
 // GetValues returns all of the values of the field.  (For single-valued fields,
 // the return slice will have at most one entry.)  Empty values should not be
 // included.
-func (f *datetimeField) GetValues(h filefmt.FileHandler) []interface{} {
-	if datetime := strmeta.GetDateTime(h); !datetime.Empty() {
-		return []interface{}{&datetime}
+func (f *datetimeField) GetValues(p metadata.Provider) []interface{} {
+	if datetime := p.DateTime(); !datetime.Empty() {
+		return []interface{}{datetime}
 	}
 	return nil
 }
@@ -68,11 +65,11 @@ func (f *datetimeField) GetValues(h filefmt.FileHandler) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *datetimeField) GetTags(h filefmt.FileHandler) ([]string, []interface{}) {
-	if tags, values := strmeta.GetDateTimeTags(h); len(tags) != 0 {
+func (f *datetimeField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+	if tags, values := p.DateTimeTags(); len(tags) != 0 {
 		var ivals = make([]interface{}, len(values))
 		for i := range values {
-			ivals[i] = &values[i]
+			ivals[i] = values[i]
 		}
 		return tags, ivals
 	}
@@ -80,18 +77,13 @@ func (f *datetimeField) GetTags(h filefmt.FileHandler) ([]string, []interface{})
 }
 
 // SetValues sets all of the values of the field.
-func (f *datetimeField) SetValues(h filefmt.FileHandler, v []interface{}) error {
+func (f *datetimeField) SetValues(p metadata.Provider, v []interface{}) error {
 	switch len(v) {
 	case 0:
-		return strmeta.SetDateTime(h, metadata.DateTime{})
+		return p.SetDateTime(metadata.DateTime{})
 	case 1:
-		return strmeta.SetDateTime(h, *v[0].(*metadata.DateTime))
+		return p.SetDateTime(v[0].(metadata.DateTime))
 	default:
 		return errors.New("datetime cannot have multiple values")
 	}
-}
-
-// CheckValues returns whether the values of the field are tagged correctly.
-func (f *datetimeField) CheckValues(h filefmt.FileHandler) strmeta.CheckResult {
-	return strmeta.CheckDateTime(h)
 }

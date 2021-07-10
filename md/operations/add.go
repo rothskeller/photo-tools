@@ -20,7 +20,7 @@ func Add(args []string, files []MediaFile) (err error) {
 	}
 	for i, file := range files {
 		// Get the current values.
-		values := field.GetValues(file.Handler)
+		values := field.GetValues(file.Provider)
 		// Add the desired values.
 		for _, newv := range toadd {
 			// Find out whether the value we're adding is already there.
@@ -38,7 +38,7 @@ func Add(args []string, files []MediaFile) (err error) {
 			}
 		}
 		if files[i].Changed {
-			if err := field.SetValues(file.Handler, values); err != nil {
+			if err := field.SetValues(file.Provider, values); err != nil {
 				return fmt.Errorf("%s: add %s: %s", file.Path, field.Name(), err)
 			}
 		}

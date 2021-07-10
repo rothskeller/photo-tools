@@ -2,8 +2,7 @@
 package fields
 
 import (
-	"github.com/rothskeller/photo-tools/filefmt"
-	"github.com/rothskeller/photo-tools/strmeta"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // Field is the interface honored by a field definition.
@@ -33,16 +32,13 @@ type Field interface {
 	// GetValues returns all of the values of the field.  (For single-valued
 	// fields, the return slice will have at most one entry.)  Empty values
 	// should not be included.
-	GetValues(h filefmt.FileHandler) []interface{}
+	GetValues(p metadata.Provider) []interface{}
 	// GetTags returns the names of all of the metadata tags that correspond
 	// to the field in its first return slice, and a parallel slice of the
 	// values of those tags (which may be zero values).
-	GetTags(h filefmt.FileHandler) ([]string, []interface{})
+	GetTags(p metadata.Provider) ([]string, []interface{})
 	// SetValues sets all of the values of the field.
-	SetValues(h filefmt.FileHandler, v []interface{}) error
-	// CheckValues returns whether the values of the field are tagged
-	// correctly.
-	CheckValues(h filefmt.FileHandler) strmeta.CheckResult
+	SetValues(p metadata.Provider, v []interface{}) error
 }
 
 // baseField is, in effect, an abstract base class for fields, providing methods

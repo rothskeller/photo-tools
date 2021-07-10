@@ -32,7 +32,7 @@ func Write(args []string, files []MediaFile) (err error) {
 		return fmt.Errorf("write: standard input: %s", err)
 	}
 	for i, file := range files {
-		if err := fields.CaptionField.SetValues(file.Handler, []interface{}{value}); err != nil {
+		if err := fields.CaptionField.SetValues(file.Provider, []interface{}{value}); err != nil {
 			return fmt.Errorf("%s: write caption: %s", file.Path, err)
 		}
 		files[i].Changed = true

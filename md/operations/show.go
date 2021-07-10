@@ -5,8 +5,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/md/fields"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // Show prints the canonical values of one or more fields in a table.
@@ -48,13 +48,13 @@ func Show(args []string, files []MediaFile) (err error) {
 			if field == fields.PeopleField && hasFaces {
 				// Special case: don't include the same names as Person and Face.
 				field := field.(interface {
-					GetValuesNoFaces(filefmt.FileHandler) []interface{}
+					GetValuesNoFaces(metadata.Provider) []interface{}
 				})
-				values = field.GetValuesNoFaces(file.Handler)
+				values = field.GetValuesNoFaces(file.Provider)
 			} else {
-				values = field.GetValues(file.Handler)
+				values = field.GetValues(file.Provider)
 			}
-			check := field.CheckValues(file.Handler)
+			check := field.CheckValues(file.Provider)
 			if len(values) == 0 && check < 0 {
 				fmt.Fprintf(tw, "%s%s%s\t\n", file.Path, resultCodes[check], field.Label())
 			} else {

@@ -5,15 +5,15 @@ package operations
 import (
 	"strings"
 
-	"github.com/rothskeller/photo-tools/filefmt"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // MediaFile identifies, and provides the handler for, one media file named on
 // the command line.
 type MediaFile struct {
-	Path    string
-	Handler filefmt.FileHandler
-	Changed bool
+	Path     string
+	Provider metadata.Provider
+	Changed  bool
 }
 
 // escapeString escapes newlines in tabular output from the show and tabs

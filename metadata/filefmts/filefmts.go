@@ -7,6 +7,7 @@ import (
 
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/filefmts/jpeg"
+	"github.com/rothskeller/photo-tools/metadata/filefmts/xmp"
 )
 
 // FileFormat is the interface satisfied by all file format handlers.
@@ -21,6 +22,11 @@ type FileFormat interface {
 // problem with it.
 func HandlerFor(fh *os.File) (f FileFormat, err error) {
 	if f, err := jpeg.Read(fh); err != nil {
+		return nil, err
+	} else if f != nil {
+		return f, nil
+	}
+	if f, err := xmp.Read(fh); err != nil {
 		return nil, err
 	} else if f != nil {
 		return f, nil

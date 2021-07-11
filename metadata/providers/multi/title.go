@@ -16,7 +16,7 @@ func (p Provider) Title() (value string) {
 
 // TitleTags returns a list of tag names for the Title field, and a parallel
 // list of values held by those tags.
-func (p Provider) TitleTags() (tags []string, values []string) {
+func (p Provider) TitleTags() (tags []string, values [][]string) {
 	for _, sp := range p {
 		t, v := sp.TitleTags()
 		tags = append(tags, t...)

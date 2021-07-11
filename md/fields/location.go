@@ -37,6 +37,9 @@ func (f *locationField) RenderValue(v interface{}) string {
 	return v.(metadata.Location).String()
 }
 
+// EmptyValue returns whether a value for the field is empty.
+func (f *locationField) EmptyValue(v interface{}) bool { return v.(metadata.Location).Empty() }
+
 // EqualValue compares two values for equality.
 func (f *locationField) EqualValue(a interface{}, b interface{}) bool {
 	return a.(metadata.Location).Equal(b.(metadata.Location))
@@ -55,15 +58,16 @@ func (f *locationField) GetValues(p metadata.Provider) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *locationField) GetTags(p metadata.Provider) ([]string, []interface{}) {
-	if tags, values := p.LocationTags(); len(tags) != 0 {
-		var ivals = make([]interface{}, len(values))
-		for i := range values {
-			ivals[i] = values[i]
+func (f *locationField) GetTags(p metadata.Provider) ([]string, [][]interface{}) {
+	tags, values := p.LocationTags()
+	var ivals = make([][]interface{}, len(values))
+	for i := range values {
+		ivals[i] = make([]interface{}, len(values[i]))
+		for j := range values[i] {
+			ivals[i][j] = values[i][j]
 		}
-		return tags, ivals
 	}
-	return nil, nil
+	return tags, ivals
 }
 
 // SetValues sets all of the values of the field.

@@ -92,16 +92,19 @@ func (p *Provider) Location() (value metadata.Location) {
 
 // LocationTags returns a list of tag names for the Location field, and a
 // parallel list of values held by those tags.
-func (p *Provider) LocationTags() (tags []string, values []metadata.Location) {
-	tags, values = locationToTags(tags, values, "XMP  iptc:LocationCreated", p.iptcLocationCreated, true)
-	for _, shown := range p.iptcLocationsShown {
-		tags, values = locationToTags(tags, values, "XMP  iptc:LocationShown", shown, false)
+func (p *Provider) LocationTags() (tags []string, values [][]metadata.Location) {
+	tags = []string{"XMP  iptc:LocationCreated"}
+	values = [][]metadata.Location{locationToValues(p.iptcLocationCreated)}
+	if len(p.iptcLocationsShown) != 0 {
+		tags = append(tags, "XMP  iptc:LocationShown")
+		values = append(values, nil)
+		for _, shown := range p.iptcLocationsShown {
+			values[1] = append(values[1], locationToValues(shown)...)
+		}
 	}
 	return tags, values
 }
-func locationToTags(
-	tags []string, values []metadata.Location, label string, loc location, addEmpty bool,
-) ([]string, []metadata.Location) {
+func locationToValues(loc location) (values []metadata.Location) {
 	// What languages are used in the location?
 	var langs []string
 	for _, ai := range loc.CountryName {
@@ -117,7 +120,6 @@ func locationToTags(
 		langs = addUnique(langs, ai.Lang)
 	}
 	// Make a location for each language.
-	var added = false
 	for _, lang := range langs {
 		var mdl metadata.Location
 		mdl.CountryCode = loc.CountryCode
@@ -136,19 +138,9 @@ func locationToTags(
 		if loc.Empty() {
 			continue
 		}
-		if lang == "" {
-			tags = append(tags, label)
-		} else {
-			tags = append(tags, fmt.Sprintf("%s[%s]", label, lang))
-		}
 		values = append(values, mdl)
-		added = true
 	}
-	if !added && addEmpty {
-		tags = append(tags, label)
-		values = append(values, metadata.Location{})
-	}
-	return tags, values
+	return values
 }
 func addUnique(list []string, val string) []string {
 	for _, exist := range list {

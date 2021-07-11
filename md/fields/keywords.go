@@ -25,10 +25,10 @@ var KeywordsField Field = &keywordsField{
 // the return slice will have at most one entry.)  Empty values should not be
 // included.
 func (f *keywordsField) GetValues(p metadata.Provider) []interface{} {
-	var groups = p.Keywords()
-	var ifcs = make([]interface{}, len(groups))
-	for i := range groups {
-		ifcs[i] = groups[i]
+	var values = p.Keywords()
+	var ifcs = make([]interface{}, len(values))
+	for i := range values {
+		ifcs[i] = values[i]
 	}
 	return ifcs
 }
@@ -36,11 +36,14 @@ func (f *keywordsField) GetValues(p metadata.Provider) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *keywordsField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+func (f *keywordsField) GetTags(p metadata.Provider) ([]string, [][]interface{}) {
 	var tags, values = p.KeywordsTags()
-	var ifcs = make([]interface{}, len(values))
+	var ifcs = make([][]interface{}, len(values))
 	for i := range values {
-		ifcs[i] = values[i]
+		ifcs[i] = make([]interface{}, len(values[i]))
+		for j := range values[i] {
+			ifcs[i][j] = values[i][j]
+		}
 	}
 	return tags, ifcs
 }

@@ -18,7 +18,7 @@ func (p *Provider) getCreator() (err error) {
 		if p.tiffArtist, err = getStrings(p.rdf.Properties, artistName); err != nil {
 			return fmt.Errorf("tiff:Artist: %s", err)
 		}
-	} else {
+	} else if artist != "" {
 		p.tiffArtist = []string{artist}
 	}
 	return nil
@@ -34,12 +34,11 @@ func (p *Provider) Creator() (value string) {
 
 // CreatorTags returns a list of tag names for the Creator field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CreatorTags() (tags []string, values []string) {
-	for _, artist := range p.tiffArtist {
-		tags = append(tags, "XMP  tiff:Artist")
-		values = append(values, artist)
+func (p *Provider) CreatorTags() (tags []string, values [][]string) {
+	if len(p.tiffArtist) == 0 {
+		return nil, nil
 	}
-	return tags, values
+	return []string{"XMP  tiff:Artist"}, [][]string{p.tiffArtist}
 }
 
 // SetCreator sets the value of the Creator field.

@@ -36,10 +36,13 @@ func (f *titleField) GetValues(p metadata.Provider) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *titleField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+func (f *titleField) GetTags(p metadata.Provider) ([]string, [][]interface{}) {
 	tags, values := p.TitleTags()
-	return tags, stringSliceToInterfaceSlice(values)
-	return nil, nil
+	ilist := make([][]interface{}, len(values))
+	for i := range values {
+		ilist[i] = stringSliceToInterfaceSlice(values[i])
+	}
+	return tags, ilist
 }
 
 // SetValues sets all of the values of the field.

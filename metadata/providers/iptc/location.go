@@ -89,8 +89,8 @@ func (p *Provider) Location() (value metadata.Location) {
 
 // LocationTags returns a list of tag names for the Location field, and a
 // parallel list of values held by those tags.
-func (p *Provider) LocationTags() (tags []string, values []metadata.Location) {
-	return []string{"IPTC (location tags)"}, []metadata.Location{p.Location()}
+func (p *Provider) LocationTags() (tags []string, values [][]metadata.Location) {
+	return []string{"IPTC (location tags)"}, [][]metadata.Location{{p.Location()}}
 }
 
 // SetLocation sets the value of the Location field.

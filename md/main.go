@@ -8,8 +8,8 @@ import (
 	"os"
 	"sort"
 
-	"github.com/rothskeller/photo-tools/filefmt"
 	"github.com/rothskeller/photo-tools/md/operations"
+	"github.com/rothskeller/photo-tools/metadata/filefmts"
 )
 
 func main() {
@@ -79,20 +79,29 @@ func main() {
 	}
 	// Get a handler and read the metadata for each identified file.
 	for _, fname := range fnames {
-		if handler := filefmt.HandlerFor(fname); handler != nil {
-			handler.ReadMetadata()
-			if problems := handler.Problems(); len(problems) == 0 {
-				files = append(files, operations.MediaFile{Path: fname, Handler: handler})
-			} else {
-				for _, problem := range handler.Problems() {
-					fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", fname, problem)
-				}
+		var (
+			fh      *os.File
+			handler filefmts.FileFormat
+		)
+		if fh, err = os.Open(fname); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+			continue
+		}
+		if handler, err = filefmts.HandlerFor(fh); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", fname, err)
+			fh.Close()
+			sawError = true
+			continue
+		}
+		if handler == nil {
+			if !ignoreNoHandler {
+				fmt.Fprintf(os.Stderr, "ERROR: %s: not a supported file type\n", fname)
 				sawError = true
 			}
-		} else if !ignoreNoHandler {
-			fmt.Fprintf(os.Stderr, "ERROR: %s: not a supported file type\n", fname)
-			sawError = true
+			fh.Close()
+			continue
 		}
+		files = append(files, operations.MediaFile{Path: fname, File: fh, Provider: handler.Provider()})
 	}
 	// If no successfully read files, exit.
 	if len(files) == 0 {
@@ -166,10 +175,10 @@ func main() {
 	if saveMetadata {
 		for _, file := range files {
 			if file.Changed {
-				if err := file.Handler.SaveMetadata(); err != nil {
-					fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
-					sawError = true
-				}
+				// if err := file.Handler.SaveMetadata(); err != nil {
+				// 	fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
+				// 	sawError = true
+				// }
 			}
 		}
 	}

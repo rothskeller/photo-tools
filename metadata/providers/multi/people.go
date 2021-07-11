@@ -16,7 +16,7 @@ func (p Provider) People() (value []string) {
 
 // PeopleTags returns a list of tag names for the People field, and a parallel
 // list of values held by those tags.
-func (p Provider) PeopleTags() (tags []string, values []string) {
+func (p Provider) PeopleTags() (tags []string, values [][]string) {
 	for _, sp := range p {
 		t, v := sp.PeopleTags()
 		tags = append(tags, t...)

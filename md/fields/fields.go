@@ -21,12 +21,16 @@ type Field interface {
 	ShortLabel() string
 	// Multivalued returns true if the field allows multiple values.
 	Multivalued() bool
+	// Expected returns true if the field is expected to have a value.
+	Expected() bool
 	// ParseValue parses a string and returns a value for the field.  It
 	// returns an error if the string is invalid.
 	ParseValue(s string) (interface{}, error)
 	// RenderValue takes a value for the field and renders it in string form
 	// for display.
 	RenderValue(v interface{}) string
+	// EmptyValue returns whether a value for the field is empty.
+	EmptyValue(v interface{}) bool
 	// EqualValue compares two values for equality.
 	EqualValue(a, b interface{}) bool
 	// GetValues returns all of the values of the field.  (For single-valued
@@ -36,7 +40,7 @@ type Field interface {
 	// GetTags returns the names of all of the metadata tags that correspond
 	// to the field in its first return slice, and a parallel slice of the
 	// values of those tags (which may be zero values).
-	GetTags(p metadata.Provider) ([]string, []interface{})
+	GetTags(p metadata.Provider) ([]string, [][]interface{})
 	// SetValues sets all of the values of the field.
 	SetValues(p metadata.Provider, v []interface{}) error
 }
@@ -49,6 +53,7 @@ type baseField struct {
 	label       string
 	shortLabel  string
 	multivalued bool
+	expected    bool
 }
 
 // Name returns the singular form of the name of the field as used on
@@ -69,6 +74,9 @@ func (f *baseField) ShortLabel() string { return f.shortLabel }
 
 // Multivalued returns true if the field allows multiple values.
 func (f *baseField) Multivalued() bool { return f.multivalued }
+
+// Expected returns true if the field is supposed to have a value.
+func (f *baseField) Expected() bool { return f.expected }
 
 // ParseField parses a string to see if it is a recognized field name or
 // abbreviation.  If so, it returns the corresponding field handler.  Otherwise

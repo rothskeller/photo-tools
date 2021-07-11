@@ -61,17 +61,8 @@ func (p *Provider) Creator() (value string) {
 
 // CreatorTags returns a list of tag names for the Creator field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CreatorTags() (tags []string, values []string) {
-	if len(p.artist) == 0 {
-		return []string{"IFD0 Artist"}, []string{""}
-	}
-	tags = make([]string, len(p.artist))
-	values = make([]string, len(p.artist))
-	for i := range p.artist {
-		tags[i] = "IFD0 Artist"
-		values[i] = p.artist[i]
-	}
-	return tags, values
+func (p *Provider) CreatorTags() (tags []string, values [][]string) {
+	return []string{"IFD0 Artist"}, [][]string{p.artist}
 }
 
 // SetCreator sets the value of the Creator field.

@@ -16,7 +16,7 @@ func (p Provider) Caption() (value string) {
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p Provider) CaptionTags() (tags []string, values []string) {
+func (p Provider) CaptionTags() (tags []string, values [][]string) {
 	for _, sp := range p {
 		t, v := sp.CaptionTags()
 		tags = append(tags, t...)

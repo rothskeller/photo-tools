@@ -20,11 +20,13 @@ func (p *Provider) Groups() (values []metadata.HierValue) {
 
 // GroupsTags returns a list of tag names for the Groups field, and a
 // parallel list of values held by those tags.
-func (p *Provider) GroupsTags() (tags []string, values []metadata.HierValue) {
+func (p *Provider) GroupsTags() (tags []string, values [][]metadata.HierValue) {
 	tags, values = p.filteredKeywordsTags(groupPredicate)
 	for i := range tags {
 		tags[i] += ":Groups/"
-		values[i] = values[i][1:]
+		for j := range values[i] {
+			values[i][j] = append(metadata.HierValue{}, values[i][j][1:]...)
+		}
 	}
 	return tags, values
 }

@@ -36,6 +36,9 @@ func New(rdf *rdf.Packet) (p *Provider, err error) {
 	if err = p.getDateTime(); err != nil {
 		return nil, fmt.Errorf("XMP: %s", err)
 	}
+	if err = p.getGPS(); err != nil {
+		return nil, fmt.Errorf("XMP: %s", err)
+	}
 	return p, nil
 }
 

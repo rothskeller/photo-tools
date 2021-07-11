@@ -16,7 +16,7 @@ func (p Provider) Creator() (value string) {
 
 // CreatorTags returns a list of tag names for the Creator field, and a
 // parallel list of values held by those tags.
-func (p Provider) CreatorTags() (tags []string, values []string) {
+func (p Provider) CreatorTags() (tags []string, values [][]string) {
 	for _, sp := range p {
 		t, v := sp.CreatorTags()
 		tags = append(tags, t...)

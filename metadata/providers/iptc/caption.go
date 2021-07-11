@@ -32,8 +32,11 @@ func (p *Provider) Caption() (value string) { return p.captionAbstract }
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CaptionTags() (tags []string, values []string) {
-	return []string{"IPTC Caption/Abstract"}, []string{p.captionAbstract}
+func (p *Provider) CaptionTags() (tags []string, values [][]string) {
+	if p.captionAbstract == "" {
+		return []string{"IPTC Caption/Abstract"}, [][]string{nil}
+	}
+	return []string{"IPTC Caption/Abstract"}, [][]string{{p.captionAbstract}}
 }
 
 // SetCaption sets the value of the Caption field.

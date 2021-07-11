@@ -3,6 +3,7 @@
 package operations
 
 import (
+	"os"
 	"strings"
 
 	"github.com/rothskeller/photo-tools/metadata"
@@ -12,6 +13,7 @@ import (
 // the command line.
 type MediaFile struct {
 	Path     string
+	File     *os.File
 	Provider metadata.Provider
 	Changed  bool
 }

@@ -26,15 +26,8 @@ func (p *Provider) Creator() (value string) {
 
 // CreatorTags returns a list of tag names for the Creator field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CreatorTags() (tags []string, values []string) {
-	if len(p.dcCreator) == 0 {
-		return []string{"XMP  dc:creator"}, []string{""}
-	}
-	tags = make([]string, len(p.dcCreator))
-	for i := range p.dcCreator {
-		tags[i] = "XMP  dc:creator"
-	}
-	return tags, p.dcCreator
+func (p *Provider) CreatorTags() (tags []string, values [][]string) {
+	return []string{"XMP  dc:creator"}, [][]string{p.dcCreator}
 }
 
 // SetCreator sets the value of the Creator field.

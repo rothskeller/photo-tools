@@ -33,7 +33,7 @@ type Provider interface {
 	Caption() (value string)
 	// CaptionTags returns a list of tag names for the Caption field, and a
 	// parallel list of values held by those tags.
-	CaptionTags() (tags, values []string)
+	CaptionTags() (tags []string, values [][]string)
 	// SetCaption sets the value of the Caption field.
 	SetCaption(value string) error
 
@@ -41,7 +41,7 @@ type Provider interface {
 	Creator() (value string)
 	// CreatorTags returns a list of tag names for the Creator field, and a
 	// parallel list of values held by those tags.
-	CreatorTags() (tags, values []string)
+	CreatorTags() (tags []string, values [][]string)
 	// SetCreator sets the value of the Creator field.
 	SetCreator(value string) error
 
@@ -57,7 +57,7 @@ type Provider interface {
 	Faces() (values []string)
 	// FacesTags returns a list of tag names for the Faces field, and a
 	// parallel list of values held by those tags.
-	FacesTags() (tags, values []string)
+	FacesTags() (tags []string, values [][]string)
 	// SetFaces sets the values of the Faces field.
 	SetFaces(values []string) error
 
@@ -73,7 +73,7 @@ type Provider interface {
 	Groups() (values []HierValue)
 	// GroupsTags returns a list of tag names for the Groups field, and a
 	// parallel list of values held by those tags.
-	GroupsTags() (tags []string, values []HierValue)
+	GroupsTags() (tags []string, values [][]HierValue)
 	// SetGroups sets the values of the Groups field.
 	SetGroups(values []HierValue) error
 
@@ -81,7 +81,7 @@ type Provider interface {
 	Keywords() (values []HierValue)
 	// KeywordsTags returns a list of tag names for the Keywords field, and
 	// a parallel list of values held by those tags.
-	KeywordsTags() (tags []string, values []HierValue)
+	KeywordsTags() (tags []string, values [][]HierValue)
 	// SetKeywords sets the values of the Keywords field.
 	SetKeywords(values []HierValue) error
 
@@ -89,7 +89,7 @@ type Provider interface {
 	Location() (value Location)
 	// LocationTags returns a list of tag names for the Location field, and
 	// a parallel list of values held by those tags.
-	LocationTags() (tags []string, values []Location)
+	LocationTags() (tags []string, values [][]Location)
 	// SetLocation sets the value of the Location field.
 	SetLocation(values Location) error
 
@@ -97,7 +97,7 @@ type Provider interface {
 	People() (values []string)
 	// PeopleTags returns a list of tag names for the People field, and a
 	// parallel list of values held by those tags.
-	PeopleTags() (tags, values []string)
+	PeopleTags() (tags []string, values [][]string)
 	// SetPeople sets the values of the People field.
 	SetPeople(values []string) error
 
@@ -105,7 +105,7 @@ type Provider interface {
 	Places() (values []HierValue)
 	// PlacesTags returns a list of tag names for the Places field, and a
 	// parallel list of values held by those tags.
-	PlacesTags() (tags []string, values []HierValue)
+	PlacesTags() (tags []string, values [][]HierValue)
 	// SetPlaces sets the values of the Places field.
 	SetPlaces(values []HierValue) error
 
@@ -113,7 +113,7 @@ type Provider interface {
 	Title() (value string)
 	// TitleTags returns a list of tag names for the Title field, and a
 	// parallel list of values held by those tags.
-	TitleTags() (tags, values []string)
+	TitleTags() (tags []string, values [][]string)
 	// SetTitle sets the values of the Title field.
 	SetTitle(value string) error
 
@@ -121,7 +121,7 @@ type Provider interface {
 	Topics() (values []HierValue)
 	// TopicsTags returns a list of tag names for the Topics field, and a
 	// parallel list of values held by those tags.
-	TopicsTags() (tags []string, values []HierValue)
+	TopicsTags() (tags []string, values [][]HierValue)
 	// SetTopics sets the values of the Topics field.
 	SetTopics(values []HierValue) error
 }
@@ -141,7 +141,7 @@ func (p BaseProvider) Caption() string { return "" }
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) CaptionTags() ([]string, []string) { return nil, nil }
+func (p BaseProvider) CaptionTags() ([]string, [][]string) { return nil, nil }
 
 // SetCaption sets the value of the Caption field.
 func (p BaseProvider) SetCaption(value string) error { return ErrNotSupported }
@@ -151,7 +151,7 @@ func (p BaseProvider) Creator() string { return "" }
 
 // CreatorTags returns a list of tag names for the Creator field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) CreatorTags() ([]string, []string) { return nil, nil }
+func (p BaseProvider) CreatorTags() ([]string, [][]string) { return nil, nil }
 
 // SetCreator sets the value of the Creator field.
 func (p BaseProvider) SetCreator(value string) error { return ErrNotSupported }
@@ -171,7 +171,7 @@ func (p BaseProvider) Faces() []string { return nil }
 
 // FacesTags returns a list of tag names for the Faces field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) FacesTags() ([]string, []string) { return nil, nil }
+func (p BaseProvider) FacesTags() ([]string, [][]string) { return nil, nil }
 
 // SetFaces sets the values of the Faces field.
 func (p BaseProvider) SetFaces(values []string) error { return ErrNotSupported }
@@ -191,7 +191,7 @@ func (p BaseProvider) Groups() []HierValue { return nil }
 
 // GroupsTags returns a list of tag names for the Groups field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) GroupsTags() ([]string, []HierValue) { return nil, nil }
+func (p BaseProvider) GroupsTags() ([]string, [][]HierValue) { return nil, nil }
 
 // SetGroups sets the values of the Groups field.
 func (p BaseProvider) SetGroups(values []HierValue) error { return ErrNotSupported }
@@ -201,7 +201,7 @@ func (p BaseProvider) Keywords() []HierValue { return nil }
 
 // KeywordsTags returns a list of tag names for the Keywords field, and
 // a parallel list of values held by those tags.
-func (p BaseProvider) KeywordsTags() ([]string, []HierValue) { return nil, nil }
+func (p BaseProvider) KeywordsTags() ([]string, [][]HierValue) { return nil, nil }
 
 // SetKeywords sets the values of the Keywords field.
 func (p BaseProvider) SetKeywords(values []HierValue) error { return ErrNotSupported }
@@ -211,7 +211,7 @@ func (p BaseProvider) Location() Location { return Location{} }
 
 // LocationTags returns a list of tag names for the Location field, and
 // a parallel list of values held by those tags.
-func (p BaseProvider) LocationTags() ([]string, []Location) { return nil, nil }
+func (p BaseProvider) LocationTags() ([]string, [][]Location) { return nil, nil }
 
 // SetLocation sets the value of the Location field.
 func (p BaseProvider) SetLocation(values Location) error { return ErrNotSupported }
@@ -221,7 +221,7 @@ func (p BaseProvider) People() []string { return nil }
 
 // PeopleTags returns a list of tag names for the People field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) PeopleTags() ([]string, []string) { return nil, nil }
+func (p BaseProvider) PeopleTags() ([]string, [][]string) { return nil, nil }
 
 // SetPeople sets the values of the People field.
 func (p BaseProvider) SetPeople(values []string) error { return ErrNotSupported }
@@ -231,7 +231,7 @@ func (p BaseProvider) Places() []HierValue { return nil }
 
 // PlacesTags returns a list of tag names for the Places field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) PlacesTags() ([]string, []HierValue) { return nil, nil }
+func (p BaseProvider) PlacesTags() ([]string, [][]HierValue) { return nil, nil }
 
 // SetPlaces sets the values of the Places field.
 func (p BaseProvider) SetPlaces(values []HierValue) error { return ErrNotSupported }
@@ -241,7 +241,7 @@ func (p BaseProvider) Title() string { return "" }
 
 // TitleTags returns a list of tag names for the Title field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) TitleTags() ([]string, []string) { return nil, nil }
+func (p BaseProvider) TitleTags() ([]string, [][]string) { return nil, nil }
 
 // SetTitle sets the values of the Title field.
 func (p BaseProvider) SetTitle(value string) error { return ErrNotSupported }
@@ -251,7 +251,7 @@ func (p BaseProvider) Topics() []HierValue { return nil }
 
 // TopicsTags returns a list of tag names for the Topics field, and a
 // parallel list of values held by those tags.
-func (p BaseProvider) TopicsTags() ([]string, []HierValue) { return nil, nil }
+func (p BaseProvider) TopicsTags() ([]string, [][]HierValue) { return nil, nil }
 
 // SetTopics sets the values of the Topics field.
 func (p BaseProvider) SetTopics(values []HierValue) error { return ErrNotSupported }

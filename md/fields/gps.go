@@ -19,6 +19,7 @@ var GPSField Field = &gpsField{
 		pluralName: "gps",
 		label:      "GPS Coords",
 		shortLabel: " G",
+		expected:   true,
 	},
 }
 
@@ -29,14 +30,17 @@ func (f *gpsField) ParseValue(s string) (interface{}, error) {
 	if err := gps.Parse(s); err != nil {
 		return nil, err
 	}
-	return &gps, nil
+	return gps, nil
 }
 
 // RenderValue takes a value for the field and renders it in string form for
 // display.
 func (f *gpsField) RenderValue(v interface{}) string {
-	return v.(*metadata.GPSCoords).String()
+	return v.(metadata.GPSCoords).String()
 }
+
+// EmptyValue returns whether a value for the field is empty.
+func (f *gpsField) EmptyValue(v interface{}) bool { return v.(metadata.GPSCoords).Empty() }
 
 // EqualValue compares two values for equality.
 func (f *gpsField) EqualValue(a interface{}, b interface{}) bool {
@@ -56,11 +60,11 @@ func (f *gpsField) GetValues(p metadata.Provider) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *gpsField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+func (f *gpsField) GetTags(p metadata.Provider) ([]string, [][]interface{}) {
 	if tags, values := p.GPSTags(); len(tags) != 0 {
-		var ivals = make([]interface{}, len(values))
+		var ivals = make([][]interface{}, len(values))
 		for i := range values {
-			ivals[i] = values[i]
+			ivals[i] = []interface{}{values[i]}
 		}
 		return tags, ivals
 	}

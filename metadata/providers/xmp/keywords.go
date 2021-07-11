@@ -44,7 +44,7 @@ func (p *Provider) Keywords() (values []metadata.HierValue) {
 
 // KeywordsTags returns a list of tag names for the Keywords field, and
 // a parallel list of values held by those tags.
-func (p *Provider) KeywordsTags() (tags []string, values []metadata.HierValue) {
+func (p *Provider) KeywordsTags() (tags []string, values [][]metadata.HierValue) {
 	return p.filteredKeywordsTags(otherKeywordPredicate)
 }
 
@@ -67,10 +67,15 @@ type keywordFilter func(metadata.HierValue) bool
 func allKeywordsFilter(_ metadata.HierValue) bool { return true }
 
 func (p *Provider) filteredKeywords(pred keywordFilter) (values []metadata.HierValue) {
+	var leaves = make(map[string]bool)
+
 	if len(p.digiKamTagsList) != 0 {
 		for _, kw := range p.digiKamTagsList {
 			if pred(kw) {
 				values = append(values, kw)
+			}
+			if len(kw) != 0 {
+				leaves[kw[len(kw)-1]] = true
 			}
 		}
 		return values
@@ -80,10 +85,16 @@ func (p *Provider) filteredKeywords(pred keywordFilter) (values []metadata.HierV
 			if pred(kw) {
 				values = append(values, kw)
 			}
+			if len(kw) != 0 {
+				leaves[kw[len(kw)-1]] = true
+			}
 		}
 		return values
 	}
 	for _, s := range p.dcSubject {
+		if leaves[s] {
+			continue
+		}
 		kw := metadata.HierValue{s}
 		if pred(kw) {
 			values = append(values, kw)
@@ -92,29 +103,41 @@ func (p *Provider) filteredKeywords(pred keywordFilter) (values []metadata.HierV
 	return values
 }
 
-func (p *Provider) filteredKeywordsTags(pred keywordFilter) (tags []string, values []metadata.HierValue) {
-	if len(p.digiKamTagsList) != 0 {
-		for _, kw := range p.digiKamTagsList {
-			if pred(kw) {
-				tags = append(tags, "XMP  digiKam:TagsList")
-				values = append(values, kw)
-			}
+func (p *Provider) filteredKeywordsTags(pred keywordFilter) (tags []string, values [][]metadata.HierValue) {
+	var (
+		tl, hs, s []metadata.HierValue
+		leaves    = make(map[string]bool)
+	)
+	for _, hv := range p.digiKamTagsList {
+		if pred(hv) {
+			tl = append(tl, hv)
+		}
+		if len(hv) != 0 {
+			leaves[hv[len(hv)-1]] = true
 		}
 	}
-	if len(p.lrHierarchicalSubject) != 0 {
-		for _, kw := range p.lrHierarchicalSubject {
-			if pred(kw) {
-				tags = append(tags, "XMP  lr:hierarchicalSubject")
-				values = append(values, kw)
-			}
+	for _, hv := range p.lrHierarchicalSubject {
+		if pred(hv) {
+			hs = append(hs, hv)
+		}
+		if len(hv) != 0 {
+			leaves[hv[len(hv)-1]] = true
 		}
 	}
-	for _, s := range p.dcSubject {
-		kw := metadata.HierValue{s}
+	tags = []string{"XMP  digiKam:TagsList", "XMP  lr:hierarchicalSubject"}
+	values = [][]metadata.HierValue{tl, hs}
+	for i := range p.dcSubject {
+		if leaves[p.dcSubject[i]] {
+			continue
+		}
+		var kw = metadata.HierValue{p.dcSubject[i]}
 		if pred(kw) {
-			tags = append(tags, "XMP  dc:subject")
-			values = append(values, kw)
+			s = append(s, kw)
 		}
+	}
+	if len(s) != 0 {
+		tags = append(tags, "XMP  dc:subject")
+		values = append(values, s)
 	}
 	return tags, values
 }

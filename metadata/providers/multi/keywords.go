@@ -16,7 +16,7 @@ func (p Provider) Keywords() (value []metadata.HierValue) {
 
 // KeywordsTags returns a list of tag names for the Keywords field, and a parallel
 // list of values held by those tags.
-func (p Provider) KeywordsTags() (tags []string, values []metadata.HierValue) {
+func (p Provider) KeywordsTags() (tags []string, values [][]metadata.HierValue) {
 	for _, sp := range p {
 		t, v := sp.KeywordsTags()
 		tags = append(tags, t...)

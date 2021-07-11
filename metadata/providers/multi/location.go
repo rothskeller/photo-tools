@@ -16,7 +16,7 @@ func (p Provider) Location() (value metadata.Location) {
 
 // LocationTags returns a list of tag names for the Location field, and a parallel
 // list of values held by those tags.
-func (p Provider) LocationTags() (tags []string, values []metadata.Location) {
+func (p Provider) LocationTags() (tags []string, values [][]metadata.Location) {
 	for _, sp := range p {
 		t, v := sp.LocationTags()
 		tags = append(tags, t...)

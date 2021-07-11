@@ -20,7 +20,7 @@ type FileFormat interface {
 // an error if the file cannot be read, or if the handler for its type finds a
 // problem with it.
 func HandlerFor(fh *os.File) (f FileFormat, err error) {
-	if f, err = jpeg.Read(fh); err != nil {
+	if f, err := jpeg.Read(fh); err != nil {
 		return nil, err
 	} else if f != nil {
 		return f, nil

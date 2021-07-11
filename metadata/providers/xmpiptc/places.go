@@ -8,7 +8,7 @@ import (
 func (p *Provider) Places() (values []metadata.HierValue) { return nil }
 
 // PlacesTags returns no tags.  The mirrored IPTC data does not contain places.
-func (p *Provider) PlacesTags() (tags []string, values []metadata.HierValue) { return nil, nil }
+func (p *Provider) PlacesTags() (tags []string, values [][]metadata.HierValue) { return nil, nil }
 
 // SetPlaces clears the value of the Location field if the places that are being
 // set do not include the location.

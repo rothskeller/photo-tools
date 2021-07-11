@@ -16,7 +16,7 @@ func (p Provider) Groups() (value []metadata.HierValue) {
 
 // GroupsTags returns a list of tag names for the Groups field, and a parallel
 // list of values held by those tags.
-func (p Provider) GroupsTags() (tags []string, values []metadata.HierValue) {
+func (p Provider) GroupsTags() (tags []string, values [][]metadata.HierValue) {
 	for _, sp := range p {
 		t, v := sp.GroupsTags()
 		tags = append(tags, t...)

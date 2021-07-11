@@ -145,14 +145,14 @@ func (p *Provider) Faces() (values []string) {
 
 // FacesTags returns a list of tag names for the Faces field, and a
 // parallel list of values held by those tags.
-func (p *Provider) FacesTags() (tags []string, values []string) {
-	for _, face := range p.mpRegPersonDisplayNames {
+func (p *Provider) FacesTags() (tags []string, values [][]string) {
+	if len(p.mpRegPersonDisplayNames) != 0 {
 		tags = append(tags, "XMP  MP:Regions")
-		values = append(values, face)
+		values = append(values, p.mpRegPersonDisplayNames)
 	}
-	for _, face := range p.mwgrsNames {
+	if len(p.mwgrsNames) != 0 {
 		tags = append(tags, "XMP  mwg-rs:RegionInfo")
-		values = append(values, face)
+		values = append(values, p.mwgrsNames)
 	}
 	return tags, values
 }

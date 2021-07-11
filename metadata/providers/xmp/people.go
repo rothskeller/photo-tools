@@ -33,14 +33,17 @@ func (p *Provider) People() (values []string) {
 
 // PeopleTags returns a list of tag names for the People field, and a
 // parallel list of values held by those tags.
-func (p *Provider) PeopleTags() (tags []string, values []string) {
-	var kws []metadata.HierValue
+func (p *Provider) PeopleTags() (tags []string, values [][]string) {
+	var kws [][]metadata.HierValue
 
 	tags, kws = p.filteredKeywordsTags(personPredicate)
-	values = make([]string, len(kws))
+	values = make([][]string, len(kws))
 	for i := range tags {
 		tags[i] += ":People/"
-		values[i] = kws[i][1]
+		values[i] = make([]string, len(kws[i]))
+		for j := range kws[i] {
+			values[i][j] = kws[i][j][1]
+		}
 	}
 	return tags, values
 }

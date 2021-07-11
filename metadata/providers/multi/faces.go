@@ -16,7 +16,7 @@ func (p Provider) Faces() (value []string) {
 
 // FacesTags returns a list of tag names for the Faces field, and a parallel
 // list of values held by those tags.
-func (p Provider) FacesTags() (tags []string, values []string) {
+func (p Provider) FacesTags() (tags []string, values [][]string) {
 	for _, sp := range p {
 		t, v := sp.FacesTags()
 		tags = append(tags, t...)

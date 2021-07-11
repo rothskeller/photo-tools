@@ -21,17 +21,16 @@ func (p *Provider) Caption() (value string) { return p.dcDescription.Default() }
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CaptionTags() (tags []string, values []string) {
+func (p *Provider) CaptionTags() (tags []string, values [][]string) {
 	tags = append(tags, "XML  dc:description")
 	if len(p.dcDescription) == 0 {
-		return tags, []string{""}
+		return []string{"XML  dc:description"}, [][]string{nil}
 	}
-	values = append(values, p.dcDescription[0].Value)
-	for _, ai := range p.dcDescription[1:] {
-		tags = append(tags, fmt.Sprintf("XMP  dc:description[%s]", ai.Lang))
-		values = append(values, ai.Value)
+	vlist := make([]string, len(p.dcDescription))
+	for i := range p.dcDescription {
+		vlist[i] = p.dcDescription[i].Value
 	}
-	return tags, values
+	return []string{"XML  dc:description"}, [][]string{vlist}
 }
 
 // SetCaption sets the value of the Caption field.

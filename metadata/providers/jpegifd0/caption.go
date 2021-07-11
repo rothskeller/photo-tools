@@ -21,8 +21,8 @@ func (p *Provider) Caption() (value string) { return p.imageDescription }
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CaptionTags() (tags []string, values []string) {
-	return []string{"IFD0 ImageDescription"}, []string{p.imageDescription}
+func (p *Provider) CaptionTags() (tags []string, values [][]string) {
+	return []string{"IFD0 ImageDescription"}, [][]string{{p.imageDescription}}
 }
 
 // SetCaption sets the value of the Caption field.

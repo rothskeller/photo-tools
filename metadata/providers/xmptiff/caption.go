@@ -21,17 +21,12 @@ func (p *Provider) Caption() (value string) { return p.tiffImageDescription.Defa
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CaptionTags() (tags []string, values []string) {
-	tags = append(tags, "XML  tiff:ImageDescription")
-	if len(p.tiffImageDescription) == 0 {
-		return tags, []string{""}
+func (p *Provider) CaptionTags() (tags []string, values [][]string) {
+	vlist := make([]string, len(p.tiffImageDescription))
+	for i := range p.tiffImageDescription {
+		vlist[i] = p.tiffImageDescription[i].Value
 	}
-	values = append(values, p.tiffImageDescription[0].Value)
-	for _, ai := range p.tiffImageDescription[1:] {
-		tags = append(tags, fmt.Sprintf("XMP  tiff:ImageDescription[%s]", ai.Lang))
-		values = append(values, ai.Value)
-	}
-	return tags, values
+	return []string{"XML  tiff:ImageDescription"}, [][]string{vlist}
 }
 
 // SetCaption sets the value of the Caption field.

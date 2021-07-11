@@ -16,7 +16,7 @@ func (p Provider) Topics() (value []metadata.HierValue) {
 
 // TopicsTags returns a list of tag names for the Topics field, and a parallel
 // list of values held by those tags.
-func (p Provider) TopicsTags() (tags []string, values []metadata.HierValue) {
+func (p Provider) TopicsTags() (tags []string, values [][]metadata.HierValue) {
 	for _, sp := range p {
 		t, v := sp.TopicsTags()
 		tags = append(tags, t...)

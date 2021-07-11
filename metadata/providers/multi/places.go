@@ -16,7 +16,7 @@ func (p Provider) Places() (value []metadata.HierValue) {
 
 // PlacesTags returns a list of tag names for the Places field, and a parallel
 // list of values held by those tags.
-func (p Provider) PlacesTags() (tags []string, values []metadata.HierValue) {
+func (p Provider) PlacesTags() (tags []string, values [][]metadata.HierValue) {
 	for _, sp := range p {
 		t, v := sp.PlacesTags()
 		tags = append(tags, t...)

@@ -54,16 +54,12 @@ func Show(args []string, files []MediaFile) (err error) {
 			} else {
 				values = field.GetValues(file.Provider)
 			}
-			check := field.CheckValues(file.Provider)
-			if len(values) == 0 && check < 0 {
-				fmt.Fprintf(tw, "%s%s%s\t\n", file.Path, resultCodes[check], field.Label())
+			check := checkField(file.Provider, field, false)
+			if len(values) == 0 && check != "  " {
+				fmt.Fprintf(tw, "%s\t%s%s\t\n", file.Path, check, field.Label())
 			} else {
 				for _, value := range values {
-					if check < 0 {
-						fmt.Fprintf(tw, "%s%s%s\t%s\n", file.Path, resultCodes[check], field.Label(), escapeString(field.RenderValue(value)))
-					} else {
-						fmt.Fprintf(tw, "%s\t  %s\t%s\n", file.Path, field.Label(), escapeString(field.RenderValue(value)))
-					}
+					fmt.Fprintf(tw, "%s\t%s%s\t%s\n", file.Path, check, field.Label(), escapeString(field.RenderValue(value)))
 				}
 			}
 		}

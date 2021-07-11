@@ -35,14 +35,15 @@ func (p *Provider) Keywords() (values []metadata.HierValue) {
 
 // KeywordsTags returns a list of tag names for the Keywords field, and
 // a parallel list of values held by those tags.
-func (p *Provider) KeywordsTags() (tags []string, values []metadata.HierValue) {
-	tags = make([]string, len(p.keywords))
-	values = make([]metadata.HierValue, len(p.keywords))
-	for i := range p.keywords {
-		tags[i] = "IPTC Keyword"
-		values[i] = metadata.HierValue{p.keywords[i]}
+func (p *Provider) KeywordsTags() (tags []string, values [][]metadata.HierValue) {
+	if len(p.keywords) == 0 {
+		return nil, nil
 	}
-	return tags, values
+	vlist := make([]metadata.HierValue, len(p.keywords))
+	for i := range p.keywords {
+		vlist[i] = metadata.HierValue{p.keywords[i]}
+	}
+	return []string{"IPTC Keyword"}, [][]metadata.HierValue{vlist}
 }
 
 // SetKeywords sets the values of the Keywords field.

@@ -19,6 +19,7 @@ var DateTimeField Field = &datetimeField{
 		pluralName: "datetime",
 		label:      "Date/Time",
 		shortLabel: "DT",
+		expected:   true,
 	},
 }
 
@@ -29,13 +30,13 @@ func (f *datetimeField) ParseValue(s string) (interface{}, error) {
 	if err := dt.Parse(s); err != nil {
 		return nil, err
 	}
-	return &dt, nil
+	return dt, nil
 }
 
 // RenderValue takes a value for the field and renders it in string form for
 // display.
 func (f *datetimeField) RenderValue(v interface{}) string {
-	var str = v.(*metadata.DateTime).String()
+	var str = v.(metadata.DateTime).String()
 	if str == "" {
 		return str
 	}
@@ -46,6 +47,9 @@ func (f *datetimeField) RenderValue(v interface{}) string {
 	time = strings.Replace(time, "Z", " Z", -1)
 	return date + " " + time
 }
+
+// EmptyValue returns whether a value for the field is empty.
+func (f *datetimeField) EmptyValue(v interface{}) bool { return v.(metadata.DateTime).Empty() }
 
 // EqualValue compares two values for equality.
 func (f *datetimeField) EqualValue(a interface{}, b interface{}) bool {
@@ -65,11 +69,11 @@ func (f *datetimeField) GetValues(p metadata.Provider) []interface{} {
 // GetTags returns the names of all of the metadata tags that correspond to the
 // field in its first return slice, and a parallel slice of the values of those
 // tags (which may be zero values).
-func (f *datetimeField) GetTags(p metadata.Provider) ([]string, []interface{}) {
+func (f *datetimeField) GetTags(p metadata.Provider) ([]string, [][]interface{}) {
 	if tags, values := p.DateTimeTags(); len(tags) != 0 {
-		var ivals = make([]interface{}, len(values))
+		var ivals = make([][]interface{}, len(values))
 		for i := range values {
-			ivals[i] = values[i]
+			ivals[i] = []interface{}{values[i]}
 		}
 		return tags, ivals
 	}

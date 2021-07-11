@@ -13,6 +13,9 @@ func (f *stringField) ParseValue(s string) (interface{}, error) { return s, nil 
 // display.
 func (f *stringField) RenderValue(v interface{}) string { return v.(string) }
 
+// EmptyValue returns whether a value for the field is empty.
+func (f *stringField) EmptyValue(v interface{}) bool { return v.(string) == "" }
+
 // EqualValue compares two values for equality.
 func (f *stringField) EqualValue(a interface{}, b interface{}) bool { return a.(string) == b.(string) }
 

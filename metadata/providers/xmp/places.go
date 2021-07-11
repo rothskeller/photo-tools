@@ -20,11 +20,13 @@ func (p *Provider) Places() (values []metadata.HierValue) {
 
 // PlacesTags returns a list of tag names for the Places field, and a
 // parallel list of values held by those tags.
-func (p *Provider) PlacesTags() (tags []string, values []metadata.HierValue) {
+func (p *Provider) PlacesTags() (tags []string, values [][]metadata.HierValue) {
 	tags, values = p.filteredKeywordsTags(placePredicate)
 	for i := range tags {
 		tags[i] += ":Places/"
-		values[i] = values[i][1:]
+		for j := range values[i] {
+			values[i][j] = append(metadata.HierValue{}, values[i][j][1:]...)
+		}
 	}
 	return tags, values
 }

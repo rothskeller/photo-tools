@@ -8,7 +8,6 @@ import (
 
 	"github.com/rothskeller/photo-tools/md/fields"
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/strmeta"
 )
 
 var checkFields = []fields.Field{
@@ -42,8 +41,7 @@ func Check(args []string, files []MediaFile) (err error) {
 	for _, file := range files {
 		fmt.Fprint(out, file.Path)
 		for _, field := range checkFields {
-			result := checkField(file.Provider, field)
-			fmt.Fprintf(out, "\t%s", result)
+			fmt.Fprintf(out, "\t%s", checkField(file.Provider, field, true))
 		}
 		fmt.Fprintln(out)
 	}
@@ -51,17 +49,83 @@ func Check(args []string, files []MediaFile) (err error) {
 	return nil
 }
 
-func checkField(p metadata.Provider, field fields.Field) string {
-	var canon = field.GetValues(p)
-	// TODO PROBLEM comparing the values return by Tags works fine for
-	// single-valued fields, but it isn't going to detect all problems with
-	// multi-valued fields.  How do we implement check in a provider model?
+func checkField(p metadata.Provider, field fields.Field, info bool) string {
+	var (
+		incorrect bool
+		canon     = field.GetValues(p)
+	)
+	var _, tagValues = field.GetTags(p)
+	for _, tvs := range tagValues {
+		if equalValues(field, canon, tvs) {
+			continue
+		}
+		if emptyValues(field, tvs) {
+			incorrect = true
+		} else {
+			return "!=" // conflicting values
+		}
+	}
+	if incorrect {
+		return "[]"
+	}
+	if emptyValues(field, canon) {
+		if field.Expected() {
+			return "--"
+		}
+		return "  "
+	}
+	if !info {
+		return "  "
+	}
+	if field.Multivalued() {
+		return fmt.Sprintf("%2d", len(canon))
+	}
+	return " ✓"
 }
 
-var resultCodes = map[strmeta.CheckResult]string{
-	strmeta.ChkConflictingValues: "\t!=",
-	strmeta.ChkExpectedAbsent:    "\t--",
-	strmeta.ChkIncorrectlyTagged: "\t[]",
-	strmeta.ChkOptionalAbsent:    "\t  ",
-	strmeta.ChkPresent:           "\t ✓",
+func equalValues(field fields.Field, as, bs []interface{}) bool {
+	// First, make sure every non-empty element of as is present in bs.
+	for _, a := range as {
+		if field.EmptyValue(a) {
+			continue
+		}
+		var found = false
+		for _, b := range bs {
+			if field.EqualValue(a, b) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	// Then, make sure every non-empty element of bs is present in as.
+	for _, b := range bs {
+		if field.EmptyValue(b) {
+			continue
+		}
+		var found = false
+		for _, a := range as {
+			if field.EqualValue(a, b) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func emptyValues(field fields.Field, vs []interface{}) bool {
+	switch len(vs) {
+	case 0:
+		return true
+	case 1:
+		return field.EmptyValue(vs[0])
+	default:
+		return false
+	}
 }

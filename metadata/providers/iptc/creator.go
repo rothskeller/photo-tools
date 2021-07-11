@@ -33,15 +33,8 @@ func (p *Provider) Creator() (value string) {
 
 // CreatorTags returns a list of tag names for the Creator field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CreatorTags() (tags []string, values []string) {
-	if len(p.bylines) == 0 {
-		return []string{"IPTC  By-line"}, []string{""}
-	}
-	tags = make([]string, len(p.bylines))
-	for i := range p.bylines {
-		tags[i] = "IPTC By-Line"
-	}
-	return tags, p.bylines
+func (p *Provider) CreatorTags() (tags []string, values [][]string) {
+	return []string{"IPTC  By-line"}, [][]string{p.bylines}
 }
 
 // SetCreator sets the value of the Creator field.

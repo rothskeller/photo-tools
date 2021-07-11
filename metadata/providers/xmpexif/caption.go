@@ -21,17 +21,15 @@ func (p *Provider) Caption() (value string) { return p.exifUserComment.Default()
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CaptionTags() (tags []string, values []string) {
+func (p *Provider) CaptionTags() (tags []string, values [][]string) {
 	if len(p.exifUserComment) == 0 {
 		return nil, nil
 	}
-	tags = append(tags, "XML  exif:UserComment")
-	values = append(values, p.exifUserComment[0].Value)
-	for _, ai := range p.exifUserComment[1:] {
-		tags = append(tags, fmt.Sprintf("XMP  exif:UserComment[%s]", ai.Lang))
-		values = append(values, ai.Value)
+	values = [][]string{nil}
+	for _, as := range p.exifUserComment {
+		values[0] = append(values[0], as.Value)
 	}
-	return tags, values
+	return []string{"XML  exif:UserComment"}, values
 }
 
 // SetCaption sets the value of the Caption field.

@@ -22,6 +22,9 @@ func (f *hierValueField) ParseValue(s string) (interface{}, error) {
 // display.
 func (f *hierValueField) RenderValue(v interface{}) string { return v.(metadata.HierValue).String() }
 
+// EmptyValue returns whether a value for the field is empty.
+func (f *hierValueField) EmptyValue(v interface{}) bool { return len(v.(metadata.HierValue)) == 0 }
+
 // EqualValue compares two values for equality.
 func (f *hierValueField) EqualValue(a interface{}, b interface{}) bool {
 	return a.(metadata.HierValue).Equal(b.(metadata.HierValue))

@@ -31,11 +31,11 @@ func (p *Provider) Title() (value string) { return p.objectName }
 
 // TitleTags returns a list of tag names for the Title field, and a
 // parallel list of values held by those tags.
-func (p *Provider) TitleTags() (tags []string, values []string) {
+func (p *Provider) TitleTags() (tags []string, values [][]string) {
 	if p.objectName == "" {
 		return nil, nil
 	}
-	return []string{"IPTC Object Name"}, []string{p.objectName}
+	return []string{"IPTC Object Name"}, [][]string{{p.objectName}}
 }
 
 // SetTitle sets the values of the Title field.

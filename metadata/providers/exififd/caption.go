@@ -68,11 +68,11 @@ func (p *Provider) Caption() (value string) { return p.userComment }
 
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
-func (p *Provider) CaptionTags() (tags []string, values []string) {
+func (p *Provider) CaptionTags() (tags []string, values [][]string) {
 	if p.userComment == "" {
 		return nil, nil
 	}
-	return []string{"EXIF UserComment"}, []string{p.userComment}
+	return []string{"EXIF UserComment"}, [][]string{{p.userComment}}
 }
 
 // SetCaption sets the value of the Caption field.

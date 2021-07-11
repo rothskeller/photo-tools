@@ -21,17 +21,12 @@ func (p *Provider) Title() (value string) { return p.dcTitle.Default() }
 
 // TitleTags returns a list of tag names for the Title field, and a
 // parallel list of values held by those tags.
-func (p *Provider) TitleTags() (tags []string, values []string) {
-	tags = append(tags, "XML  dc:title")
-	if len(p.dcTitle) == 0 {
-		return tags, []string{""}
+func (p *Provider) TitleTags() (tags []string, values [][]string) {
+	values = [][]string{nil}
+	for _, as := range p.dcTitle {
+		values[0] = append(values[0], as.Value)
 	}
-	values = append(values, p.dcTitle[0].Value)
-	for _, ai := range p.dcTitle[1:] {
-		tags = append(tags, fmt.Sprintf("XMP  dc:title[%s]", ai.Lang))
-		values = append(values, ai.Value)
-	}
-	return tags, values
+	return []string{"XML  dc:title"}, values
 }
 
 // SetTitle sets the values of the Title field.

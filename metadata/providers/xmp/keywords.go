@@ -19,19 +19,19 @@ var (
 func (p *Provider) getKeywords() (err error) {
 	var list []string
 
-	if list, err = getStrings(p.rdf.Properties, tagsListName); err != nil {
+	if list, err = getStrings(p.rdf.Property(tagsListName)); err != nil {
 		return fmt.Errorf("digiKam:TagsList: %s", err)
 	}
 	for _, xkw := range list {
 		p.digiKamTagsList = append(p.digiKamTagsList, strings.Split(xkw, "/"))
 	}
-	if list, err = getStrings(p.rdf.Properties, hierarchicalSubjectName); err != nil {
+	if list, err = getStrings(p.rdf.Property(hierarchicalSubjectName)); err != nil {
 		return fmt.Errorf("lr:hierarchicalSubject: %s", err)
 	}
 	for _, xkw := range list {
 		p.lrHierarchicalSubject = append(p.lrHierarchicalSubject, strings.Split(xkw, "|"))
 	}
-	if p.dcSubject, err = getStrings(p.rdf.Properties, subjectName); err != nil {
+	if p.dcSubject, err = getStrings(p.rdf.Property(subjectName)); err != nil {
 		return fmt.Errorf("dc:subject: %s", err)
 	}
 	return nil
@@ -160,10 +160,7 @@ func (p *Provider) setFilteredKeywordsHier(
 	}
 	if len(kws) == 0 {
 		*plist = nil
-		if _, ok := p.rdf.Properties[name]; ok {
-			delete(p.rdf.Properties, name)
-			p.dirty = true
-		}
+		p.rdf.RemoveProperty(name)
 		return
 	}
 	var kwstrs = make([]string, len(kws))
@@ -190,9 +187,8 @@ func (p *Provider) setFilteredKeywordsHier(
 	if !changed {
 		return
 	}
-	setBag(p.rdf.Properties, name, kwstrs)
+	p.rdf.SetProperty(name, makeBag(kwstrs))
 	*plist = kws
-	p.dirty = true
 }
 func (p *Provider) setFilteredKeywordsFlat(
 	pred keywordFilter, values []metadata.HierValue, plist *[]string, name rdf.Name,
@@ -208,10 +204,7 @@ func (p *Provider) setFilteredKeywordsFlat(
 	}
 	if len(vmap) == 0 {
 		*plist = nil
-		if _, ok := p.rdf.Properties[name]; ok {
-			delete(p.rdf.Properties, name)
-			p.dirty = true
-		}
+		p.rdf.RemoveProperty(name)
 		return
 	}
 	var changed = false
@@ -234,7 +227,6 @@ func (p *Provider) setFilteredKeywordsFlat(
 	for v := range vmap {
 		vlist = append(vlist, v)
 	}
-	setBag(p.rdf.Properties, name, vlist)
+	p.rdf.SetProperty(name, makeBag(vlist))
 	p.dcSubject = vlist
-	p.dirty = true
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"io"
 	"sort"
+
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 var zeros []byte
@@ -252,7 +254,7 @@ func writeZeros(w io.Writer, size uint32) (err error) {
 	return nil
 }
 
-func copyBytes(w io.Writer, r tiffReader, from, to uint32) (err error) {
+func copyBytes(w io.Writer, r metadata.Reader, from, to uint32) (err error) {
 	if _, err := r.Seek(int64(from), io.SeekStart); err != nil {
 		return err
 	}

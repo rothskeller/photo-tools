@@ -5,10 +5,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/rothskeller/photo-tools/metadata"
 	"golang.org/x/text/encoding/charmap"
 )
 
@@ -18,7 +20,7 @@ var tiffHeaderBE = []byte{0x4D, 0x4D, 0x00, 0x2A}
 // Read returns a handler for a TIFF-like file (or portion of file) covered by
 // the specified reader.  It returns an error if the data read from the reader
 // does not conform to TIFF layout.
-func Read(r tiffReader) (t *TIFF, err error) {
+func Read(r metadata.Reader) (t *TIFF, err error) {
 	var (
 		buf [8]byte
 	)
@@ -125,6 +127,10 @@ func (ifd *IFD) readTag(buf []byte) (tag *Tag, err error) {
 		return nil, fmt.Errorf("unknown IFD tag type %d", tag.ttype)
 	}
 	size *= tag.count
+	if size > 1024 {
+		tag.reader = io.NewSectionReader(ifd.t.r, int64(tag.doff), int64(size))
+		return tag, nil
+	}
 	tag.data = make([]byte, size)
 	if size <= 4 {
 		copy(tag.data, buf[8:])
@@ -151,24 +157,72 @@ func (ifd *IFD) Tag(id uint16) *Tag {
 
 // AsBytes decodes the byte array in the tag.  It returns an error if the tag
 // has the wrong type.
-func (tag *Tag) AsBytes() ([]byte, error) {
+func (tag *Tag) AsBytes() (by []byte, err error) {
 	if tag.ttype != 1 {
 		return nil, errors.New("tag type is not BYTE")
 	}
-	by := make([]byte, len(tag.data))
-	copy(by, tag.data)
+	by = make([]byte, tag.count)
+	if tag.data == nil {
+		if _, err = tag.reader.ReadAt(by, 0); err != nil {
+			return nil, err
+		}
+	} else {
+		copy(by, tag.data)
+	}
 	return by, nil
+}
+
+// AsBytesReader decodes the byte array in the tag.  It returns an error if the tag
+// has the wrong type.
+func (tag *Tag) AsBytesReader() (metadata.Reader, error) {
+	if tag.ttype != 1 {
+		return nil, errors.New("tag type is not BYTE")
+	}
+	if tag.data == nil {
+		return tag.reader, nil
+	}
+	return bytes.NewReader(tag.data), nil
 }
 
 // AsUnknown decodes the byte array in the "unknown type" tag.  It returns an
 // error if the tag has the wrong type.
-func (tag *Tag) AsUnknown() ([]byte, error) {
+func (tag *Tag) AsUnknown() (by []byte, err error) {
 	if tag.ttype != 7 {
 		return nil, errors.New("tag type is not UNKNOWN")
 	}
-	by := make([]byte, len(tag.data))
-	copy(by, tag.data)
+	by = make([]byte, tag.count)
+	if tag.data == nil {
+		if _, err = tag.reader.ReadAt(by, 0); err != nil {
+			return nil, err
+		}
+	} else {
+		copy(by, tag.data)
+	}
 	return by, nil
+}
+
+// AsUnknownReader decodes the byte array in the tag.  It returns an error if
+// the tag has the wrong type.
+func (tag *Tag) AsUnknownReader() (metadata.Reader, error) {
+	if tag.ttype != 7 {
+		return nil, errors.New("tag type is not UNKNOWN")
+	}
+	if tag.data == nil {
+		return tag.reader, nil
+	}
+	return bytes.NewReader(tag.data), nil
+}
+
+// AsLongReader decodes the byte array in the tag.  It returns an error if the
+// tag has the wrong type.
+func (tag *Tag) AsLongReader() (metadata.Reader, error) {
+	if tag.ttype != 4 {
+		return nil, errors.New("tag type is not LONG")
+	}
+	if tag.data == nil {
+		return tag.reader, nil
+	}
+	return bytes.NewReader(tag.data), nil
 }
 
 // AsString decodes the string in the tag.  It returns an error if the tag has

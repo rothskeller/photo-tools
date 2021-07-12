@@ -12,7 +12,10 @@ import (
 )
 
 // An IIM structure represents the entire IIM block.
-type IIM map[uint16][]DataSet
+type IIM struct {
+	dsmap map[uint16][]DataSet
+	dirty bool
+}
 
 // A DataSet is a single data set within an IIM block.
 type DataSet struct {
@@ -29,7 +32,7 @@ type Reader interface {
 }
 
 // Read parses the IIM block in the supplied reader.
-func Read(r Reader) (iim IIM, md5sum []byte, err error) {
+func Read(r Reader) (iim *IIM, md5sum []byte, err error) {
 	var (
 		offset int64
 		ds     DataSet
@@ -38,7 +41,7 @@ func Read(r Reader) (iim IIM, md5sum []byte, err error) {
 		size   uint64
 		sum    hash.Hash
 	)
-	iim = make(IIM)
+	iim = &IIM{dsmap: make(map[uint16][]DataSet)}
 	if _, err = r.Seek(0, io.SeekStart); err != nil {
 		return nil, nil, fmt.Errorf("IIM: %s", err)
 	}
@@ -48,7 +51,9 @@ func Read(r Reader) (iim IIM, md5sum []byte, err error) {
 	}
 	for {
 		count, err = r.ReadAt(buf[0:5], offset)
-		if err == io.EOF && count == 0 {
+		if err == io.EOF && count == 0 || (count == 2 && buf[0] == 0 && buf[1] == 0) {
+			// In TIFF files, IPTC data is sometimes stored as LONGs
+			// and can have two null bytes at the end.
 			return iim, sum.Sum(nil), nil
 		}
 		if err != nil {
@@ -80,27 +85,66 @@ func Read(r Reader) (iim IIM, md5sum []byte, err error) {
 			return nil, nil, fmt.Errorf("IIM: %s", err)
 		}
 		offset += int64(size)
-		iim[ds.ID] = append(iim[ds.ID], ds)
+		iim.dsmap[ds.ID] = append(iim.dsmap[ds.ID], ds)
 	}
 }
 
+// DataSets returns the list of data sets with the specified ID.  If no such
+// data sets exist, it returns an empty list.
+func (iim *IIM) DataSets(id uint16) []DataSet {
+	return iim.dsmap[id]
+}
+
+// SetDataSet puts the provided data set into the IIM block, replacing any other
+// data sets with the same ID.  It also marks the IIM block as dirty; callers
+// should not call SetDataSet if the data set is unchanged.
+func (iim *IIM) SetDataSet(id uint16, data []byte) {
+	iim.dsmap[id] = []DataSet{{id, data}}
+	iim.dirty = true
+}
+
+// SetDataSets puts the provided data sets into the IIM block, replacing any
+// other data sets with the same ID.  It also marks the IIM block as dirty;
+// callers should not call SetDataSet if the data sets are unchanged.
+func (iim *IIM) SetDataSets(id uint16, data [][]byte) {
+	var dss = make([]DataSet, len(data))
+	for i := range data {
+		dss[i].ID = id
+		dss[i].Data = data[i]
+	}
+	iim.dsmap[id] = dss
+	iim.dirty = true
+}
+
+// RemoveDataSets removes all data sets with the specified ID from the IIM
+// block.  If any such data sets existed, the block is marked as dirty.
+func (iim *IIM) RemoveDataSets(id uint16) {
+	if _, ok := iim.dsmap[id]; ok {
+		delete(iim.dsmap, id)
+		iim.dirty = true
+	}
+}
+
+// Dirty returns whether the IIM block has been changed since it was read.
+func (iim *IIM) Dirty() bool { return iim.dirty }
+
 // Render writes the IIM block to the specified writer.
-func (iim IIM) Render(w io.Writer) (sum hash.Hash, err error) {
+func (iim *IIM) Render(w io.Writer) (sum hash.Hash, err error) {
 	var (
 		buf [9]byte
 		mw  io.Writer
-		ids = make([]uint16, 0, len(iim))
+		ids = make([]uint16, 0, len(iim.dsmap))
 	)
 	sum = md5.New()
 	mw = io.MultiWriter(w, sum)
-	for id, ds := range iim {
+	for id, ds := range iim.dsmap {
 		if len(ds) != 0 {
 			ids = append(ids, id)
 		}
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	for _, id := range ids {
-		for _, ds := range iim[id] {
+		for _, ds := range iim.dsmap[id] {
 			buf[0] = 0x1C
 			binary.BigEndian.PutUint16(buf[1:3], id)
 			if len(ds.Data) > 0x7FFF {

@@ -3,8 +3,6 @@ package iptc
 import (
 	"errors"
 	"fmt"
-
-	"github.com/rothskeller/photo-tools/metadata/containers/iim"
 )
 
 const (
@@ -14,7 +12,7 @@ const (
 
 // getCaption reads the value of the Caption field from the IIM.
 func (p *Provider) getCaption() (err error) {
-	switch dss := p.iim[idCaptionAbstract]; len(dss) {
+	switch dss := p.iim.DataSets(idCaptionAbstract); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -43,10 +41,7 @@ func (p *Provider) CaptionTags() (tags []string, values [][]string) {
 func (p *Provider) SetCaption(value string) error {
 	if value == "" {
 		p.captionAbstract = ""
-		if _, ok := p.iim[idCaptionAbstract]; ok {
-			delete(p.iim, idCaptionAbstract)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idCaptionAbstract)
 		return nil
 	}
 	if len(value) > maxCaptionAbstractLen {
@@ -56,8 +51,7 @@ func (p *Provider) SetCaption(value string) error {
 		return nil
 	}
 	p.captionAbstract = value
-	p.iim[idCaptionAbstract] = []iim.DataSet{{ID: idCaptionAbstract, Data: []byte(value)}}
+	p.iim.SetDataSet(idCaptionAbstract, []byte(value))
 	p.setEncoding()
-	p.dirty = true
 	return nil
 }

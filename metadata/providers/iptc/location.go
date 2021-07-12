@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/containers/iim"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 
 // getLocation reads the value of the Location field from the IIM.
 func (p *Provider) getLocation() (err error) {
-	switch dss := p.iim[idCountryPLCode]; len(dss) {
+	switch dss := p.iim.DataSets(idCountryPLCode); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -33,7 +32,7 @@ func (p *Provider) getLocation() (err error) {
 	default:
 		return errors.New("Country/Primary Location Code: multiple data sets")
 	}
-	switch dss := p.iim[idCountryPLName]; len(dss) {
+	switch dss := p.iim.DataSets(idCountryPLName); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -43,7 +42,7 @@ func (p *Provider) getLocation() (err error) {
 	default:
 		return errors.New("Country/Primary Location Name: multiple data sets")
 	}
-	switch dss := p.iim[idProvinceState]; len(dss) {
+	switch dss := p.iim.DataSets(idProvinceState); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -53,7 +52,7 @@ func (p *Provider) getLocation() (err error) {
 	default:
 		return errors.New("Province/State: multiple data sets")
 	}
-	switch dss := p.iim[idCity]; len(dss) {
+	switch dss := p.iim.DataSets(idCity); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -63,7 +62,7 @@ func (p *Provider) getLocation() (err error) {
 	default:
 		return errors.New("City: multiple data sets")
 	}
-	switch dss := p.iim[idSublocation]; len(dss) {
+	switch dss := p.iim.DataSets(idSublocation); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -97,87 +96,67 @@ func (p *Provider) LocationTags() (tags []string, values [][]metadata.Location) 
 func (p *Provider) SetLocation(value metadata.Location) error {
 	if value.CountryCode == "" {
 		p.countryPLCode = ""
-		if _, ok := p.iim[idCountryPLCode]; ok {
-			delete(p.iim, idCountryPLCode)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idCountryPLCode)
 	} else {
 		var v = value.CountryCode
 		if len(v) > maxCountryPLCodeLen {
 			v = v[:maxCountryPLCodeLen]
 		}
 		if v != p.countryPLCode {
-			p.iim[idCountryPLCode] = []iim.DataSet{{ID: idCountryPLCode, Data: []byte(v)}}
+			p.iim.SetDataSet(idCountryPLCode, []byte(v))
 			p.setEncoding()
-			p.dirty = true
 		}
 	}
 	if value.CountryName == "" {
 		p.countryPLName = ""
-		if _, ok := p.iim[idCountryPLName]; ok {
-			delete(p.iim, idCountryPLName)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idCountryPLName)
 	} else {
 		var v = value.CountryName
 		if len(v) > maxCountryPLNameLen {
 			v = v[:maxCountryPLNameLen]
 		}
 		if v != p.countryPLName {
-			p.iim[idCountryPLName] = []iim.DataSet{{ID: idCountryPLName, Data: []byte(v)}}
+			p.iim.SetDataSet(idCountryPLName, []byte(v))
 			p.setEncoding()
-			p.dirty = true
 		}
 	}
 	if value.State == "" {
 		p.provinceState = ""
-		if _, ok := p.iim[idProvinceState]; ok {
-			delete(p.iim, idProvinceState)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idProvinceState)
 	} else {
 		var v = value.State
 		if len(v) > maxProvinceStateLen {
 			v = v[:maxProvinceStateLen]
 		}
 		if v != p.provinceState {
-			p.iim[idProvinceState] = []iim.DataSet{{ID: idProvinceState, Data: []byte(v)}}
+			p.iim.SetDataSet(idProvinceState, []byte(v))
 			p.setEncoding()
-			p.dirty = true
 		}
 	}
 	if value.City == "" {
 		p.city = ""
-		if _, ok := p.iim[idCity]; ok {
-			delete(p.iim, idCity)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idCity)
 	} else {
 		var v = value.City
 		if len(v) > maxCityLen {
 			v = v[:maxCityLen]
 		}
 		if v != p.city {
-			p.iim[idCity] = []iim.DataSet{{ID: idCity, Data: []byte(v)}}
+			p.iim.SetDataSet(idCity, []byte(v))
 			p.setEncoding()
-			p.dirty = true
 		}
 	}
 	if value.Sublocation == "" {
 		p.sublocation = ""
-		if _, ok := p.iim[idSublocation]; ok {
-			delete(p.iim, idSublocation)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idSublocation)
 	} else {
 		var v = value.Sublocation
 		if len(v) > maxSublocationLen {
 			v = v[:maxSublocationLen]
 		}
 		if v != p.sublocation {
-			p.iim[idSublocation] = []iim.DataSet{{ID: idSublocation, Data: []byte(v)}}
+			p.iim.SetDataSet(idSublocation, []byte(v))
 			p.setEncoding()
-			p.dirty = true
 		}
 	}
 	return nil

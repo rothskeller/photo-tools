@@ -6,9 +6,10 @@ import "fmt"
 
 // A Packet represents the entire RDF packet.
 type Packet struct {
-	Properties Struct
+	properties Struct
 	nsprefixes map[string]string
 	about      string
+	dirty      bool
 }
 
 // A Value represents a value in an RDF file.  It comprises zero or more
@@ -52,6 +53,41 @@ type Struct map[Name]Value
 func (p *Packet) RegisterNamespace(prefix, uri string) {
 	p.nsprefixes[uri] = prefix
 }
+
+// Properties returns a list of all defined property names (in unspecified
+// order).
+func (p *Packet) Properties() (names []Name) {
+	names = make([]Name, 0, len(p.properties))
+	for name := range p.properties {
+		names = append(names, name)
+	}
+	return names
+}
+
+// Property returns the Value of the property with the specified Name, or nil if
+// that property does not exist.
+func (p *Packet) Property(name Name) Value { return p.properties[name] }
+
+// SetProperty sets the Value of the property with the specified Name to the
+// specified Value.  It also marks the RDF packet as being dirty.  Callers
+// should ensure that they only call SetProperty when the value of the property
+// has actually changed.
+func (p *Packet) SetProperty(name Name, value Value) {
+	p.properties[name] = value
+	p.dirty = true
+}
+
+// RemoveProperty removes the property with the specified Name.  It marks the
+// RDF packet as being dirty if the property previously existed.
+func (p *Packet) RemoveProperty(name Name) {
+	if _, ok := p.properties[name]; ok {
+		delete(p.properties, name)
+		p.dirty = true
+	}
+}
+
+// Dirty returns whether the RDF packet has been changed since it was read.
+func (p *Packet) Dirty() bool { return p.dirty }
 
 func (n Name) String() string {
 	return fmt.Sprintf("[%s]%s", n.Namespace, n.Name)

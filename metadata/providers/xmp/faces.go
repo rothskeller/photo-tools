@@ -26,8 +26,8 @@ func (p *Provider) getFaces() (err error) {
 	return p.getFacesMWGRS()
 }
 func (p *Provider) getFacesMP() (err error) {
-	regionInfo, ok := p.rdf.Properties[mpRegionInfoName]
-	if !ok {
+	regionInfo := p.rdf.Property(mpRegionInfoName)
+	if regionInfo.Value == nil {
 		return nil
 	}
 	regionInfoStruct, ok := regionInfo.Value.(rdf.Struct)
@@ -68,8 +68,8 @@ func (p *Provider) getFacesMP() (err error) {
 	return nil
 }
 func (p *Provider) getFacesMWGRS() (err error) {
-	regions, ok := p.rdf.Properties[rdf.Name{Namespace: nsMWGRS, Name: "Regions"}]
-	if !ok {
+	regions := p.rdf.Property(mwgrsRegionsName)
+	if regions.Value == nil {
 		return nil
 	}
 	regionsStruct, ok := regions.Value.(rdf.Struct)
@@ -168,9 +168,9 @@ func (p *Provider) SetFaces(values []string) error {
 	for _, value := range values {
 		vmap[value] = false
 	}
-	if val, ok := p.rdf.Properties[mpRegionInfoName]; ok {
+	if val := p.rdf.Property(mpRegionInfoName); val.Value != nil {
 		regions = val.Value.(rdf.Struct)
-		if val, ok = regions[mpriRegionsName]; ok {
+		if val, ok := regions[mpriRegionsName]; ok {
 			bag = val.Value.(rdf.Bag)
 		}
 	}
@@ -190,12 +190,12 @@ func (p *Provider) SetFaces(values []string) error {
 	}
 	if nextInBag != len(bag) {
 		regions[mpriRegionsName] = rdf.Value{Value: bag[:nextInBag]}
-		p.dirty = true
+		p.rdf.SetProperty(mpRegionInfoName, rdf.Value{Value: regions})
 	}
 	bag, nextInBag = nil, 0
-	if val, ok := p.rdf.Properties[mwgrsRegionsName]; ok {
+	if val := p.rdf.Property(mwgrsRegionsName); val.Value != nil {
 		regions = val.Value.(rdf.Struct)
-		if val, ok = regions[mwgrsRegionListName]; ok {
+		if val, ok := regions[mwgrsRegionListName]; ok {
 			bag = val.Value.(rdf.Bag)
 		}
 	}
@@ -215,7 +215,7 @@ func (p *Provider) SetFaces(values []string) error {
 	}
 	if nextInBag != len(bag) {
 		regions[mwgrsRegionListName] = rdf.Value{Value: bag[:nextInBag]}
-		p.dirty = true
+		p.rdf.SetProperty(mwgrsRegionsName, rdf.Value{Value: regions})
 	}
 	for _, seen := range vmap {
 		if !seen {

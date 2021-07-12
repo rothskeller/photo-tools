@@ -88,7 +88,7 @@ func main() {
 			continue
 		}
 		if handler, err = filefmts.HandlerFor(fh); err != nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", fname, err)
+			fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 			fh.Close()
 			sawError = true
 			continue

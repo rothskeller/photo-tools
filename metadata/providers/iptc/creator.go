@@ -2,8 +2,6 @@ package iptc
 
 import (
 	"fmt"
-
-	"github.com/rothskeller/photo-tools/metadata/containers/iim"
 )
 
 const (
@@ -13,7 +11,7 @@ const (
 
 // getCreator reads the values of the Creator field from the IIM.
 func (p *Provider) getCreator() (err error) {
-	for _, ds := range p.iim[idByline] {
+	for _, ds := range p.iim.DataSets(idByline) {
 		if byline, err := getString(ds); err == nil {
 			p.bylines = append(p.bylines, byline)
 		} else {
@@ -41,10 +39,7 @@ func (p *Provider) CreatorTags() (tags []string, values [][]string) {
 func (p *Provider) SetCreator(value string) error {
 	if value == "" {
 		p.bylines = nil
-		if _, ok := p.iim[idByline]; ok {
-			delete(p.iim, idByline)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idByline)
 		return nil
 	}
 	if len(value) > maxBylineLen {
@@ -54,8 +49,7 @@ func (p *Provider) SetCreator(value string) error {
 		return nil
 	}
 	p.bylines = []string{value}
-	p.iim[idByline] = []iim.DataSet{{ID: idByline, Data: []byte(value)}}
+	p.iim.SetDataSet(idByline, []byte(value))
 	p.setEncoding()
-	p.dirty = true
 	return nil
 }

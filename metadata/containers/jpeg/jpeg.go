@@ -37,6 +37,7 @@ type JPEG struct {
 	psir   []segment
 	others []segment
 	end    segment
+	dirty  bool
 }
 
 // A segment is one segment in a JPEG file.
@@ -146,6 +147,9 @@ func (jpeg *JPEG) readSegment(r SegmentReader, offset int64) (newoff int64, seg 
 	offset += size
 	return offset, seg, nil
 }
+
+// Dirty returns whether any of the JPEG segments have been changed.
+func (jpeg *JPEG) Dirty() bool { return jpeg.dirty }
 
 // Render renders a JPEG file to the specified writer.
 func (jpeg *JPEG) Render(w io.Writer) (err error) {
@@ -290,12 +294,14 @@ func getSegment(segs []segment) SegmentReader {
 // SetEXIF sets the contents of the EXIF segment to those provided by the
 // supplied reader.
 func (jpeg *JPEG) SetEXIF(r SegmentReader) error {
+	jpeg.dirty = true
 	return setSegment(&jpeg.exif, markerEXIF, nsEXIF, r)
 }
 
 // SetXMP sets the contents of the XMP segment to those provided by the
 // supplied reader.
 func (jpeg *JPEG) SetXMP(r SegmentReader) error {
+	jpeg.dirty = true
 	if err := setSegment(&jpeg.xmp, markerXMP, nsXMP, r); err != nil {
 		return err
 	}
@@ -308,6 +314,7 @@ func (jpeg *JPEG) SetXMP(r SegmentReader) error {
 // SetPSIR sets the contents of the PSIR segment to those provided by the
 // supplied reader.
 func (jpeg *JPEG) SetPSIR(r SegmentReader) error {
+	jpeg.dirty = true
 	return setSegment(&jpeg.psir, markerPSIR, nsPSIR, r)
 }
 

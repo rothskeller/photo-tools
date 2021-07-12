@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/containers/iim"
 )
 
 const (
@@ -19,7 +18,7 @@ const (
 func (p *Provider) getDateTime() (err error) {
 	var date, time string
 
-	switch dss := p.iim[idDateCreated]; len(dss) {
+	switch dss := p.iim.DataSets(idDateCreated); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -30,7 +29,7 @@ func (p *Provider) getDateTime() (err error) {
 		return errors.New("Date Created: multiple data sets")
 	}
 	if date != "" {
-		switch dss := p.iim[idTimeCreated]; len(dss) {
+		switch dss := p.iim.DataSets(idTimeCreated); len(dss) {
 		case 0:
 			break
 		case 1:
@@ -44,7 +43,7 @@ func (p *Provider) getDateTime() (err error) {
 	if err = p.dateTimeCreated.ParseIPTC(date, time); err != nil {
 		return fmt.Errorf("Date/Time Created: %s", err)
 	}
-	switch dss := p.iim[idDigitalCreationDate]; len(dss) {
+	switch dss := p.iim.DataSets(idDigitalCreationDate); len(dss) {
 	case 0:
 		date = ""
 	case 1:
@@ -55,7 +54,7 @@ func (p *Provider) getDateTime() (err error) {
 		return errors.New("Digital Creation Date: multiple data sets")
 	}
 	if date != "" {
-		switch dss := p.iim[idDigitalCreationTime]; len(dss) {
+		switch dss := p.iim.DataSets(idDigitalCreationTime); len(dss) {
 		case 0:
 			time = ""
 		case 1:
@@ -95,24 +94,12 @@ func (p *Provider) DateTimeTags() (tags []string, values []metadata.DateTime) {
 // SetDateTime sets the value of the DateTime field.
 func (p *Provider) SetDateTime(value metadata.DateTime) error {
 	p.digitalCreationDateTime = metadata.DateTime{}
-	if _, ok := p.iim[idDigitalCreationDate]; ok {
-		delete(p.iim, idDigitalCreationDate)
-		p.dirty = true
-	}
-	if _, ok := p.iim[idDigitalCreationTime]; ok {
-		delete(p.iim, idDigitalCreationTime)
-		p.dirty = true
-	}
+	p.iim.RemoveDataSets(idDigitalCreationDate)
+	p.iim.RemoveDataSets(idDigitalCreationDate)
 	if value.Empty() {
 		p.dateTimeCreated = metadata.DateTime{}
-		if _, ok := p.iim[idDateCreated]; ok {
-			delete(p.iim, idDateCreated)
-			p.dirty = true
-		}
-		if _, ok := p.iim[idTimeCreated]; ok {
-			delete(p.iim, idTimeCreated)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idDateCreated)
+		p.iim.RemoveDataSets(idDateCreated)
 		return nil
 	}
 	if value.Equivalent(p.dateTimeCreated) {
@@ -120,8 +107,7 @@ func (p *Provider) SetDateTime(value metadata.DateTime) error {
 	}
 	p.dateTimeCreated = value
 	date, time := value.AsIPTC()
-	p.iim[idDateCreated] = []iim.DataSet{{ID: idDateCreated, Data: []byte(date)}}
-	p.iim[idTimeCreated] = []iim.DataSet{{ID: idTimeCreated, Data: []byte(time)}}
-	p.dirty = true
+	p.iim.SetDataSet(idDateCreated, []byte(date))
+	p.iim.SetDataSet(idTimeCreated, []byte(time))
 	return nil
 }

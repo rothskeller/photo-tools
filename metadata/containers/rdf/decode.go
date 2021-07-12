@@ -19,7 +19,7 @@ const (
 // New creates a new, empty RDF packet.
 func New() *Packet {
 	return &Packet{
-		Properties: make(Struct),
+		properties: make(Struct),
 		nsprefixes: map[string]string{NSxml: "xml"},
 	}
 }
@@ -92,10 +92,10 @@ func (p *Packet) readPropertyDescription(elm *element) (err error) {
 		if key.Namespace == NSrdf || key.Namespace == NSxml {
 			return fmt.Errorf("%s: unexpected attribute %s", elm.path(), key)
 		}
-		if _, ok := p.Properties[key]; ok {
+		if _, ok := p.properties[key]; ok {
 			return fmt.Errorf("multiple values for %s", key)
 		}
-		p.Properties[key] = Value{Value: val}
+		p.properties[key] = Value{Value: val}
 	}
 	for _, child := range elm.children {
 		if err = p.readProperty(child); err != nil {
@@ -111,14 +111,14 @@ func (p *Packet) readProperty(elm *element) (err error) {
 	if elm.name.Namespace == NSrdf || elm.name.Namespace == NSxml {
 		return fmt.Errorf("%s: unexpected element", elm.path())
 	}
-	if _, ok := p.Properties[elm.name]; ok {
+	if _, ok := p.properties[elm.name]; ok {
 		return fmt.Errorf("multiple values for %s", elm.path())
 	}
 	var value Value
 	if err = p.readValueElm(elm, &value); err != nil {
 		return err
 	}
-	p.Properties[elm.name] = value
+	p.properties[elm.name] = value
 	return nil
 }
 

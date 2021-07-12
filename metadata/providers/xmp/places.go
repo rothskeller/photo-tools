@@ -32,13 +32,51 @@ func (p *Provider) PlacesTags() (tags []string, values [][]metadata.HierValue) {
 }
 
 // SetPlaces sets the values of the Places field.
-func (p *Provider) SetPlaces(values []metadata.HierValue) error {
-	var kws = make([]metadata.HierValue, len(values))
+func (p *Provider) SetPlaces(values []metadata.HierValue) (err error) {
+	var (
+		kws      = make([]metadata.HierValue, len(values))
+		parts    []string
+		location = p.Location()
+	)
 	for i := range values {
 		kws[i] = append(metadata.HierValue{"Places"}, values[i]...)
 	}
 	p.setFilteredKeywords(placePredicate, kws)
+	// SetPlaces clears the value of the Location field if the places that
+	// are being set do not include the location.
+	if location.CountryName != "" {
+		parts = append(parts, location.CountryName)
+	}
+	if location.State != "" {
+		parts = append(parts, location.State)
+	}
+	if location.City != "" {
+		parts = append(parts, location.City)
+	}
+	if location.Sublocation != "" {
+		parts = append(parts, location.Sublocation)
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	for _, p := range values {
+		if locationCongruentToPlace(parts, p) {
+			return nil
+		}
+	}
+	if err = p.SetLocation(metadata.Location{}); err != nil {
+		return err
+	}
 	return nil
+}
+func locationCongruentToPlace(loc []string, place metadata.HierValue) bool {
+	for len(loc) != 0 && len(place) != 0 {
+		if loc[0] == place[0] {
+			loc = loc[1:]
+		}
+		place = place[1:]
+	}
+	return len(loc) == 0
 }
 
 // placePredicate is the predicate satisfied by keyword tags that encode place

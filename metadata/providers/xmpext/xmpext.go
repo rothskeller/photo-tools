@@ -40,7 +40,7 @@ func New(rdf *rdf.Packet) (p *Provider, err error) {
 	for _, pn := range prohibitedNamespaces {
 		pnmap[pn] = true
 	}
-	for name := range rdf.Properties {
+	for _, name := range rdf.Properties() {
 		if pnmap[name.Namespace] {
 			return nil, errors.New("XMPExt: prohibited namespace")
 		}

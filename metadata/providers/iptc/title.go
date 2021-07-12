@@ -13,7 +13,7 @@ const (
 
 // getTitle reads the value of the Title field from the RDF.
 func (p *Provider) getTitle() (err error) {
-	switch dss := p.iim[idObjectName]; len(dss) {
+	switch dss := p.iim.DataSets(idObjectName); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -41,10 +41,6 @@ func (p *Provider) TitleTags() (tags []string, values [][]string) {
 // SetTitle sets the values of the Title field.
 func (p *Provider) SetTitle(value string) error {
 	p.objectName = ""
-	if _, ok := p.iim[idObjectName]; ok {
-		delete(p.iim, idObjectName)
-		p.setEncoding()
-		p.dirty = true
-	}
+	p.iim.RemoveDataSets(idObjectName)
 	return nil
 }

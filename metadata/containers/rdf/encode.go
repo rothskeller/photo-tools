@@ -19,7 +19,7 @@ func (p *Packet) Render() (out []byte, err error) {
 	if err = p.renderNamespaces(root); err != nil {
 		return nil, fmt.Errorf("RDF: %s", err)
 	}
-	desc := p.renderStruct(root, p.Properties, true)
+	desc := p.renderStruct(root, p.properties, true)
 	desc.CreateAttr("rdf:about", p.about)
 	doc.CreateProcInst("xpacket", `end="w"`)
 	if out, err = doc.WriteToBytes(); err != nil {
@@ -33,7 +33,7 @@ func (p *Packet) Render() (out []byte, err error) {
 // prefix or if multiple namespaces use the same prefix.
 func (p *Packet) renderNamespaces(root *etree.Element) error {
 	var nsuris = map[string]string{"rdf": NSrdf}
-	if err := p.renderNamespacesStruct(p.Properties, nsuris); err != nil {
+	if err := p.renderNamespacesStruct(p.properties, nsuris); err != nil {
 		return err
 	}
 	delete(nsuris, "xml") // shouldn't emit an xmlns for it

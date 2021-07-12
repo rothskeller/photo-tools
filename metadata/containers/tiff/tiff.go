@@ -3,12 +3,13 @@ package tiff
 
 import (
 	"encoding/binary"
-	"io"
+
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // TIFF is a handler for a TIFF-like file (or portion of file).
 type TIFF struct {
-	r      tiffReader
+	r      metadata.Reader
 	enc    binary.ByteOrder
 	ifd0   *IFD
 	ranges rangelist
@@ -36,12 +37,6 @@ type Tag struct {
 	count  uint32
 	doff   uint32
 	data   []byte
+	reader metadata.Reader
 	toIFD  *IFD
-}
-
-// tiffReader is the interface that the reader passed to NewTIFF must satisfy.
-type tiffReader interface {
-	io.Reader
-	io.ReaderAt
-	io.Seeker
 }

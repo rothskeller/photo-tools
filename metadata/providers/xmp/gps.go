@@ -1,4 +1,4 @@
-package xmpexif
+package xmp
 
 import (
 	"fmt"
@@ -17,16 +17,16 @@ var (
 // getGPS reads the value of the GPS field from the RDF.
 func (p *Provider) getGPS() (err error) {
 	var lat, long, altref, alt string
-	if lat, err = getString(p.rdf.Properties, gpsLatitudeName); err != nil {
+	if lat, err = getString(p.rdf.Property(gpsLatitudeName)); err != nil {
 		return fmt.Errorf("exif:GPSLatitude: %s", err)
 	}
-	if long, err = getString(p.rdf.Properties, gpsLongitudeName); err != nil {
+	if long, err = getString(p.rdf.Property(gpsLongitudeName)); err != nil {
 		return fmt.Errorf("exif:GPSLongitude: %s", err)
 	}
-	if altref, err = getString(p.rdf.Properties, gpsAltitudeRefName); err != nil {
+	if altref, err = getString(p.rdf.Property(gpsAltitudeRefName)); err != nil {
 		return fmt.Errorf("exif:GPSAltitudeRef: %s", err)
 	}
-	if alt, err = getString(p.rdf.Properties, gpsAltitudeName); err != nil {
+	if alt, err = getString(p.rdf.Property(gpsAltitudeName)); err != nil {
 		return fmt.Errorf("exif:GPSAltitude: %s", err)
 	}
 	if err = p.exifGPSCoords.ParseXMP(lat, long, altref, alt); err != nil {
@@ -48,22 +48,10 @@ func (p *Provider) GPSTags() (tags []string, values []metadata.GPSCoords) {
 func (p *Provider) SetGPS(value metadata.GPSCoords) error {
 	if value.Empty() {
 		p.exifGPSCoords = metadata.GPSCoords{}
-		if _, ok := p.rdf.Properties[gpsLatitudeName]; ok {
-			delete(p.rdf.Properties, gpsLatitudeName)
-			p.dirty = true
-		}
-		if _, ok := p.rdf.Properties[gpsLongitudeName]; ok {
-			delete(p.rdf.Properties, gpsLongitudeName)
-			p.dirty = true
-		}
-		if _, ok := p.rdf.Properties[gpsAltitudeRefName]; ok {
-			delete(p.rdf.Properties, gpsAltitudeRefName)
-			p.dirty = true
-		}
-		if _, ok := p.rdf.Properties[gpsAltitudeName]; ok {
-			delete(p.rdf.Properties, gpsAltitudeName)
-			p.dirty = true
-		}
+		p.rdf.RemoveProperty(gpsLatitudeName)
+		p.rdf.RemoveProperty(gpsLongitudeName)
+		p.rdf.RemoveProperty(gpsAltitudeRefName)
+		p.rdf.RemoveProperty(gpsAltitudeName)
 		return nil
 	}
 	if value.Equivalent(p.exifGPSCoords) {
@@ -71,10 +59,9 @@ func (p *Provider) SetGPS(value metadata.GPSCoords) error {
 	}
 	p.exifGPSCoords = value
 	lat, long, altref, alt := value.AsXMP()
-	setString(p.rdf.Properties, gpsLatitudeName, lat)
-	setString(p.rdf.Properties, gpsLongitudeName, long)
-	setString(p.rdf.Properties, gpsAltitudeRefName, altref)
-	setString(p.rdf.Properties, gpsAltitudeName, alt)
-	p.dirty = true
+	p.rdf.SetProperty(gpsLatitudeName, makeString(lat))
+	p.rdf.SetProperty(gpsLongitudeName, makeString(long))
+	p.rdf.SetProperty(gpsAltitudeRefName, makeString(altref))
+	p.rdf.SetProperty(gpsAltitudeName, makeString(alt))
 	return nil
 }

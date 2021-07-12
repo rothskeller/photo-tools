@@ -23,6 +23,16 @@ func newAltString(s string) altString {
 	return altString{{s, "x-default"}}
 }
 
+// Empty returns true if the AltString contains no non-empty values.
+func (as altString) Empty() bool {
+	for _, ai := range as {
+		if ai.Value != "" {
+			return false
+		}
+	}
+	return true
+}
+
 // Default returns the default string from the altString.
 func (as altString) Default() string {
 	if len(as) == 0 {
@@ -31,113 +41,121 @@ func (as altString) Default() string {
 	return as[0].Value
 }
 
+// Get returns the value of the AltString for the specified language.
+func (as altString) Get(lang string) string {
+	for _, alt := range as {
+		if alt.Lang == lang {
+			return alt.Value
+		}
+	}
+	return ""
+}
+
+// A Location is the textual description of a location, with language
+// alternative strings.
+type location struct {
+	CountryCode string
+	CountryName altString
+	State       altString
+	City        altString
+	Sublocation altString
+}
+
+// Empty returns true if the value contains no data.
+func (loc location) Empty() bool {
+	return loc.CountryCode == "" &&
+		loc.CountryName.Empty() &&
+		loc.State.Empty() &&
+		loc.City.Empty() &&
+		loc.Sublocation.Empty()
+}
+
 // getAlt returns the value of a Language Alternative value from the XMP.
-func getAlt(from rdf.Struct, name rdf.Name) (as altString, err error) {
-	if val, ok := from[name]; ok {
-		switch val := val.Value.(type) {
-		case rdf.Alt:
-			as = make(altString, 0, len(val))
-			for _, str := range val {
-				var lang string
-				if lt, ok := str.Qualifiers[xmlLang]; ok {
-					switch lt := lt.Value.(type) {
-					case string:
-						lang = lt
-					}
-				}
-				switch str := str.Value.(type) {
-				case string:
-					as = append(as, altItem{Value: str, Lang: lang})
-				default:
+func getAlt(val rdf.Value) (as altString, err error) {
+	if val.Value == nil {
+		return nil, nil
+	}
+	if val, ok := val.Value.(rdf.Alt); ok {
+		as = make(altString, 0, len(val))
+		for _, str := range val {
+			var lang string
+			if lt, ok := str.Qualifiers[xmlLang]; ok {
+				if lt, ok := lt.Value.(string); ok {
+					lang = lt
+				} else {
 					return nil, errors.New("wrong data type")
 				}
 			}
-		default:
-			return nil, errors.New("wrong data type")
-		}
-	}
-	return as, nil
-}
-
-// setAlt sets a language alternative value in the XMP.
-func setAlt(in rdf.Struct, name rdf.Name, as altString) {
-	if len(as) == 0 {
-		delete(in, name)
-	} else {
-		var values = make([]rdf.Value, len(as))
-		for i := range as {
-			values[i] = rdf.Value{
-				Qualifiers: rdf.Struct{xmlLang: rdf.Value{Value: as[i].Lang}},
-				Value:      as[i].Value,
+			if str, ok := str.Value.(string); ok {
+				as = append(as, altItem{Value: str, Lang: lang})
+			} else {
+				return nil, errors.New("wrong data type")
 			}
 		}
-		in[name] = rdf.Value{Value: rdf.Alt(values)}
+		return as, nil
 	}
+	return nil, errors.New("wrong data type")
 }
 
-// setBag sets an unordered array of text values in the XMP.
-func setBag(in rdf.Struct, name rdf.Name, bag []string) {
-	if len(bag) == 0 {
-		delete(in, name)
-	} else {
-		var values = make([]rdf.Value, len(bag))
-		for i := range bag {
-			values[i] = rdf.Value{Value: bag[i]}
+// makeAlt makes an rdf.Value with a language alternative string.
+func makeAlt(as altString) rdf.Value {
+	var values = make([]rdf.Value, len(as))
+	for i := range as {
+		values[i] = rdf.Value{
+			Qualifiers: rdf.Struct{xmlLang: rdf.Value{Value: as[i].Lang}},
+			Value:      as[i].Value,
 		}
-		in[name] = rdf.Value{Value: rdf.Bag(values)}
 	}
+	return rdf.Value{Value: rdf.Alt(values)}
 }
 
-// setSeq sets an ordered array of text values in the XMP.
-func setSeq(in rdf.Struct, name rdf.Name, seq []string) {
-	if len(seq) == 0 {
-		delete(in, name)
-	} else {
-		var values = make([]rdf.Value, len(seq))
-		for i := range seq {
-			values[i] = rdf.Value{Value: seq[i]}
-		}
-		in[name] = rdf.Value{Value: rdf.Seq(values)}
+// makeBag creates an unordered array of text values for the XMP.
+func makeBag(bag []string) rdf.Value {
+	var values = make([]rdf.Value, len(bag))
+	for i := range bag {
+		values[i] = rdf.Value{Value: bag[i]}
 	}
+	return rdf.Value{Value: rdf.Bag(values)}
+}
+
+// makeSeq creates an ordered array of text values for the XMP.
+func makeSeq(seq []string) rdf.Value {
+	var values = make([]rdf.Value, len(seq))
+	for i := range seq {
+		values[i] = rdf.Value{Value: seq[i]}
+	}
+	return rdf.Value{Value: rdf.Seq(values)}
 }
 
 // getString returns the value of a simple string from the XMP.
-func getString(from rdf.Struct, name rdf.Name) (str string, err error) {
-	if val, ok := from[name]; ok {
-		switch val := val.Value.(type) {
-		case string:
-			str = val
-		default:
-			return "", errors.New("wrong data type")
-		}
+func getString(val rdf.Value) (str string, err error) {
+	if val.Value == nil {
+		return "", nil
 	}
-	return str, nil
+	if val, ok := val.Value.(string); ok {
+		return val, nil
+	}
+	return "", errors.New("wrong data type")
 }
 
-// setString sets a string value in the XMP.
-func setString(in rdf.Struct, name rdf.Name, str string) {
-	if str == "" {
-		delete(in, name)
-	} else {
-		in[name] = rdf.Value{Value: str}
-	}
-}
+// makeString creates a string value for the XMP.
+func makeString(str string) rdf.Value { return rdf.Value{Value: str} }
 
 // getStrings returns the value of an array of text values from the XMP.  It
 // accepts either Bag or Seq, or a single string value.
-func getStrings(from rdf.Struct, name rdf.Name) (list []string, err error) {
+func getStrings(val rdf.Value) (list []string, err error) {
 	var vals []rdf.Value
-	if val, ok := from[name]; ok {
-		switch val := val.Value.(type) {
-		case rdf.Seq:
-			vals = val
-		case rdf.Bag:
-			vals = val
-		case string:
-			return []string{val}, nil
-		default:
-			return nil, errors.New("wrong data type")
-		}
+	switch val := val.Value.(type) {
+	case nil:
+		return nil, nil
+	case rdf.Seq:
+		vals = val
+	case rdf.Bag:
+		vals = val
+	case string:
+		return []string{val}, nil
+	default:
+		return nil, errors.New("wrong data type")
 	}
 	list = make([]string, 0, len(vals))
 	for _, str := range vals {

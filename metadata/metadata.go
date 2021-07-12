@@ -2,7 +2,10 @@
 // working with one.
 package metadata
 
-import "errors"
+import (
+	"errors"
+	"io"
+)
 
 // MediaFile is the interface honored by all media file handlers; there are
 // different concrete implementations for different file types.
@@ -255,3 +258,12 @@ func (p BaseProvider) TopicsTags() ([]string, [][]HierValue) { return nil, nil }
 
 // SetTopics sets the values of the Topics field.
 func (p BaseProvider) SetTopics(values []HierValue) error { return ErrNotSupported }
+
+// Reader is an interface with the capabilities needed by all readers passed
+// around through metadata file formats, containers, and providers.
+type Reader interface {
+	io.Reader
+	io.ReaderAt
+	io.Seeker
+	Size() int64
+}

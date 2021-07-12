@@ -10,7 +10,7 @@ var titleName = rdf.Name{Namespace: nsDC, Name: "title"}
 
 // getTitle reads the value of the Title field from the RDF.
 func (p *Provider) getTitle() (err error) {
-	if p.dcTitle, err = getAlt(p.rdf.Properties, titleName); err != nil {
+	if p.dcTitle, err = getAlt(p.rdf.Property(titleName)); err != nil {
 		return fmt.Errorf("dc:title: %s", err)
 	}
 	return nil
@@ -33,17 +33,13 @@ func (p *Provider) TitleTags() (tags []string, values [][]string) {
 func (p *Provider) SetTitle(value string) error {
 	if value == "" {
 		p.dcTitle = nil
-		if _, ok := p.rdf.Properties[titleName]; ok {
-			delete(p.rdf.Properties, titleName)
-			p.dirty = true
-		}
+		p.rdf.RemoveProperty(titleName)
 		return nil
 	}
 	if len(p.dcTitle) == 1 && value == p.dcTitle[0].Value {
 		return nil
 	}
 	p.dcTitle = newAltString(value)
-	setAlt(p.rdf.Properties, titleName, p.dcTitle)
-	p.dirty = true
+	p.rdf.SetProperty(titleName, makeAlt(p.dcTitle))
 	return nil
 }

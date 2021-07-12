@@ -7,6 +7,7 @@ import (
 
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/filefmts/jpeg"
+	"github.com/rothskeller/photo-tools/metadata/filefmts/tiff"
 	"github.com/rothskeller/photo-tools/metadata/filefmts/xmp"
 )
 
@@ -27,6 +28,11 @@ func HandlerFor(fh *os.File) (f FileFormat, err error) {
 		return f, nil
 	}
 	if f, err := xmp.Read(fh); err != nil {
+		return nil, err
+	} else if f != nil {
+		return f, nil
+	}
+	if f, err := tiff.Read(fh); err != nil {
 		return nil, err
 	} else if f != nil {
 		return f, nil

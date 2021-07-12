@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/rothskeller/photo-tools/metadata"
-	"github.com/rothskeller/photo-tools/metadata/containers/iim"
 )
 
 const (
@@ -14,7 +13,7 @@ const (
 
 // getKeywords reads the values of the Keywords field from the IIM.
 func (p *Provider) getKeywords() (err error) {
-	for _, ds := range p.iim[idKeyword] {
+	for _, ds := range p.iim.DataSets(idKeyword) {
 		if keyword, err := getString(ds); err == nil {
 			p.keywords = append(p.keywords, keyword)
 		} else {
@@ -50,14 +49,12 @@ func (p *Provider) KeywordsTags() (tags []string, values [][]metadata.HierValue)
 func (p *Provider) SetKeywords(values []metadata.HierValue) error {
 	if len(values) == 0 {
 		p.keywords = nil
-		if _, ok := p.iim[idKeyword]; ok {
-			delete(p.iim, idKeyword)
-			p.dirty = true
-		}
+		p.iim.RemoveDataSets(idKeyword)
 		return nil
 	}
 	var vmap = make(map[string]bool)
-	var vlist []string
+	var vlist [][]byte
+	var vliststr []string
 	for _, hv := range values {
 		kw := hv[len(hv)-1]
 		if len(kw) > maxKeywordLen {
@@ -65,7 +62,8 @@ func (p *Provider) SetKeywords(values []metadata.HierValue) error {
 		}
 		if _, ok := vmap[kw]; !ok {
 			vmap[kw] = false
-			vlist = append(vlist, kw)
+			vlist = append(vlist, []byte(kw))
+			vliststr = append(vliststr, kw)
 		}
 	}
 	var changed = false
@@ -84,12 +82,8 @@ func (p *Provider) SetKeywords(values []metadata.HierValue) error {
 	if !changed {
 		return nil
 	}
-	p.keywords = vlist
-	p.iim[idKeyword] = make([]iim.DataSet, len(vlist))
-	for i := range vlist {
-		p.iim[idKeyword][i] = iim.DataSet{ID: idKeyword, Data: []byte(vlist[i])}
-	}
+	p.keywords = vliststr
+	p.iim.SetDataSets(idKeyword, vlist)
 	p.setEncoding()
-	p.dirty = true
 	return nil
 }

@@ -1,4 +1,4 @@
-package xmpiptc
+package xmp
 
 import (
 	"errors"
@@ -20,7 +20,7 @@ var (
 
 // getLocation reads the value of the Location field from the RDF.
 func (p *Provider) getLocation() (err error) {
-	if val, ok := p.rdf.Properties[locationCreatedName]; ok {
+	if val := p.rdf.Property(locationCreatedName); val.Value != nil {
 		switch val := val.Value.(type) {
 		case rdf.Struct:
 			if p.iptcLocationCreated, err = getLocationFromStruct(val); err != nil {
@@ -30,7 +30,7 @@ func (p *Provider) getLocation() (err error) {
 			return errors.New("Iptc4xmpExt:LocationCreated: wrong data type")
 		}
 	}
-	if val, ok := p.rdf.Properties[locationShownName]; ok {
+	if val := p.rdf.Property(locationShownName); val.Value != nil {
 		switch val := val.Value.(type) {
 		case rdf.Seq:
 			p.iptcLocationsShown = make([]location, 0, len(val))
@@ -53,19 +53,19 @@ func (p *Provider) getLocation() (err error) {
 	return nil
 }
 func getLocationFromStruct(str rdf.Struct) (loc location, err error) {
-	if loc.CountryCode, err = getString(str, countryCodeName); err != nil {
+	if loc.CountryCode, err = getString(str[countryCodeName]); err != nil {
 		return location{}, fmt.Errorf("CountryCode: %s", err)
 	}
-	if loc.CountryName, err = getAlt(str, countryNameName); err != nil {
+	if loc.CountryName, err = getAlt(str[countryNameName]); err != nil {
 		return location{}, fmt.Errorf("CountryName: %s", err)
 	}
-	if loc.State, err = getAlt(str, provinceStateName); err != nil {
+	if loc.State, err = getAlt(str[provinceStateName]); err != nil {
 		return location{}, fmt.Errorf("ProvinceState: %s", err)
 	}
-	if loc.City, err = getAlt(str, cityName); err != nil {
+	if loc.City, err = getAlt(str[cityName]); err != nil {
 		return location{}, fmt.Errorf("City: %s", err)
 	}
-	if loc.Sublocation, err = getAlt(str, sublocationName); err != nil {
+	if loc.Sublocation, err = getAlt(str[sublocationName]); err != nil {
 		return location{}, fmt.Errorf("Sublocation: %s", err)
 	}
 	return loc, nil
@@ -154,16 +154,10 @@ func addUnique(list []string, val string) []string {
 // SetLocation sets the value of the Location field.
 func (p *Provider) SetLocation(value metadata.Location) error {
 	p.iptcLocationsShown = nil
-	if _, ok := p.rdf.Properties[locationShownName]; ok {
-		delete(p.rdf.Properties, locationShownName)
-		p.dirty = true
-	}
+	p.rdf.RemoveProperty(locationShownName)
 	if value.Empty() {
 		p.iptcLocationCreated = location{}
-		if _, ok := p.rdf.Properties[locationCreatedName]; ok {
-			delete(p.rdf.Properties, locationCreatedName)
-			p.dirty = true
-		}
+		p.rdf.RemoveProperty(locationCreatedName)
 		return nil
 	}
 	if value.CountryCode != p.iptcLocationCreated.CountryCode {
@@ -227,12 +221,11 @@ DIFFERENT:
 		Sublocation: newAltString(value.Sublocation),
 	}
 	var str rdf.Struct
-	setString(str, countryCodeName, p.iptcLocationCreated.CountryCode)
-	setAlt(str, countryNameName, p.iptcLocationCreated.CountryName)
-	setAlt(str, provinceStateName, p.iptcLocationCreated.State)
-	setAlt(str, cityName, p.iptcLocationCreated.City)
-	setAlt(str, sublocationName, p.iptcLocationCreated.Sublocation)
-	p.rdf.Properties[locationCreatedName] = rdf.Value{Value: str}
-	p.dirty = true
+	str[countryCodeName] = makeString(p.iptcLocationCreated.CountryCode)
+	str[countryNameName] = makeAlt(p.iptcLocationCreated.CountryName)
+	str[provinceStateName] = makeAlt(p.iptcLocationCreated.State)
+	str[cityName] = makeAlt(p.iptcLocationCreated.City)
+	str[sublocationName] = makeAlt(p.iptcLocationCreated.Sublocation)
+	p.rdf.SetProperty(locationCreatedName, rdf.Value{Value: str})
 	return nil
 }

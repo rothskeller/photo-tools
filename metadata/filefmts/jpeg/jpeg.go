@@ -19,11 +19,7 @@ import (
 	"github.com/rothskeller/photo-tools/metadata/providers/jpegifd0"
 	"github.com/rothskeller/photo-tools/metadata/providers/multi"
 	"github.com/rothskeller/photo-tools/metadata/providers/xmp"
-	"github.com/rothskeller/photo-tools/metadata/providers/xmpexif"
 	"github.com/rothskeller/photo-tools/metadata/providers/xmpext"
-	"github.com/rothskeller/photo-tools/metadata/providers/xmpiptc"
-	"github.com/rothskeller/photo-tools/metadata/providers/xmpps"
-	"github.com/rothskeller/photo-tools/metadata/providers/xmptiff"
 )
 
 const (
@@ -47,7 +43,7 @@ type JPEG struct {
 	psirBlock        *photoshop.Photoshop
 	iimPSIR          *photoshop.PSIR
 	hashPSIR         *photoshop.PSIR
-	iim              iim.IIM
+	iim              *iim.IIM
 	xmpRDF           *rdf.Packet
 	xmpExtRDF        *rdf.Packet
 	jpegIFD0Provider *jpegifd0.Provider
@@ -55,11 +51,7 @@ type JPEG struct {
 	gpsIFDProvider   *gpsifd.Provider
 	iptcProvider     *iptc.Provider
 	xmpProvider      *xmp.Provider
-	xmpEXIFProvider  *xmpexif.Provider
 	xmpExtProvider   *xmpext.Provider
-	xmpIPTCProvider  *xmpiptc.Provider
-	xmpPSProvider    *xmpps.Provider
-	xmpTIFFProvider  *xmptiff.Provider
 	providers        multi.Provider
 }
 
@@ -146,16 +138,14 @@ func (jh *JPEG) readPSIRSegment() (err error) {
 	if jh.iimPSIR = jh.psirBlock.PSIR(psirIDIIM); jh.iimPSIR == nil {
 		return nil
 	}
-	if jh.iim, _, err = iim.Read(jh.iimPSIR.Reader); err != nil {
+	if jh.iim, _, err = iim.Read(jh.iimPSIR.Reader()); err != nil {
 		return err
 	}
 	if jh.iptcProvider, err = iptc.New(jh.iim); err != nil {
 		return err
 	}
 	jh.providers = append(jh.providers, jh.iptcProvider)
-	if jh.hashPSIR = jh.psirBlock.PSIR(psirIDHash); jh.hashPSIR == nil {
-		return nil
-	}
+	jh.hashPSIR = jh.psirBlock.PSIR(psirIDHash)
 	return nil
 }
 
@@ -167,20 +157,7 @@ func (jh *JPEG) readXMPSegments() (err error) {
 		if jh.xmpProvider, err = xmp.New(jh.xmpRDF); err != nil {
 			return err
 		}
-		if jh.xmpPSProvider, err = xmpps.New(jh.xmpRDF); err != nil {
-			return err
-		}
-		if jh.xmpTIFFProvider, err = xmptiff.New(jh.xmpRDF); err != nil {
-			return err
-		}
-		if jh.xmpEXIFProvider, err = xmpexif.New(jh.xmpRDF); err != nil {
-			return err
-		}
-		if jh.xmpIPTCProvider, err = xmpiptc.New(jh.xmpRDF); err != nil {
-			return err
-		}
-		jh.providers = append(jh.providers,
-			jh.xmpProvider, jh.xmpPSProvider, jh.xmpTIFFProvider, jh.xmpEXIFProvider, jh.xmpIPTCProvider)
+		jh.providers = append(jh.providers, jh.xmpProvider)
 	}
 	if jh.xmpExtSeg = jh.container.XMPext(); jh.xmpExtSeg != nil {
 		if jh.xmpExtRDF, err = rdf.Read(jh.xmpExtSeg); err != nil {

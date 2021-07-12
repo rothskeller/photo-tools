@@ -28,8 +28,7 @@ type Provider struct {
 	provinceState           string
 	sublocation             string
 
-	iim   iim.IIM
-	dirty bool
+	iim *iim.IIM
 }
 
 var utf8Escape1 = []byte{0x1B, 0x25, 0x47}
@@ -38,7 +37,7 @@ var utf8Escape2 = []byte{0x1B, 0x25, 0x2F, 0x49}
 var _ metadata.Provider = (*Provider)(nil) // verify interface compliance
 
 // New creates a new Provider based on the provided IIM block.
-func New(iim iim.IIM) (p *Provider, err error) {
+func New(iim *iim.IIM) (p *Provider, err error) {
 	p = &Provider{iim: iim}
 	if err = p.verifyEncoding(); err != nil {
 		return nil, fmt.Errorf("IPTC IIM: %s", err)
@@ -68,7 +67,7 @@ func New(iim iim.IIM) (p *Provider, err error) {
 func (p *Provider) ProviderName() string { return "IPTC" }
 
 func (p *Provider) verifyEncoding() (err error) {
-	switch dss := p.iim[idCodedCharacterSet]; len(dss) {
+	switch dss := p.iim.DataSets(idCodedCharacterSet); len(dss) {
 	case 0:
 		break
 	case 1:
@@ -84,7 +83,7 @@ func (p *Provider) verifyEncoding() (err error) {
 // setEncoding adds the record that defines the encoding as UTF-8.  It is called
 // whenever a data set with a string value is changed.
 func (p *Provider) setEncoding() {
-	p.iim[idCodedCharacterSet] = []iim.DataSet{{ID: idCodedCharacterSet, Data: utf8Escape1}}
+	p.iim.SetDataSet(idCodedCharacterSet, utf8Escape1)
 }
 
 func getString(ds iim.DataSet) (string, error) {

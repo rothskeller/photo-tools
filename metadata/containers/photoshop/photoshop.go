@@ -85,7 +85,6 @@ func (ps *Photoshop) Write(w io.Writer) (count int, err error) {
 			if err != nil {
 				return count, err
 			}
-			count++
 		}
 		n, err = psir.Write(w)
 		count += n

@@ -96,5 +96,8 @@ func (p *Provider) SetGPS(value metadata.GPSCoords) (err error) {
 		p.ifd.DeleteTag(5)
 		p.ifd.DeleteTag(6)
 	}
+	if p.ifd.Tag(0) == nil {
+		p.ifd.AddTag(0).SetBytes([]byte{2, 3, 0, 0})
+	}
 	return nil
 }

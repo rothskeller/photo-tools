@@ -136,12 +136,15 @@ func (ifd *IFD) Write(w io.Writer) (count int, err error) {
 		return count, err
 	}
 	for _, tag := range ifd.tags {
-		n, err = tag.writeData(w)
-		count += n
-		if count%2 == 1 && err != nil {
+		if tsz, _ := tag.size(); count%2 == 1 && tsz > 4 {
 			n, err = w.Write([]byte{0})
 			count += n
+			if err != nil {
+				return count, err
+			}
 		}
+		n, err = tag.writeData(w)
+		count += n
 		if err != nil {
 			return count, err
 		}

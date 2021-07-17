@@ -26,7 +26,6 @@ func main() {
 		saveSet         bool
 		err             error
 	)
-	// os.Args = []string{"", "/Users/stever/src/photo-tools/ASPEN1.tif", "set", "caption", "Hello, world!"}
 	// First, check for files given on the command line.
 	args = os.Args[1:]
 	for len(args) != 0 {

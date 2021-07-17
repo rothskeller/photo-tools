@@ -3,9 +3,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/rothskeller/photo-tools/md/operations"
@@ -20,10 +22,11 @@ func main() {
 		sawError        bool
 		ignoreNoHandler bool
 		disallowWrites  bool
-		saveMetadata    bool
+		isWriteOp       bool
 		saveSet         bool
 		err             error
 	)
+	// os.Args = []string{"", "/Users/stever/src/photo-tools/ASPEN1.tif", "set", "caption", "Hello, world!"}
 	// First, check for files given on the command line.
 	args = os.Args[1:]
 	for len(args) != 0 {
@@ -101,7 +104,12 @@ func main() {
 			fh.Close()
 			continue
 		}
-		files = append(files, operations.MediaFile{Path: fname, File: fh, Provider: handler.Provider()})
+		files = append(files, operations.MediaFile{
+			Path:     fname,
+			File:     fh,
+			Handler:  handler,
+			Provider: handler.Provider(),
+		})
 	}
 	// If no successfully read files, exit.
 	if len(files) == 0 {
@@ -136,7 +144,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "ERROR: %q operation not allowed when defaulting to all files in directory\n", args[0])
 				os.Exit(2)
 			}
-			saveMetadata = true
+			isWriteOp = true
 		}
 		switch args[0] {
 		case "add", "ad":
@@ -172,13 +180,48 @@ func main() {
 		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 		os.Exit(1)
 	}
-	if saveMetadata {
-		for _, file := range files {
-			if file.Changed {
-				// if err := file.Handler.SaveMetadata(); err != nil {
-				// 	fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
-				// 	sawError = true
-				// }
+	for _, file := range files {
+		if file.Handler.Dirty() {
+			var (
+				tempfn string
+				ofh    *os.File
+				out    *bufio.Writer
+			)
+			if !isWriteOp {
+				panic("file is dirty after a read operation")
+			}
+			tempfn = filepath.Dir(file.Path) + "/." + filepath.Base(file.Path) + ".TEMP"
+			if ofh, err = os.Create(tempfn); err != nil {
+				fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
+				sawError = true
+				continue
+			}
+			out = bufio.NewWriter(ofh)
+			if err = file.Handler.Save(out); err != nil {
+				ofh.Close()
+				os.Remove(tempfn)
+				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", tempfn, err)
+				sawError = true
+				continue
+			}
+			if err = out.Flush(); err != nil {
+				ofh.Close()
+				os.Remove(tempfn)
+				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", tempfn, err)
+				sawError = true
+				continue
+			}
+			if err = ofh.Close(); err != nil {
+				os.Remove(tempfn)
+				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", tempfn, err)
+				sawError = true
+				continue
+			}
+			if err = os.Rename(tempfn, file.Path); err != nil {
+				os.Remove(tempfn)
+				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
+				sawError = true
+				continue
 			}
 		}
 	}

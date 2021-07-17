@@ -2,7 +2,11 @@
 // (and limited to) the syntax described in the Adobe XMP Specification, Part 1.
 package rdf
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/rothskeller/photo-tools/metadata/containers"
+)
 
 // A Packet represents the entire RDF packet.
 type Packet struct {
@@ -10,7 +14,10 @@ type Packet struct {
 	nsprefixes map[string]string
 	about      string
 	dirty      bool
+	size       int64
 }
+
+var _ containers.Container = (*Packet)(nil) // verify interface compliance
 
 // A Value represents a value in an RDF file.  It comprises zero or more
 // qualifiers, plus a simple value.

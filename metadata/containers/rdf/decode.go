@@ -3,10 +3,10 @@ package rdf
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/rothskeller/photo-tools/metadata"
 )
 
 // Constants for namespace URIs.
@@ -26,33 +26,32 @@ func New() *Packet {
 
 // Read parses the supplied buffer and returns the resulting Packet, or an
 // error if the packet is invalid.
-func Read(r io.Reader) (p *Packet, err error) {
+func (p *Packet) Read(r metadata.Reader) (err error) {
 	var (
 		doc    *etree.Document
 		root   *element
 		nsuris = map[string]string{"xml": NSxml}
 	)
-	p = New()
 	doc = etree.NewDocument()
 	if _, err = doc.ReadFrom(r); err != nil {
-		return nil, fmt.Errorf("RDF: %s", err)
+		return fmt.Errorf("RDF: %s", err)
 	}
 	if root, err = simplifyElement(doc.Root(), nsuris, p.nsprefixes); err != nil {
-		return nil, fmt.Errorf("RDF: %s", err)
+		return fmt.Errorf("RDF: %s", err)
 	}
 	if root.name.is(NSx, "xmpmeta") {
 		if len(root.children) != 1 {
-			return nil, fmt.Errorf("RDF: %s: expected one rdf:RDF child element", root.path())
+			return fmt.Errorf("RDF: %s: expected one rdf:RDF child element", root.path())
 		}
 		root = root.children[0]
 	}
 	if !root.name.is(NSrdf, "RDF") {
-		return nil, errors.New("RDF: XMP root element must be rdf:RDF")
+		return errors.New("RDF: XMP root element must be rdf:RDF")
 	}
 	if err = p.readRDF(root); err != nil {
-		return nil, fmt.Errorf("RDF: %s", err)
+		return fmt.Errorf("RDF: %s", err)
 	}
-	return p, nil
+	return nil
 }
 
 // readRDF reads the root RDF element.

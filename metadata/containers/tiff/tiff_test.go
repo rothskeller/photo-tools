@@ -26,7 +26,8 @@ var testInput1 = []byte{
 }
 
 func TestInput1(t *testing.T) {
-	tl, err := Read(bytes.NewReader(testInput1))
+	var tl TIFF
+	err := tl.Read(bytes.NewReader(testInput1))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,31 +68,35 @@ func TestInput1(t *testing.T) {
 	}
 }
 
-var testOutput1 = []byte{ // same as above except for an ! on the string.
-	0x4d, 0x4d, 0x00, 0x2a,
-	0x00, 0x00, 0x00, 0x08,
-	0x00, 0x02,
-	0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x31, 0x32, 0x33, 0x34,
-	0x00, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x26,
-	0x00, 0x00, 0x00, 0x46,
-	0x00, 0x01,
-	0x00, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x38,
-	0x00, 0x00, 0x00, 0x00,
-	'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', 0x00,
-	0x00, 0x01,
-	0x00, 0x04, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x58,
-	0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03,
+// Identical data except for adding a ! at the end of the string.  But since we
+// have redone the layout with the largest IFD first, the order is now IFD1,
+// IFD0, IFD2.
+var testOutput1 = []byte{
+	0x4d, 0x4d, 0x00, 0x2a, // header, big-endian
+	0x00, 0x00, 0x00, 0x28, // pointer to IFD0
+	0x00, 0x01, // 1 tag in IFD1
+	0x00, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x1a, // tag 3, string, "Hello, world!"
+	0x00, 0x00, 0x00, 0x00, // no next pointer
+	'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', 0x00, // tag 3 data
+	0x00, 0x02, // 2 tags in IFD0
+	0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x31, 0x32, 0x33, 0x34, // tag 1, bytes '1234'
+	0x00, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, // tag 2, ptr to IFD1
+	0x00, 0x00, 0x00, 0x46, // ptr to IFD2
+	0x00, 0x01, // 1 tag in IFD2
+	0x00, 0x04, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x58, // tag 4, rational, 2/3
+	0x00, 0x00, 0x00, 0x00, // no next pointer
+	0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, // tag 4 data
 }
 
 func TestWrite1(t *testing.T) {
-	tl, _ := Read(bytes.NewReader(testInput1))
+	var tl TIFF
+	tl.Read(bytes.NewReader(testInput1))
 	ifd0 := tl.IFD0()
 	ifd1, _ := ifd0.Tag(2).AsIFD()
 	tag3 := ifd1.Tag(3)
 	tag3.SetString("Hello, world!")
 	var buf bytes.Buffer
-	if err := tl.Render(&buf); err != nil {
+	if _, err := tl.Write(&buf); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), testOutput1) {
@@ -123,7 +128,8 @@ var testInput2 = []byte{
 }
 
 func TestInput2(t *testing.T) {
-	tl, err := Read(bytes.NewReader(testInput1))
+	var tl TIFF
+	err := tl.Read(bytes.NewReader(testInput1))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,38 +170,38 @@ func TestInput2(t *testing.T) {
 	}
 }
 
-// The missing IFD pointer will be fixed, and since the string has gotten
-// longer, IFD1 will have moved to the end.  A null will have been added after
-// the end of the file to pad to an even entry.
+// The missing IFD pointer will be fixed, and the IFDs will be reordered by
+// size.  The extraneous bytes won't have been moved, and a null will be added
+// after them to pad to an even byte.
 var testOutput2 = []byte{
 	/* 0000 */ 0x49, 0x49, 0x2A, 0x00, // header, big-endian
-	/* 0004 */ 0x08, 0x00, 0x00, 0x00, // pointer to IFD0
-	/* 0008 */ 0x02, 0x00, // 2 tags in IFD0
-	/* 000A */ 0x01, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x31, 0x32, 0x33, 0x34, // tag 1, bytes '1234'
-	/* 0016 */ 0x02, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00, // tag 2, ptr to IFD1
-	/* 0022 */ 0x42, 0x00, 0x00, 0x00, // ptr to IFD2
-	/* 0026 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // unused space
+	/* 0004 */ 0x60, 0x00, 0x00, 0x00, // pointer to IFD0
+	/* 0008 */ 0x01, 0x00, // 1 tag in IFD1
+	/* 000A */ 0x03, 0x00, 0x02, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x1A, 0x00, 0x00, 0x00, // tag 3, string, "Hello, world!!"
+	/* 0016 */ 0x00, 0x00, 0x00, 0x00, // no next pointer
+	/* 001A */ 'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', '!', 0x00, // tag 3 data
+	/* 0029 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // unused space
 	/* 0042 */ 0x01, 0x00, // 1 tag in IFD2
 	/* 0044 */ 0x04, 0x00, 0x05, 0x00, 0x01, 0x00, 0x00, 0x00, 0x54, 0x00, 0x00, 0x00, // tag 4, rational, 2/3
 	/* 0050 */ 0x00, 0x00, 0x00, 0x00, // no next pointer
 	/* 0054 */ 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, // tag 4 data
 	/* 005C */ 0xF1, 0xF2, 0xF3, // excess data at end
 	/* 005F */ 0x00, // padding
-	/* 0060 */ 0x01, 0x00, // 1 tag in IFD1
-	/* 0062 */ 0x03, 0x00, 0x02, 0x00, 0x0F, 0x00, 0x00, 0x00, 0x72, 0x00, 0x00, 0x00, // tag 3, string, "Hello, world!!"
-	/* 006E */ 0x00, 0x00, 0x00, 0x00, // no next pointer
-	/* 0072 */ 'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', '!', 0x00, // tag 3 data
-	/* 0081 */ 0x00, // padding
+	/* 0060 */ 0x02, 0x00, // 2 tags in IFD0
+	/* 0062 */ 0x01, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x31, 0x32, 0x33, 0x34, // tag 1, bytes '1234'
+	/* 006E */ 0x02, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, // tag 2, ptr to IFD1
+	/* 0072 */ 0x42, 0x00, 0x00, 0x00, // ptr to IFD2
 }
 
 func TestWrite2(t *testing.T) {
-	tl, _ := Read(bytes.NewReader(testInput2))
+	var tl TIFF
+	tl.Read(bytes.NewReader(testInput2))
 	ifd0 := tl.IFD0()
 	ifd1, _ := ifd0.Tag(2).AsIFD()
 	tag3 := ifd1.Tag(3)
 	tag3.SetString("Hello, world!!")
 	var buf bytes.Buffer
-	if err := tl.Render(&buf); err != nil {
+	if _, err := tl.Write(&buf); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), testOutput2) {
@@ -252,19 +258,20 @@ var testOutput3 = []byte{
 }
 
 func TestWrite3(t *testing.T) {
-	tl, _ := Read(bytes.NewReader(testInput3))
+	var tl TIFF
+	tl.Read(bytes.NewReader(testInput3))
 	ifd0 := tl.IFD0()
 	ifd0.DeleteTag(1)
 	ifd2, _ := ifd0.NextIFD()
 	tag5 := ifd2.AddTag(5)
-	ifd3 := tag5.AddIFD()
+	ifd3, _ := tag5.AddIFD()
 	tag6 := ifd3.AddTag(6)
 	tag6.SetBytes([]byte{0x44, 0x55, 0x66, 0x77, 0x88})
 	ifd4, _ := ifd3.AddNextIFD()
 	tag7 := ifd4.AddTag(7)
 	tag7.SetRationals([]uint32{4, 5, 6, 7})
 	var buf bytes.Buffer
-	if err := tl.Render(&buf); err != nil {
+	if _, err := tl.Write(&buf); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(buf.Bytes(), testOutput3) {

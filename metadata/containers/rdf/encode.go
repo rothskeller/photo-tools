@@ -1,14 +1,33 @@
 package rdf
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/beevik/etree"
 )
 
-// Render renders the packet as encoded XML.
-func (p *Packet) Render() (out []byte, err error) {
+// Size returns the size of the rendered packet.
+func (p *Packet) Size() (size int64) {
+	// There's no way to know the size other than actually rendering the
+	// XML.
+	var buf bytes.Buffer
+	if _, err := p.Write(&buf); err != nil {
+		panic(err)
+	}
+	p.size = int64(buf.Len())
+	return p.size
+	// In theory we could cache this and not re-render the document when
+	// Write is called.  But then we'd have to worry about cache
+	// invalidation.  Not bothering right now.
+}
+
+// Write renders the packet as encoded XML.
+func (p *Packet) Write(w io.Writer) (count int, err error) {
+	var n64 int64
+
 	p.nsprefixes[NSrdf] = "rdf"
 	p.nsprefixes[NSxml] = "xml"
 	var doc = etree.NewDocument()
@@ -17,15 +36,20 @@ func (p *Packet) Render() (out []byte, err error) {
 	xmpmeta.CreateAttr("xmlns:x", NSx)
 	root := xmpmeta.CreateElement("rdf:RDF")
 	if err = p.renderNamespaces(root); err != nil {
-		return nil, fmt.Errorf("RDF: %s", err)
+		return 0, fmt.Errorf("RDF: %s", err)
 	}
 	desc := p.renderStruct(root, p.properties, true)
 	desc.CreateAttr("rdf:about", p.about)
 	doc.CreateProcInst("xpacket", `end="w"`)
-	if out, err = doc.WriteToBytes(); err != nil {
-		return nil, err
+	n64, err = doc.WriteTo(w)
+	count = int(n64)
+	if err != nil {
+		return count, err
 	}
-	return out, nil
+	if p.size != 0 && int(p.size) != count {
+		panic("actual size different from predicted size")
+	}
+	return count, nil
 }
 
 // renderNamespaces adds xmlns attributes to the root element for each namespace

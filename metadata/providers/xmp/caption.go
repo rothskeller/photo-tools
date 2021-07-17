@@ -40,7 +40,7 @@ func (p *Provider) Caption() (value string) {
 // CaptionTags returns a list of tag names for the Caption field, and a
 // parallel list of values held by those tags.
 func (p *Provider) CaptionTags() (tags []string, values [][]string) {
-	tags = append(tags, "XML  dc:description")
+	tags = append(tags, "XMP  dc:description")
 	if len(p.dcDescription) == 0 {
 		values = append(values, nil)
 	} else {
@@ -50,7 +50,7 @@ func (p *Provider) CaptionTags() (tags []string, values [][]string) {
 		}
 		values = append(values, vlist)
 	}
-	tags = append(tags, "XML  tiff:ImageDescription")
+	tags = append(tags, "XMP  tiff:ImageDescription")
 	if len(p.tiffImageDescription) == 0 {
 		values = append(values, nil)
 	} else {
@@ -65,7 +65,7 @@ func (p *Provider) CaptionTags() (tags []string, values [][]string) {
 		for i, as := range p.exifUserComment {
 			vlist[i] = as.Value
 		}
-		tags = append(tags, "XML  exif:UserComment")
+		tags = append(tags, "XMP  exif:UserComment")
 		values = append(values, vlist)
 	}
 	return tags, values

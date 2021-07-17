@@ -70,11 +70,15 @@ func New(rdf *rdf.Packet) (p *Provider, err error) {
 	p = &Provider{rdf: rdf}
 	p.rdf.RegisterNamespace(pfxDC, nsDC)
 	p.rdf.RegisterNamespace(pfxDigiKam, nsDigiKam)
+	p.rdf.RegisterNamespace(pfxEXIF, nsEXIF)
+	p.rdf.RegisterNamespace(pfxIPTC, nsIPTC)
 	p.rdf.RegisterNamespace(pfxLR, nsLR)
 	p.rdf.RegisterNamespace(pfxMP, nsMP)
 	p.rdf.RegisterNamespace(pfxMPRI, nsMPRI)
 	p.rdf.RegisterNamespace(pfxMPReg, nsMPReg)
 	p.rdf.RegisterNamespace(pfxMWGRS, nsMWGRS)
+	p.rdf.RegisterNamespace(pfxPS, nsPS)
+	p.rdf.RegisterNamespace(pfxTIFF, nsTIFF)
 	p.rdf.RegisterNamespace(pfxXMP, nsXMP)
 	if err = p.getCaption(); err != nil {
 		return nil, fmt.Errorf("XMP: %s", err)

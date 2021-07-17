@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/rothskeller/photo-tools/metadata"
+	"github.com/rothskeller/photo-tools/metadata/filefmts"
 )
 
 // MediaFile identifies, and provides the handler for, one media file named on
@@ -14,6 +15,7 @@ import (
 type MediaFile struct {
 	Path     string
 	File     *os.File
+	Handler  filefmts.FileFormat
 	Provider metadata.Provider
 	Changed  bool
 }

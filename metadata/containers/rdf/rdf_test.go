@@ -39,32 +39,36 @@ var expectedOutput = []string{
 
 func Test1(t *testing.T) {
 	for i, input := range testInput {
-		p, err := Read(strings.NewReader(input))
+		p := New()
+		err := p.Read(strings.NewReader(input))
 		if err != nil {
 			t.Errorf("ReadPacket error on input %d: %s", i, err)
 			continue
 		}
-		out, err := p.Render()
-		if err != nil {
-			t.Errorf("Render error on input %d: %s", i, err)
+		var out bytes.Buffer
+		if _, err = p.Write(&out); err != nil {
+			t.Errorf("Write error on input %d: %s", i, err)
 			continue
 		}
-		if string(out) != expectedOutput[i] {
-			t.Errorf("Output mismatch on input %d:\nExpected: %s\nActual:   %s\n", i, expectedOutput[i], string(out))
+		outstr := out.String()
+		if outstr != expectedOutput[i] {
+			t.Errorf("Output mismatch on input %d:\nExpected: %s\nActual:   %s\n", i, expectedOutput[i], outstr)
 			continue
 		}
-		p, err = Read(bytes.NewReader(out))
+		p = New()
+		err = p.Read(strings.NewReader(outstr))
 		if err != nil {
 			t.Errorf("ReadPacket error on output %d: %s", i, err)
 			continue
 		}
-		out, err = p.Render()
-		if err != nil {
-			t.Errorf("Render error on output %d: %s", i, err)
+		out.Reset()
+		if _, err = p.Write(&out); err != nil {
+			t.Errorf("Write error on output %d: %s", i, err)
 			continue
 		}
-		if string(out) != expectedOutput[i] {
-			t.Errorf("Round trip mismatch on output %d:\nExpected: %s\nActual:   %s\n", i, expectedOutput[i], string(out))
+		outstr = out.String()
+		if outstr != expectedOutput[i] {
+			t.Errorf("Round trip mismatch on output %d:\nExpected: %s\nActual:   %s\n", i, expectedOutput[i], outstr)
 		}
 	}
 }

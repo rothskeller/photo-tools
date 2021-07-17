@@ -26,7 +26,7 @@ func (p *Provider) TitleTags() (tags []string, values [][]string) {
 	for _, as := range p.dcTitle {
 		values[0] = append(values[0], as.Value)
 	}
-	return []string{"XML  dc:title"}, values
+	return []string{"XMP  dc:title"}, values
 }
 
 // SetTitle sets the values of the Title field.

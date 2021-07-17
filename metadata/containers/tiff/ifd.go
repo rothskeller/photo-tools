@@ -103,8 +103,12 @@ func (ifd *IFD) Dirty() bool {
 // Layout computes the rendered layout of the container, i.e. prepares for a
 // call to Write, and returns what the rendered size of the container will be.
 func (ifd *IFD) Layout() int64 {
-	ifd.size = 6 + 12*int64(len(ifd.tags))
+	ifd.size = 6
 	for _, tag := range ifd.tags {
+		if tag.Empty() {
+			continue
+		}
+		ifd.size += 12
 		if tsz, _ := tag.size(); tsz > 4 {
 			if ifd.size%2 == 1 {
 				ifd.size++
@@ -132,6 +136,9 @@ func (ifd *IFD) Write(w io.Writer) (count int, err error) {
 		return count, err
 	}
 	for _, tag := range ifd.tags {
+		if tag.Empty() {
+			continue
+		}
 		offset, n, err = tag.write(w, offset)
 		count += n
 		if err != nil {
@@ -152,6 +159,9 @@ func (ifd *IFD) Write(w io.Writer) (count int, err error) {
 		return count, err
 	}
 	for _, tag := range ifd.tags {
+		if tag.Empty() {
+			continue
+		}
 		if tsz, _ := tag.size(); count%2 == 1 && tsz > 4 {
 			n, err = w.Write([]byte{0})
 			count += n

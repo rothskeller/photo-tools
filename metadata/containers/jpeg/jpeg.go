@@ -39,6 +39,7 @@ type JPEG struct {
 	psir   *segmentGroup
 	others []*segmentGroup
 	end    *segmentGroup
+	all    []*segmentGroup
 	size   int64
 }
 
@@ -96,18 +97,33 @@ func (jpeg *JPEG) Dirty() bool {
 // Layout computes the rendered layout of the container, i.e. prepares for a
 // call to Write, and returns what the rendered size of the container will be.
 func (jpeg *JPEG) Layout() int64 {
-	jpeg.size = jpeg.start.Layout()
+	jpeg.all = []*segmentGroup{jpeg.start}
 	for _, seg := range jpeg.jfif {
-		jpeg.size += seg.Layout()
+		if !seg.Empty() {
+			jpeg.all = append(jpeg.all, seg)
+		}
 	}
-	jpeg.size += jpeg.exif.Layout()
-	jpeg.size += jpeg.xmp.Layout()
-	jpeg.size += jpeg.xmpext.Layout()
-	jpeg.size += jpeg.psir.Layout()
+	if !jpeg.exif.Empty() {
+		jpeg.all = append(jpeg.all, jpeg.exif)
+	}
+	if !jpeg.xmp.Empty() {
+		jpeg.all = append(jpeg.all, jpeg.xmp)
+	}
+	if !jpeg.xmpext.Empty() {
+		jpeg.all = append(jpeg.all, jpeg.xmpext)
+	}
+	if !jpeg.psir.Empty() {
+		jpeg.all = append(jpeg.all, jpeg.psir)
+	}
 	for _, seg := range jpeg.others {
+		if !seg.Empty() {
+			jpeg.all = append(jpeg.all, seg)
+		}
+	}
+	jpeg.all = append(jpeg.all, jpeg.end)
+	for _, seg := range jpeg.all {
 		jpeg.size += seg.Layout()
 	}
-	jpeg.size += jpeg.end.Layout()
 	return jpeg.size
 }
 
@@ -115,51 +131,14 @@ func (jpeg *JPEG) Layout() int64 {
 func (jpeg *JPEG) Write(w io.Writer) (count int, err error) {
 	var n int
 
-	n, err = jpeg.start.Write(w)
-	count += n
-	if err != nil {
-		return count, err
-	}
-	for _, seg := range jpeg.jfif {
+	for _, seg := range jpeg.all {
 		n, err = seg.Write(w)
 		count += n
 		if err != nil {
 			return count, err
 		}
 	}
-	n, err = jpeg.exif.Write(w)
-	count += n
-	if err != nil {
-		return count, err
-	}
-	n, err = jpeg.xmp.Write(w)
-	count += n
-	if err != nil {
-		return count, err
-	}
-	n, err = jpeg.xmpext.Write(w)
-	count += n
-	if err != nil {
-		return count, err
-	}
-	n, err = jpeg.psir.Write(w)
-	count += n
-	if err != nil {
-		return count, err
-	}
-	for _, seg := range jpeg.others {
-		n, err = seg.Write(w)
-		count += n
-		if err != nil {
-			return count, err
-		}
-	}
-	n, err = jpeg.end.Write(w)
-	count += n
-	if err != nil {
-		return count, err
-	}
-	if jpeg.size != 0 && int(jpeg.size) != count {
+	if int(jpeg.size) != count {
 		panic("actual size different from predicted size")
 	}
 	return count, err

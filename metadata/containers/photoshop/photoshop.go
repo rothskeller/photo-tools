@@ -79,6 +79,9 @@ func (ps *Photoshop) Dirty() bool {
 func (ps *Photoshop) Layout() int64 {
 	ps.size = 0
 	for _, psir := range ps.psirs {
+		if psir.Empty() {
+			continue
+		}
 		if ps.size%2 == 1 {
 			ps.size++
 		}
@@ -92,6 +95,9 @@ func (ps *Photoshop) Write(w io.Writer) (count int, err error) {
 	var n int
 
 	for _, psir := range ps.psirs {
+		if psir.Empty() {
+			continue
+		}
 		if count%2 == 1 {
 			n, err = w.Write([]byte{0})
 			count += n

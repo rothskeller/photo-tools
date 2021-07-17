@@ -87,7 +87,6 @@ func (t *TIFF) Layout() int64 {
 	}
 	// Get a list of all of the IFDs to be rendered, in decreasing order by
 	// size.
-	removeEmptyIFDs(t.ifd0)
 	t.ifds = findAllIFDs(nil, t.ifd0)
 	for i := range t.ifds {
 		t.ifds[i].size = t.ifds[i].Layout()
@@ -206,26 +205,10 @@ func (t *TIFF) IFD0() *IFD {
 // correctly interpret tag data.
 func (t *TIFF) Encoding() binary.ByteOrder { return t.enc }
 
-func removeEmptyIFDs(ifd *IFD) {
-	for i := 0; i < len(ifd.tags); {
-		if ifd.tags[i].toIFD != nil && len(ifd.tags[i].toIFD.tags) == 0 && ifd.tags[i].toIFD.next == 0 {
-			ifd.DeleteTag(ifd.tags[i].tag)
-			continue
-		}
-		if ifd.tags[i].toIFD != nil {
-			removeEmptyIFDs(ifd.tags[i].toIFD)
-		}
-		i++
-	}
-	if ifd.nextIFD != nil && len(ifd.nextIFD.tags) == 0 && ifd.nextIFD.next == 0 {
-		ifd.nextIFD = nil
-		ifd.next = 0
-	} else if ifd.nextIFD != nil {
-		removeEmptyIFDs(ifd.nextIFD)
-	}
-}
-
 func findAllIFDs(list []*IFD, ifd *IFD) []*IFD {
+	if ifd.Empty() {
+		return list
+	}
 	list = append(list, ifd)
 	for _, tag := range ifd.tags {
 		if tag.toIFD != nil {

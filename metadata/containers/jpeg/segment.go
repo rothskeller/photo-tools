@@ -96,7 +96,7 @@ func (seg *segmentGroup) Empty() bool {
 	if seg.container != nil {
 		return seg.container.Empty()
 	}
-	return seg.reader.Size() == 0
+	return false
 }
 
 // Dirty returns whether the segment group has been changed.

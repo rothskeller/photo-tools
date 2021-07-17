@@ -134,8 +134,9 @@ func (iim *IIM) SetHashContainer(hc *raw.Raw) { iim.hashContainer = hc }
 // Dirty returns whether the IIM block has been changed since it was read.
 func (iim *IIM) Dirty() bool { return iim.dirty }
 
-// Size returns the rendered size of the IIM block, in bytes.
-func (iim *IIM) Size() int64 {
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (iim *IIM) Layout() int64 {
 	iim.size = 0
 	for _, dss := range iim.dsmap {
 		for _, ds := range dss {

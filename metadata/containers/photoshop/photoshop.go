@@ -62,14 +62,15 @@ func (ps *Photoshop) Dirty() bool {
 	return false
 }
 
-// Size returns the rendered size of the container, in bytes.
-func (ps *Photoshop) Size() int64 {
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (ps *Photoshop) Layout() int64 {
 	ps.size = 0
 	for _, psir := range ps.psirs {
 		if ps.size%2 == 1 {
 			ps.size++
 		}
-		ps.size += psir.Size()
+		ps.size += psir.Layout()
 	}
 	return ps.size
 }

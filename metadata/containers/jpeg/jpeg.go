@@ -88,20 +88,21 @@ func (jpeg *JPEG) Dirty() bool {
 	return jpeg.exif.Dirty() || jpeg.xmp.Dirty() || jpeg.psir.Dirty()
 }
 
-// Size returns the size of the rendered JPEG structure.
-func (jpeg *JPEG) Size() int64 {
-	jpeg.size = jpeg.start.Size()
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (jpeg *JPEG) Layout() int64 {
+	jpeg.size = jpeg.start.Layout()
 	for _, seg := range jpeg.jfif {
-		jpeg.size += seg.Size()
+		jpeg.size += seg.Layout()
 	}
-	jpeg.size += jpeg.exif.Size()
-	jpeg.size += jpeg.xmp.Size()
-	jpeg.size += jpeg.xmpext.Size()
-	jpeg.size += jpeg.psir.Size()
+	jpeg.size += jpeg.exif.Layout()
+	jpeg.size += jpeg.xmp.Layout()
+	jpeg.size += jpeg.xmpext.Layout()
+	jpeg.size += jpeg.psir.Layout()
 	for _, seg := range jpeg.others {
-		jpeg.size += seg.Size()
+		jpeg.size += seg.Layout()
 	}
-	jpeg.size += jpeg.end.Size()
+	jpeg.size += jpeg.end.Layout()
 	return jpeg.size
 }
 

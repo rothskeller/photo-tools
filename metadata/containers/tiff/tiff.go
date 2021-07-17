@@ -19,6 +19,8 @@ type TIFF struct {
 	enc    binary.ByteOrder
 	ifd0   *IFD
 	ranges rangelist
+	ifds   []*IFD
+	end    uint32
 }
 
 var _ containers.Container = (*TIFF)(nil) // verify interface compliance
@@ -66,22 +68,51 @@ func (t *TIFF) Dirty() bool {
 	return false
 }
 
-// Size returns the rendered size of the container, in bytes.
-func (t *TIFF) Size() int64 {
-	_, _, size := t.layout()
-	return int64(size)
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (t *TIFF) Layout() int64 {
+	// Set the end pointer to the end of the file.  If there's a consumable
+	// range that ends at the end of the file, drop it and set the end
+	// pointer to the start of that range.  Round the end pointer up to an
+	// even offset.
+	t.end = uint32(t.r.Size())
+	if len(t.ranges.r) != 0 && t.ranges.r[len(t.ranges.r)-1] == t.end {
+		t.end = t.ranges.r[len(t.ranges.r)-2]
+		t.ranges.r = t.ranges.r[:len(t.ranges.r)-2]
+	}
+	// Get a list of all of the IFDs to be rendered, in decreasing order by
+	// size.
+	removeEmptyIFDs(t.ifd0)
+	t.ifds = findAllIFDs(nil, t.ifd0)
+	for i := range t.ifds {
+		t.ifds[i].size = t.ifds[i].Layout()
+	}
+	sort.Slice(t.ifds, func(i, j int) bool {
+		return t.ifds[i].size > t.ifds[j].size
+	})
+	// Allocate space to each of the IFDs.
+	for _, ifd := range t.ifds {
+		if ifd.offset = t.ranges.consume(uint32(ifd.size)); ifd.offset == 0 {
+			if t.end%2 == 1 {
+				t.end++
+			}
+			ifd.offset = t.end
+			t.end += uint32(ifd.size)
+		}
+	}
+	// Resort the IFDs by file offset.
+	sort.Slice(t.ifds, func(i, j int) bool {
+		return t.ifds[i].offset < t.ifds[j].offset
+	})
+	return int64(t.end)
 }
 
 // Write writes the rendered container to the specified writer.
 func (t *TIFF) Write(w io.Writer) (count int, err error) {
 	var (
-		n      int
-		ifds   []*IFD
-		buf    [8]byte
-		unused rangelist
-		size   uint32
+		n   int
+		buf [8]byte
 	)
-	ifds, unused, size = t.layout()
 	// Write the TIFF header.
 	if t.enc == binary.BigEndian {
 		copy(buf[:], tiffHeaderBE)
@@ -99,32 +130,32 @@ func (t *TIFF) Write(w io.Writer) (count int, err error) {
 	for {
 		// Which is the next IFD or unused range to write?
 		var nextIFD, nextZero, nextAny uint32
-		if len(ifds) != 0 {
-			nextIFD = ifds[0].offset
+		if len(t.ifds) != 0 {
+			nextIFD = t.ifds[0].offset
 			nextAny = nextIFD
 		}
-		if len(unused.r) != 0 {
-			nextZero = unused.r[0]
+		if len(t.ranges.r) != 0 {
+			nextZero = t.ranges.r[0]
 			if nextAny == 0 || nextAny > nextZero {
 				nextAny = nextZero
 			}
 		}
 		if count == int(nextIFD) {
 			// We're at the start of an IFD.  Render it.
-			n, err = ifds[0].Write(w)
+			n, err = t.ifds[0].Write(w)
 			count += n
 			if err != nil {
 				return count, err
 			}
-			ifds = ifds[1:]
+			t.ifds = t.ifds[1:]
 		} else if count == int(nextZero) {
 			// We're at the start of an unused range.  Write zeros.
-			n, err = writeZeros(w, unused.r[1]-unused.r[0])
+			n, err = writeZeros(w, t.ranges.r[1]-t.ranges.r[0])
 			count += n
 			if err != nil {
 				return count, err
 			}
-			unused.r = unused.r[2:]
+			t.ranges.r = t.ranges.r[2:]
 		} else if nextAny != 0 {
 			// We need to copy bytes from the input file up to the
 			// next IFD or unused range.
@@ -142,10 +173,10 @@ func (t *TIFF) Write(w io.Writer) (count int, err error) {
 			if err != nil {
 				return count, err
 			}
-		} else if count < int(size) {
+		} else if count < int(t.end) {
 			// There are no IFDs or unused ranges left, so we need
 			// to copy the rest of the input file.
-			n, err = copyBytes(w, t.r, uint32(count), size)
+			n, err = copyBytes(w, t.r, uint32(count), t.end)
 			count += n
 			if err != nil {
 				return count, err
@@ -154,7 +185,7 @@ func (t *TIFF) Write(w io.Writer) (count int, err error) {
 			break
 		}
 	}
-	if count != int(size) {
+	if count != int(t.end) {
 		panic("actual size different from predicted size")
 	}
 	return count, nil
@@ -169,53 +200,6 @@ func (t *TIFF) IFD0() *IFD {
 // (especially for tags of UNKNOWN type), calling code may need this in order to
 // correctly interpret tag data.
 func (t *TIFF) Encoding() binary.ByteOrder { return t.enc }
-
-// layout determines the locations of all of the IFDs in the rendered TIFF.  It
-// returns the list of IFDs, in order by file offset; the list of unused ranges;
-// and the end pointer, which is the same as the size of the resulting rendered
-// TIFF.
-func (t *TIFF) layout() (ifds []*IFD, unused rangelist, end uint32) {
-	var ranges rangelist
-
-	// We need to work on a copy of the range list in case layout is called
-	// more than once.
-	ranges.r = make([]uint32, len(t.ranges.r))
-	copy(ranges.r, t.ranges.r)
-	// Set the end pointer to the end of the file.  If there's a consumable
-	// range that ends at the end of the file, drop it and set the end
-	// pointer to the start of that range.  Round the end pointer up to an
-	// even offset.
-	end = uint32(t.r.Size())
-	if len(ranges.r) != 0 && ranges.r[len(ranges.r)-1] == end {
-		end = ranges.r[len(ranges.r)-2]
-		ranges.r = ranges.r[:len(ranges.r)-2]
-	}
-	// Get a list of all of the IFDs to be rendered, in decreasing order by
-	// size.
-	removeEmptyIFDs(t.ifd0)
-	ifds = findAllIFDs(nil, t.ifd0)
-	for i := range ifds {
-		ifds[i].size = ifds[i].Size()
-	}
-	sort.Slice(ifds, func(i, j int) bool {
-		return ifds[i].size > ifds[j].size
-	})
-	// Allocate space to each of the IFDs.
-	for _, ifd := range ifds {
-		if ifd.offset = ranges.consume(uint32(ifd.size)); ifd.offset == 0 {
-			if end%2 == 1 {
-				end++
-			}
-			ifd.offset = end
-			end += uint32(ifd.size)
-		}
-	}
-	// Resort the IFDs by file offset.
-	sort.Slice(ifds, func(i, j int) bool {
-		return ifds[i].offset < ifds[j].offset
-	})
-	return ifds, ranges, end
-}
 
 func removeEmptyIFDs(ifd *IFD) {
 	for i := 0; i < len(ifd.tags); {

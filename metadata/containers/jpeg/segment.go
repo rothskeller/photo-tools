@@ -19,6 +19,7 @@ type segmentGroup struct {
 	reader    metadata.Reader
 	container containers.Container
 	size      int64
+	csize     int64
 }
 
 var _ containers.Container = (*segmentGroup)(nil) // verify interface compliance
@@ -99,8 +100,9 @@ func (seg *segmentGroup) Dirty() bool {
 	return false
 }
 
-// Size returns the size of the rendered segment group.
-func (seg *segmentGroup) Size() int64 {
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (seg *segmentGroup) Layout() int64 {
 	if seg == nil {
 		return 0
 	}
@@ -117,7 +119,8 @@ func (seg *segmentGroup) Size() int64 {
 		return seg.size
 	}
 	if seg.container != nil {
-		seg.size = seg.container.Size()
+		seg.size = seg.container.Layout()
+		seg.csize = seg.size
 	} else {
 		seg.size = seg.reader.Size()
 	}
@@ -182,7 +185,7 @@ func (seg *segmentGroup) Write(w io.Writer) (count int, err error) {
 	// First, determine whether it can fit into one physical segment.
 	chunk = 0xFFFF - int64(len(seg.namespace)) - 2
 	if seg.container != nil {
-		size = seg.container.Size()
+		size = seg.csize
 	} else {
 		size = seg.reader.Size()
 	}

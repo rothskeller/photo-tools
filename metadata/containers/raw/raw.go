@@ -28,8 +28,9 @@ func (raw *Raw) Read(r metadata.Reader) (err error) {
 // changed.
 func (raw *Raw) Dirty() bool { return raw.dirty }
 
-// Size returns the rendered size of the container, in bytes.
-func (raw *Raw) Size() int64 { return int64(len(raw.data)) }
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (raw *Raw) Layout() int64 { return int64(len(raw.data)) }
 
 // Write writes the rendered container to the specified writer.
 func (raw *Raw) Write(w io.Writer) (n int, err error) { return w.Write(raw.data) }

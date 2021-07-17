@@ -19,6 +19,7 @@ type PSIR struct {
 	reader    metadata.Reader
 	container containers.Container
 	size      int64
+	csize     int64
 }
 
 var _ containers.Container = (*PSIR)(nil) // verify interface compliance
@@ -74,8 +75,9 @@ func (psir *PSIR) Dirty() bool {
 	return psir.container.Dirty()
 }
 
-// Size returns the rendered size of the container, in bytes.
-func (psir *PSIR) Size() int64 {
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (psir *PSIR) Layout() int64 {
 	if psir == nil {
 		return 0
 	}
@@ -84,7 +86,8 @@ func (psir *PSIR) Size() int64 {
 		psir.size++
 	}
 	if psir.container != nil {
-		psir.size += psir.container.Size()
+		psir.csize = psir.container.Layout()
+		psir.size += psir.csize
 	} else {
 		psir.size += psir.reader.Size()
 	}
@@ -122,7 +125,7 @@ func (psir *PSIR) Write(w io.Writer) (count int, err error) {
 		}
 	}
 	if psir.container != nil {
-		binary.BigEndian.PutUint32(buf[0:4], uint32(psir.container.Size()))
+		binary.BigEndian.PutUint32(buf[0:4], uint32(psir.csize))
 	} else {
 		binary.BigEndian.PutUint32(buf[0:4], uint32(psir.reader.Size()))
 	}

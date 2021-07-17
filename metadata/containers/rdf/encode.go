@@ -9,25 +9,26 @@ import (
 	"github.com/beevik/etree"
 )
 
-// Size returns the size of the rendered packet.
-func (p *Packet) Size() (size int64) {
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (p *Packet) Layout() (size int64) {
 	// There's no way to know the size other than actually rendering the
 	// XML.
 	var buf bytes.Buffer
 	if _, err := p.Write(&buf); err != nil {
 		panic(err)
 	}
-	p.size = int64(buf.Len())
-	return p.size
-	// In theory we could cache this and not re-render the document when
-	// Write is called.  But then we'd have to worry about cache
-	// invalidation.  Not bothering right now.
+	p.rendered = buf.Bytes()
+	return int64(len(p.rendered))
 }
 
 // Write renders the packet as encoded XML.
 func (p *Packet) Write(w io.Writer) (count int, err error) {
 	var n64 int64
 
+	if p.rendered != nil {
+		return w.Write(p.rendered)
+	}
 	p.nsprefixes[NSrdf] = "rdf"
 	p.nsprefixes[NSxml] = "xml"
 	var doc = etree.NewDocument()
@@ -45,9 +46,6 @@ func (p *Packet) Write(w io.Writer) (count int, err error) {
 	count = int(n64)
 	if err != nil {
 		return count, err
-	}
-	if p.size != 0 && int(p.size) != count {
-		panic("actual size different from predicted size")
 	}
 	return count, nil
 }

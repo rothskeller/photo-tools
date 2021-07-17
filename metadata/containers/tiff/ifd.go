@@ -85,8 +85,9 @@ func (ifd *IFD) Dirty() bool {
 	return ifd.dirty
 }
 
-// Size returns the rendered size of the IFD, in bytes.
-func (ifd *IFD) Size() int64 {
+// Layout computes the rendered layout of the container, i.e. prepares for a
+// call to Write, and returns what the rendered size of the container will be.
+func (ifd *IFD) Layout() int64 {
 	ifd.size = 6 + 12*int64(len(ifd.tags))
 	for _, tag := range ifd.tags {
 		if tsz, _ := tag.size(); tsz > 4 {

@@ -14,7 +14,7 @@ type Packet struct {
 	nsprefixes map[string]string
 	about      string
 	dirty      bool
-	size       int64
+	rendered   []byte
 }
 
 var _ containers.Container = (*Packet)(nil) // verify interface compliance

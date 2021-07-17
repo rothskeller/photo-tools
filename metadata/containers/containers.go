@@ -26,8 +26,10 @@ type Container interface {
 	// Dirty returns whether the contents of the container have been
 	// changed.
 	Dirty() bool
-	// Size returns the rendered size of the container, in bytes.
-	Size() int64
+	// Layout computes the rendered layout of the container, i.e. prepares
+	// for a call to Write, and returns what the rendered size of the
+	// container will be.
+	Layout() int64
 	// Write writes the rendered container to the specified writer.
 	Write(w io.Writer) (n int, err error)
 }

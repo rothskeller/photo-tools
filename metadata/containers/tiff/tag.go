@@ -19,6 +19,7 @@ type Tag struct {
 	tag   uint16
 	ttype uint16
 	doff  uint32 // offset of data relative to start of TIFF; zero if data is embedded in IFD entry
+	csize int64  // computed size of container
 	// Exactly one of the following four fields is non-nil:
 	data      []byte
 	reader    metadata.Reader
@@ -401,7 +402,10 @@ func (tag *Tag) size() (size, count uint32) {
 	case tag.toIFD != nil:
 		size = 4
 	case tag.container != nil:
-		size = uint32(tag.container.Size())
+		if tag.csize == 0 {
+			tag.csize = tag.container.Layout()
+		}
+		size = uint32(tag.csize)
 	case tag.reader != nil:
 		size = uint32(tag.reader.Size())
 	default:

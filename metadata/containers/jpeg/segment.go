@@ -89,6 +89,16 @@ func (seg *segmentGroup) Read(r metadata.Reader) (err error) {
 	return nil
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (seg *segmentGroup) Empty() bool {
+	if seg.container != nil {
+		return seg.container.Empty()
+	}
+	return seg.reader.Size() == 0
+}
+
 // Dirty returns whether the segment group has been changed.
 func (seg *segmentGroup) Dirty() bool {
 	if seg == nil {

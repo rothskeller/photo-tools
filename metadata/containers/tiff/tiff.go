@@ -58,6 +58,11 @@ func (t *TIFF) Read(r metadata.Reader) (err error) {
 	return nil
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (t *TIFF) Empty() bool { return t.ifd0.Empty() }
+
 // Dirty returns whether there have been any changes to the TIFF-like block.
 func (t *TIFF) Dirty() bool {
 	for _, ifd := range findAllIFDs(nil, t.ifd0) {

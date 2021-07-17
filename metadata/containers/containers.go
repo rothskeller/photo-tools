@@ -23,6 +23,10 @@ type Container interface {
 	// Reader.  The reader will continue to be used after Read returns, and
 	// must remain open and usable as long as the Container is in scope.
 	Read(r metadata.Reader) error
+	// Empty returns whether the container is empty (and should therefore
+	// be omitted from the written file, along with whatever tag in the
+	// parent container points to it).
+	Empty() bool
 	// Dirty returns whether the contents of the container have been
 	// changed.
 	Dirty() bool

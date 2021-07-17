@@ -317,6 +317,22 @@ func (tag *Tag) AddIFD() (ifd *IFD, err error) {
 	return ifd, nil
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (tag *Tag) Empty() bool {
+	if tag.toIFD != nil {
+		return tag.toIFD.Empty()
+	}
+	if tag.container != nil {
+		return tag.container.Empty()
+	}
+	if tag.reader != nil {
+		return tag.reader.Size() == 0
+	}
+	return len(tag.data) == 0
+}
+
 // write writes the IFD entry for a single tag.  offset is the next available
 // offset for writing data (i.e., the pointer that should be put in the IFD
 // entry if a pointer is needed).  newoff is the resulting offset, adjusted for

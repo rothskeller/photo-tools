@@ -66,6 +66,16 @@ func (psir *PSIR) Read(r metadata.Reader) (err error) {
 	return nil
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (psir *PSIR) Empty() bool {
+	if psir.container != nil {
+		return psir.container.Empty()
+	}
+	return psir.reader.Size() == 0
+}
+
 // Dirty returns whether the contents of the container have been
 // changed.
 func (psir *PSIR) Dirty() bool {

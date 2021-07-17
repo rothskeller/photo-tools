@@ -9,6 +9,11 @@ import (
 	"github.com/beevik/etree"
 )
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (p *Packet) Empty() bool { return len(p.properties) == 0 }
+
 // Layout computes the rendered layout of the container, i.e. prepares for a
 // call to Write, and returns what the rendered size of the container will be.
 func (p *Packet) Layout() (size int64) {

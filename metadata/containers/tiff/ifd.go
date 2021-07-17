@@ -72,6 +72,21 @@ func (ifd *IFD) Read(r metadata.Reader) (err error) {
 	return nil
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (ifd *IFD) Empty() bool {
+	for _, tag := range ifd.tags {
+		if !tag.Empty() {
+			return false
+		}
+	}
+	if ifd.nextIFD != nil {
+		return ifd.nextIFD.Empty()
+	}
+	return ifd.next == 0
+}
+
 // Dirty returns whether the contents of the IFD have been changed.
 func (ifd *IFD) Dirty() bool {
 	for _, tag := range ifd.tags {

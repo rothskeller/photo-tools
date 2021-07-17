@@ -52,6 +52,18 @@ func (ps *Photoshop) Read(r metadata.Reader) (err error) {
 	}
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (ps *Photoshop) Empty() bool {
+	for _, psir := range ps.psirs {
+		if !psir.Empty() {
+			return false
+		}
+	}
+	return true
+}
+
 // Dirty returns whether any PSIRs have been changed.
 func (ps *Photoshop) Dirty() bool {
 	for _, psir := range ps.psirs {

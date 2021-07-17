@@ -131,6 +131,18 @@ func (iim *IIM) RemoveDataSets(id uint16) {
 // written when the block is written.
 func (iim *IIM) SetHashContainer(hc *raw.Raw) { iim.hashContainer = hc }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (iim *IIM) Empty() bool {
+	for _, dss := range iim.dsmap {
+		if len(dss) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // Dirty returns whether the IIM block has been changed since it was read.
 func (iim *IIM) Dirty() bool { return iim.dirty }
 

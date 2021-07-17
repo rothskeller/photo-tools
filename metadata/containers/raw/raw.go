@@ -24,6 +24,11 @@ func (raw *Raw) Read(r metadata.Reader) (err error) {
 	return err
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (raw *Raw) Empty() bool { return len(raw.data) == 0 }
+
 // Dirty returns whether the contents of the container have been
 // changed.
 func (raw *Raw) Dirty() bool { return raw.dirty }

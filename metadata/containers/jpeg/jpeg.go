@@ -83,6 +83,11 @@ func (jpeg *JPEG) Read(r metadata.Reader) (err error) {
 	return nil
 }
 
+// Empty returns whether the container is empty (and should therefore be omitted
+// from the written file, along with whatever tag in the parent container points
+// to it).
+func (jpeg *JPEG) Empty() bool { return false } // JPEGs are never empty
+
 // Dirty returns whether any of the JPEG segments have been changed.
 func (jpeg *JPEG) Dirty() bool {
 	return jpeg.exif.Dirty() || jpeg.xmp.Dirty() || jpeg.psir.Dirty()

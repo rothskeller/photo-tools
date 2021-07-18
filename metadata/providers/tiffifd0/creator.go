@@ -39,6 +39,6 @@ func (p *Provider) SetCreator(value string) error {
 		return nil
 	}
 	p.artist = value
-	p.ifd.AddTag(tagArtist).SetString(value)
+	p.ifd.AddTag(tagArtist, 2).SetString(value)
 	return nil
 }

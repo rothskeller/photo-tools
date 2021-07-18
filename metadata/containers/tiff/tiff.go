@@ -78,10 +78,9 @@ func (t *TIFF) Dirty() bool {
 func (t *TIFF) Layout() int64 {
 	// Set the end pointer to the end of the file.  If there's a consumable
 	// range that ends at the end of the file, drop it and set the end
-	// pointer to the start of that range.  Round the end pointer up to an
-	// even offset.
+	// pointer to the start of that range.
 	t.end = uint32(t.r.Size())
-	if len(t.ranges.r) != 0 && t.ranges.r[len(t.ranges.r)-1] == t.end {
+	if len(t.ranges.r) != 0 && t.ranges.r[len(t.ranges.r)-1] >= t.end {
 		t.end = t.ranges.r[len(t.ranges.r)-2]
 		t.ranges.r = t.ranges.r[:len(t.ranges.r)-2]
 	}
@@ -197,6 +196,9 @@ func (t *TIFF) Write(w io.Writer) (count int, err error) {
 
 // IFD0 returns the first IFD in the TIFF-like block.
 func (t *TIFF) IFD0() *IFD {
+	if t.ifd0 == nil {
+		t.ifd0 = &IFD{t: t}
+	}
 	return t.ifd0
 }
 

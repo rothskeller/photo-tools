@@ -104,6 +104,7 @@ func (h *TIFF) readXMPTag() (err error) {
 		xmpRDF      *rdf.Packet
 		xmpProvider *xmp.Provider
 	)
+	xmpRDF = rdf.New()
 	if tag := h.tiffIFD0.Tag(tagXMP); tag != nil {
 		var r metadata.Reader
 		if r, err = tag.AsUnknownReader(); err != nil {
@@ -111,16 +112,18 @@ func (h *TIFF) readXMPTag() (err error) {
 				return fmt.Errorf("XMP: %s", err)
 			}
 		}
-		xmpRDF = rdf.New()
 		if err = xmpRDF.Read(r); err != nil {
 			return fmt.Errorf("XMP: %s", err)
 		}
 		tag.SetContainer(xmpRDF)
-		if xmpProvider, err = xmp.New(xmpRDF); err != nil {
-			return err
-		}
-		h.providers = append(h.providers, xmpProvider)
+	} else {
+		tag = h.tiffIFD0.AddTag(tagXMP, 7)
+		tag.SetContainer(xmpRDF)
 	}
+	if xmpProvider, err = xmp.New(xmpRDF); err != nil {
+		return err
+	}
+	h.providers = append(h.providers, xmpProvider)
 	return nil
 }
 
@@ -129,6 +132,7 @@ func (h *TIFF) readIPTCTag() (err error) {
 		iimc         *iim.IIM
 		iptcProvider *iptc.Provider
 	)
+	iimc = iim.New()
 	if tag := h.tiffIFD0.Tag(tagIPTC); tag != nil {
 		// Empirically, tag type can be UNKNOWN or LONG.
 		var r metadata.Reader
@@ -137,16 +141,18 @@ func (h *TIFF) readIPTCTag() (err error) {
 				return fmt.Errorf("IPTC: %s", err)
 			}
 		}
-		iimc = new(iim.IIM)
 		if err = iimc.Read(r); err != nil {
 			return fmt.Errorf("IPTC: %s", err)
 		}
 		tag.SetContainer(iimc)
-		if iptcProvider, err = iptc.New(iimc); err != nil {
-			return err
-		}
-		h.providers = append(h.providers, iptcProvider)
+	} else {
+		tag = h.tiffIFD0.AddTag(tagIPTC, 7)
+		tag.SetContainer(iimc)
 	}
+	if iptcProvider, err = iptc.New(iimc); err != nil {
+		return err
+	}
+	h.providers = append(h.providers, iptcProvider)
 	return nil
 }
 
@@ -155,6 +161,8 @@ func (h *TIFF) readPSIRIFD() (err error) {
 		iimPSIR          *photoshop.PSIR
 		psirIPTCProvider *iptc.Provider
 	)
+	h.psirBlock = new(photoshop.Photoshop)
+	h.psirIIM = iim.New()
 	if tag := h.tiffIFD0.Tag(tagPSIR); tag != nil {
 		var r metadata.Reader
 		// Empirically, tag type could be either UNKNOWN or BYTE.
@@ -163,24 +171,27 @@ func (h *TIFF) readPSIRIFD() (err error) {
 				return fmt.Errorf("PSIR: %s", err)
 			}
 		}
-		h.psirBlock = new(photoshop.Photoshop)
 		if err = h.psirBlock.Read(r); err != nil {
 			return fmt.Errorf("PSIR block: %s", err)
 		}
 		tag.SetContainer(h.psirBlock)
-		if iimPSIR = h.psirBlock.PSIR(psirIDIIM); iimPSIR == nil {
-			return nil
-		}
-		h.psirIIM = new(iim.IIM)
+	} else {
+		tag = h.tiffIFD0.AddTag(tagPSIR, 7)
+		tag.SetContainer(h.psirBlock)
+	}
+	if iimPSIR = h.psirBlock.PSIR(psirIDIIM); iimPSIR != nil {
 		if err = h.psirIIM.Read(iimPSIR.Reader()); err != nil {
 			return fmt.Errorf("PSIR: %s", err)
 		}
 		iimPSIR.SetContainer(h.psirIIM)
-		if psirIPTCProvider, err = iptc.New(h.psirIIM); err != nil {
-			return fmt.Errorf("PSIR: %s", err)
-		}
-		h.providers = append(h.providers, psirIPTCProvider)
+	} else {
+		h.psirBlock.AddPSIR(psirIDIIM, "", h.psirIIM)
 	}
+	if psirIPTCProvider, err = iptc.New(h.psirIIM); err != nil {
+		return fmt.Errorf("PSIR: %s", err)
+	}
+	h.providers = append(h.providers, psirIPTCProvider)
+
 	return nil
 }
 
@@ -193,11 +204,14 @@ func (h *TIFF) readEXIFIFD() (err error) {
 		if exifIFD, err = tag.AsIFD(); err != nil {
 			return fmt.Errorf("EXIF IFD: %s", err)
 		}
-		if exifIFDProvider, err = exififd.New(exifIFD, h.container.Encoding()); err != nil {
-			return err
-		}
-		h.providers = append(h.providers, exifIFDProvider)
+	} else {
+		tag = h.tiffIFD0.AddTag(tagEXIFIFD, 4)
+		exifIFD, _ = tag.AddIFD()
 	}
+	if exifIFDProvider, err = exififd.New(exifIFD, h.container.Encoding()); err != nil {
+		return err
+	}
+	h.providers = append(h.providers, exifIFDProvider)
 	return nil
 }
 
@@ -210,25 +224,25 @@ func (h *TIFF) readGPSIFD() (err error) {
 		if gpsIFD, err = tag.AsIFD(); err != nil {
 			return fmt.Errorf("GPS IFD: %s", err)
 		}
-		if gpsIFDProvider, err = gpsifd.New(gpsIFD); err != nil {
-			return err
-		}
-		h.providers = append(h.providers, gpsIFDProvider)
+	} else {
+		tag = h.tiffIFD0.AddTag(tagGPSIFD, 4)
+		gpsIFD, _ = tag.AddIFD()
 	}
+	if gpsIFDProvider, err = gpsifd.New(gpsIFD); err != nil {
+		return err
+	}
+	h.providers = append(h.providers, gpsIFDProvider)
 	return nil
 }
 
 // Dirty returns whether the metadata from the file have been changed since they
 // were read (and therefore need to be saved).
-func (h *TIFF) Dirty() bool {
-	return h.container.Dirty() ||
-		(h.psirIIM != nil && h.psirIIM.Dirty())
-}
+func (h *TIFF) Dirty() bool { return h.container.Dirty() }
 
 // Save writes the entire file to the supplied writer, including all revised
 // metadata.
 func (h *TIFF) Save(out io.Writer) (err error) {
-	if h.psirIIM != nil {
+	if !h.psirIIM.Empty() {
 		var (
 			hashRaw  *raw.Raw
 			hashPSIR *photoshop.PSIR
@@ -242,6 +256,7 @@ func (h *TIFF) Save(out io.Writer) (err error) {
 		h.psirIIM.SetHashContainer(hashRaw)
 		hashRaw.SetData(make([]byte, 16)) // give it correct size
 	}
+	h.container.Layout()
 	_, err = h.container.Write(out)
 	return err
 }

@@ -93,7 +93,7 @@ func (tag *Tag) AsBytes() (by []byte, err error) {
 	if tag.ttype != 1 {
 		return nil, errors.New("tag type is not BYTE")
 	}
-	if tag.data == nil {
+	if tag.reader != nil {
 		by = make([]byte, tag.reader.Size())
 		if _, err = tag.reader.ReadAt(by, 0); err != nil {
 			return nil, err
@@ -111,7 +111,7 @@ func (tag *Tag) AsBytesReader() (metadata.Reader, error) {
 	if tag.ttype != 1 {
 		return nil, errors.New("tag type is not BYTE")
 	}
-	if tag.data == nil {
+	if tag.reader != nil {
 		return tag.reader, nil
 	}
 	return bytes.NewReader(tag.data), nil
@@ -137,7 +137,7 @@ func (tag *Tag) AsUnknown() (by []byte, err error) {
 	if tag.ttype != 7 {
 		return nil, errors.New("tag type is not UNKNOWN")
 	}
-	if tag.data == nil {
+	if tag.reader != nil {
 		by = make([]byte, tag.reader.Size())
 		if _, err = tag.reader.ReadAt(by, 0); err != nil {
 			return nil, err
@@ -155,7 +155,7 @@ func (tag *Tag) AsUnknownReader() (metadata.Reader, error) {
 	if tag.ttype != 7 {
 		return nil, errors.New("tag type is not UNKNOWN")
 	}
-	if tag.data == nil {
+	if tag.reader != nil {
 		return tag.reader, nil
 	}
 	return bytes.NewReader(tag.data), nil
@@ -182,7 +182,7 @@ func (tag *Tag) AsLongReader() (metadata.Reader, error) {
 	if tag.ttype != 4 {
 		return nil, errors.New("tag type is not LONG")
 	}
-	if tag.data == nil {
+	if tag.reader != nil {
 		return tag.reader, nil
 	}
 	return bytes.NewReader(tag.data), nil
@@ -302,18 +302,17 @@ func (tag *Tag) AsIFD() (ifd *IFD, err error) {
 // (empty) IFD.  If the tag value already is an IFD, the existing IFD is
 // returned.
 func (tag *Tag) AddIFD() (ifd *IFD, err error) {
-	if tag.ttype != 0 {
+	if len(tag.data) != 0 {
 		if ifd, err = tag.AsIFD(); err != nil || ifd != nil {
 			return ifd, err
 		}
 	}
-	ifd = &IFD{t: tag.ifd.t, back: tag.ifd, dirty: true}
+	ifd = &IFD{t: tag.ifd.t, back: tag.ifd}
 	tag.ttype = 4 // LONG
 	tag.toIFD = ifd
 	tag.data = nil
 	tag.reader = nil
 	tag.container = nil
-	tag.ifd.dirty = true
 	return ifd, nil
 }
 

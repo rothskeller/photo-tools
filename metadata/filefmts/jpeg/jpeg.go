@@ -2,7 +2,6 @@
 package jpeg
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -83,17 +82,14 @@ func (jh *JPEG) readEXIFSegment() (err error) {
 		exifIFDProvider  *exififd.Provider
 		gpsIFDProvider   *gpsifd.Provider
 	)
-	if exifSeg = jh.container.EXIF(); exifSeg == nil {
-		return nil
-	}
 	jh.exifTIFF = new(tiff.TIFF)
-	if err = jh.exifTIFF.Read(exifSeg); err != nil {
-		return fmt.Errorf("EXIF segment: %s", err)
+	if exifSeg = jh.container.EXIF(); exifSeg != nil {
+		if err = jh.exifTIFF.Read(exifSeg); err != nil {
+			return fmt.Errorf("EXIF segment: %s", err)
+		}
 	}
 	jh.container.SetEXIFContainer(jh.exifTIFF)
-	if jpegIFD0 = jh.exifTIFF.IFD0(); jpegIFD0 == nil {
-		return errors.New("EXIF segment: no IFD0")
-	}
+	jpegIFD0 = jh.exifTIFF.IFD0()
 	if jpegIFD0Provider, err = jpegifd0.New(jpegIFD0); err != nil {
 		return err
 	}
@@ -102,20 +98,26 @@ func (jh *JPEG) readEXIFSegment() (err error) {
 		if exifIFD, err = tag.AsIFD(); err != nil {
 			return fmt.Errorf("EXIF IFD: %s", err)
 		}
-		if exifIFDProvider, err = exififd.New(exifIFD, jh.exifTIFF.Encoding()); err != nil {
-			return err
-		}
-		jh.providers = append(jh.providers, exifIFDProvider)
+	} else {
+		tag = jpegIFD0.AddTag(tagEXIFIFD, 4)
+		exifIFD, _ = tag.AddIFD()
 	}
+	if exifIFDProvider, err = exififd.New(exifIFD, jh.exifTIFF.Encoding()); err != nil {
+		return err
+	}
+	jh.providers = append(jh.providers, exifIFDProvider)
 	if tag := jpegIFD0.Tag(tagGPSIFD); tag != nil {
 		if gpsIFD, err = tag.AsIFD(); err != nil {
 			return fmt.Errorf("GPS IFD: %s", err)
 		}
-		if gpsIFDProvider, err = gpsifd.New(gpsIFD); err != nil {
-			return err
-		}
-		jh.providers = append(jh.providers, gpsIFDProvider)
+	} else {
+		tag = jpegIFD0.AddTag(tagGPSIFD, 4)
+		gpsIFD, _ = tag.AddIFD()
 	}
+	if gpsIFDProvider, err = gpsifd.New(gpsIFD); err != nil {
+		return err
+	}
+	jh.providers = append(jh.providers, gpsIFDProvider)
 	return nil
 }
 
@@ -125,22 +127,22 @@ func (jh *JPEG) readPSIRSegment() (err error) {
 		iimPSIR      *photoshop.PSIR
 		iptcProvider *iptc.Provider
 	)
-	if psirSeg = jh.container.PSIR(); psirSeg == nil {
-		return nil
-	}
 	jh.psirBlock = new(photoshop.Photoshop)
-	if err = jh.psirBlock.Read(psirSeg); err != nil {
-		return fmt.Errorf("PSIR segment: %s", err)
+	if psirSeg = jh.container.PSIR(); psirSeg != nil {
+		if err = jh.psirBlock.Read(psirSeg); err != nil {
+			return fmt.Errorf("PSIR segment: %s", err)
+		}
 	}
 	jh.container.SetPSIRContainer(jh.psirBlock)
-	if iimPSIR = jh.psirBlock.PSIR(psirIDIIM); iimPSIR == nil {
-		return nil
+	jh.iim = iim.New()
+	if iimPSIR = jh.psirBlock.PSIR(psirIDIIM); iimPSIR != nil {
+		if err = jh.iim.Read(iimPSIR.Reader()); err != nil {
+			return err
+		}
+		iimPSIR.SetContainer(jh.iim)
+	} else {
+		jh.psirBlock.AddPSIR(psirIDIIM, "", jh.iim)
 	}
-	jh.iim = new(iim.IIM)
-	if err = jh.iim.Read(iimPSIR.Reader()); err != nil {
-		return err
-	}
-	iimPSIR.SetContainer(jh.iim)
 	if iptcProvider, err = iptc.New(jh.iim); err != nil {
 		return err
 	}
@@ -156,42 +158,38 @@ func (jh *JPEG) readXMPSegments() (err error) {
 		xmpProvider    *xmp.Provider
 		xmpExtProvider *xmpext.Provider
 	)
+	jh.xmpRDF = rdf.New()
 	if xmpSeg = jh.container.XMP(); xmpSeg != nil {
-		jh.xmpRDF = rdf.New()
 		if err = jh.xmpRDF.Read(xmpSeg); err != nil {
 			return fmt.Errorf("XMP: %s", err)
 		}
-		jh.container.SetXMPContainer(jh.xmpRDF)
-		if xmpProvider, err = xmp.New(jh.xmpRDF); err != nil {
-			return err
-		}
-		jh.providers = append(jh.providers, xmpProvider)
 	}
+	jh.container.SetXMPContainer(jh.xmpRDF)
+	if xmpProvider, err = xmp.New(jh.xmpRDF); err != nil {
+		return err
+	}
+	jh.providers = append(jh.providers, xmpProvider)
+	xmpExtRDF = rdf.New()
 	if xmpExtSeg = jh.container.XMPext(); xmpExtSeg != nil {
-		xmpExtRDF = rdf.New()
 		if err = xmpExtRDF.Read(xmpExtSeg); err != nil {
 			return fmt.Errorf("XMPExt: %s", err)
 		}
-		if xmpExtProvider, err = xmpext.New(xmpExtRDF); err != nil {
-			return err
-		}
-		jh.providers = append(jh.providers, xmpExtProvider)
 	}
+	if xmpExtProvider, err = xmpext.New(xmpExtRDF); err != nil {
+		return err
+	}
+	jh.providers = append(jh.providers, xmpExtProvider)
 	return nil
 }
 
 // Dirty returns whether the metadata from the file have been changed since they
 // were read (and therefore need to be saved).
-func (jh *JPEG) Dirty() bool {
-	return jh.exifTIFF.Dirty() ||
-		(jh.iim != nil && jh.iim.Dirty()) ||
-		(jh.xmpRDF != nil && jh.xmpRDF.Dirty())
-}
+func (jh *JPEG) Dirty() bool { return jh.container.Dirty() }
 
 // Save writes the entire file to the supplied writer, including all revised
 // metadata.
 func (jh *JPEG) Save(out io.Writer) (err error) {
-	if jh.iim != nil {
+	if !jh.iim.Empty() {
 		var (
 			hashRaw  *raw.Raw
 			hashPSIR *photoshop.PSIR
@@ -205,6 +203,7 @@ func (jh *JPEG) Save(out io.Writer) (err error) {
 		jh.iim.SetHashContainer(hashRaw)
 		hashRaw.SetData(make([]byte, 16)) // give it correct size
 	}
+	jh.container.Layout()
 	_, err = jh.container.Write(out)
 	return err
 }

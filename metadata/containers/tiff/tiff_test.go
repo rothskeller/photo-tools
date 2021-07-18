@@ -96,6 +96,7 @@ func TestWrite1(t *testing.T) {
 	tag3 := ifd1.Tag(3)
 	tag3.SetString("Hello, world!")
 	var buf bytes.Buffer
+	tl.Layout()
 	if _, err := tl.Write(&buf); err != nil {
 		t.Fatal(err)
 	}
@@ -201,6 +202,7 @@ func TestWrite2(t *testing.T) {
 	tag3 := ifd1.Tag(3)
 	tag3.SetString("Hello, world!!")
 	var buf bytes.Buffer
+	tl.Layout()
 	if _, err := tl.Write(&buf); err != nil {
 		t.Fatal(err)
 	}
@@ -263,14 +265,15 @@ func TestWrite3(t *testing.T) {
 	ifd0 := tl.IFD0()
 	ifd0.DeleteTag(1)
 	ifd2, _ := ifd0.NextIFD()
-	tag5 := ifd2.AddTag(5)
+	tag5 := ifd2.AddTag(5, 4)
 	ifd3, _ := tag5.AddIFD()
-	tag6 := ifd3.AddTag(6)
+	tag6 := ifd3.AddTag(6, 1)
 	tag6.SetBytes([]byte{0x44, 0x55, 0x66, 0x77, 0x88})
 	ifd4, _ := ifd3.AddNextIFD()
-	tag7 := ifd4.AddTag(7)
+	tag7 := ifd4.AddTag(7, 5)
 	tag7.SetRationals([]uint32{4, 5, 6, 7})
 	var buf bytes.Buffer
+	tl.Layout()
 	if _, err := tl.Write(&buf); err != nil {
 		t.Fatal(err)
 	}

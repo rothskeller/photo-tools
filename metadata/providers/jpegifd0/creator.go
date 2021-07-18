@@ -79,6 +79,6 @@ func (p *Provider) SetCreator(value string) error {
 	if strings.IndexAny(value, `";`) >= 0 {
 		value = `"` + strings.ReplaceAll(value, `"`, `""`) + `"`
 	}
-	p.ifd.AddTag(tagArtist).SetString(value)
+	p.ifd.AddTag(tagArtist, 2).SetString(value)
 	return nil
 }

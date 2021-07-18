@@ -94,14 +94,14 @@ func (p *Provider) SetDateTime(value metadata.DateTime) error {
 	}
 	p.dateTimeOriginal = value
 	dto, ssto, oto := value.AsEXIF()
-	p.ifd.AddTag(tagDateTimeOriginal).SetString(dto)
+	p.ifd.AddTag(tagDateTimeOriginal, 2).SetString(dto)
 	if ssto != "" {
-		p.ifd.AddTag(tagSubSecTimeOriginal).SetString(ssto)
+		p.ifd.AddTag(tagSubSecTimeOriginal, 2).SetString(ssto)
 	} else {
 		p.ifd.DeleteTag(tagSubSecTimeOriginal)
 	}
 	if oto != "" {
-		p.ifd.AddTag(tagOffsetTimeOriginal).SetString(oto)
+		p.ifd.AddTag(tagOffsetTimeOriginal, 2).SetString(oto)
 	} else {
 		p.ifd.DeleteTag(tagOffsetTimeOriginal)
 	}

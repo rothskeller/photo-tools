@@ -85,19 +85,19 @@ func (p *Provider) SetGPS(value metadata.GPSCoords) (err error) {
 	}
 	p.gpsCoords = value
 	latref, lat, longref, long, altref, alt := value.AsEXIF()
-	p.ifd.AddTag(1).SetString(latref)
-	p.ifd.AddTag(2).SetRationals(lat)
-	p.ifd.AddTag(3).SetString(longref)
-	p.ifd.AddTag(4).SetRationals(long)
+	p.ifd.AddTag(1, 2).SetString(latref)
+	p.ifd.AddTag(2, 5).SetRationals(lat)
+	p.ifd.AddTag(3, 2).SetString(longref)
+	p.ifd.AddTag(4, 5).SetRationals(long)
 	if alt != nil {
-		p.ifd.AddTag(5).SetBytes([]byte{altref})
-		p.ifd.AddTag(6).SetRationals(alt)
+		p.ifd.AddTag(5, 1).SetBytes([]byte{altref})
+		p.ifd.AddTag(6, 5).SetRationals(alt)
 	} else {
 		p.ifd.DeleteTag(5)
 		p.ifd.DeleteTag(6)
 	}
 	if p.ifd.Tag(0) == nil {
-		p.ifd.AddTag(0).SetBytes([]byte{2, 3, 0, 0})
+		p.ifd.AddTag(0, 1).SetBytes([]byte{2, 3, 0, 0})
 	}
 	return nil
 }

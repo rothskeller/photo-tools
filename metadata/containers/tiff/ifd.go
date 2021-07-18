@@ -104,6 +104,7 @@ func (ifd *IFD) Dirty() bool {
 // call to Write, and returns what the rendered size of the container will be.
 func (ifd *IFD) Layout() int64 {
 	ifd.size = 6
+	j := 0
 	for _, tag := range ifd.tags {
 		if tag.Empty() {
 			continue
@@ -115,7 +116,10 @@ func (ifd *IFD) Layout() int64 {
 			}
 			ifd.size += int64(tsz)
 		}
+		ifd.tags[j] = tag
+		j++
 	}
+	ifd.tags = ifd.tags[:j]
 	return ifd.size
 }
 
@@ -136,9 +140,6 @@ func (ifd *IFD) Write(w io.Writer) (count int, err error) {
 		return count, err
 	}
 	for _, tag := range ifd.tags {
-		if tag.Empty() {
-			continue
-		}
 		offset, n, err = tag.write(w, offset)
 		count += n
 		if err != nil {
@@ -159,9 +160,6 @@ func (ifd *IFD) Write(w io.Writer) (count int, err error) {
 		return count, err
 	}
 	for _, tag := range ifd.tags {
-		if tag.Empty() {
-			continue
-		}
 		if tsz, _ := tag.size(); count%2 == 1 && tsz > 4 {
 			n, err = w.Write([]byte{0})
 			count += n
@@ -205,20 +203,18 @@ func (ifd *IFD) NextTag(after uint16) *Tag {
 	return nil
 }
 
-// AddTag adds a tag to the IFD.  It does not set a value or type for the tag;
-// that needs to be done separately.  If the tag already exists, the existing
-// tag is returned.
-func (ifd *IFD) AddTag(id uint16) *Tag {
+// AddTag adds a tag to the IFD, with the specified ttype and no data.  If the
+// tag already exists, the existing tag is returned.
+func (ifd *IFD) AddTag(id, ttype uint16) *Tag {
 	idx := sort.Search(len(ifd.tags), func(i int) bool {
 		return ifd.tags[i].tag >= id
 	})
 	if idx < len(ifd.tags) && ifd.tags[idx].tag == id {
 		return ifd.tags[idx]
 	}
-	ifd.dirty = true
 	ifd.tags = append(ifd.tags, nil)
 	copy(ifd.tags[idx+1:], ifd.tags[idx:])
-	ifd.tags[idx] = &Tag{ifd: ifd, tag: id}
+	ifd.tags[idx] = &Tag{ifd: ifd, tag: id, ttype: ttype}
 	return ifd.tags[idx]
 }
 
@@ -233,7 +229,9 @@ func (ifd *IFD) DeleteTag(id uint16) {
 	if idx >= len(ifd.tags) || ifd.tags[idx].tag != id {
 		return
 	}
-	ifd.dirty = true
+	if !ifd.tags[idx].Empty() {
+		ifd.dirty = true
+	}
 	ifd.tags = append(ifd.tags[:idx], ifd.tags[idx+1:]...)
 }
 
@@ -263,7 +261,6 @@ func (ifd *IFD) AddNextIFD() (next *IFD, err error) {
 	} else if err != nil {
 		return nil, err
 	}
-	ifd.nextIFD = &IFD{t: ifd.t, back: ifd, dirty: true}
-	ifd.dirty = true
+	ifd.nextIFD = &IFD{t: ifd.t, back: ifd}
 	return ifd.nextIFD, nil
 }

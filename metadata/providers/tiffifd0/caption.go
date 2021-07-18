@@ -36,6 +36,6 @@ func (p *Provider) SetCaption(value string) error {
 		return nil
 	}
 	p.imageDescription = value
-	p.ifd.AddTag(tagImageDescription).SetString(value)
+	p.ifd.AddTag(tagImageDescription, 2).SetString(value)
 	return nil
 }

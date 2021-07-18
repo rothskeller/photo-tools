@@ -32,6 +32,11 @@ type DataSet struct {
 	Data []byte
 }
 
+// New creates a new IIM block.
+func New() *IIM {
+	return &IIM{dsmap: make(map[uint16][]DataSet)}
+}
+
 // Read parses the IIM block in the supplied reader.
 func (iim *IIM) Read(r metadata.Reader) (err error) {
 	var (
@@ -42,7 +47,6 @@ func (iim *IIM) Read(r metadata.Reader) (err error) {
 		size   uint64
 		sum    hash.Hash
 	)
-	iim.dsmap = make(map[uint16][]DataSet)
 	if _, err = r.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("IIM: %s", err)
 	}

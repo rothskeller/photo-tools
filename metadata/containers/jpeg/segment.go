@@ -93,6 +93,9 @@ func (seg *segmentGroup) Read(r metadata.Reader) (err error) {
 // from the written file, along with whatever tag in the parent container points
 // to it).
 func (seg *segmentGroup) Empty() bool {
+	if seg == nil {
+		return true
+	}
 	if seg.container != nil {
 		return seg.container.Empty()
 	}

@@ -9,8 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rothskeller/photo-tools/filefmt"
-	"github.com/rothskeller/photo-tools/strmeta"
+	"github.com/rothskeller/photo-tools/metadata/filefmts"
 	"github.com/webview/webview"
 )
 
@@ -27,7 +26,7 @@ var (
 func main() {
 	var (
 		files    []string
-		handlers []filefmt.FileHandler
+		handlers []filefmts.FileFormat
 	)
 	// Parse arguments and read files.
 	if len(os.Args) < 2 {
@@ -35,16 +34,13 @@ func main() {
 		os.Exit(2)
 	}
 	for _, file := range os.Args[1:] {
-		handler := filefmt.HandlerFor(file)
-		if handler == nil {
-			fmt.Fprintf(os.Stderr, "ERROR: %s: unsupported file type\n", file)
+		handler, err := filefmts.HandlerForName(file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file, err)
 			continue
 		}
-		handler.ReadMetadata()
-		if problems := handler.Problems(); len(problems) != 0 {
-			for _, problem := range problems {
-				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file, problem)
-			}
+		if handler == nil {
+			fmt.Fprintf(os.Stderr, "ERROR: %s: unsupported file type\n", file)
 			continue
 		}
 		files = append(files, file)
@@ -58,7 +54,7 @@ func main() {
 	abbrevs = make(map[string]string)
 	abbrevFor = make(map[string]string)
 	for _, handler := range handlers {
-		for _, person := range strmeta.GetPeople(handler) {
+		for _, person := range handler.Provider().People() {
 			assignAbbrev(person)
 		}
 	}
@@ -77,7 +73,7 @@ func main() {
 	viewer.Run()
 }
 
-func handleFile(fname string, handler filefmt.FileHandler) {
+func handleFile(fname string, handler filefmts.FileFormat) {
 	var (
 		pmap   = make(map[string]bool)
 		in     string
@@ -85,7 +81,7 @@ func handleFile(fname string, handler filefmt.FileHandler) {
 		remove bool
 		uri    url.URL
 	)
-	for _, person := range strmeta.GetPeople(handler) {
+	for _, person := range handler.Provider().People() {
 		pmap[person] = true
 	}
 	uri.Scheme = "file"
@@ -154,12 +150,12 @@ SAVE:
 			plist = append(plist, person)
 		}
 	}
-	if err := strmeta.SetPeople(handler, plist); err != nil {
+	if err := handler.Provider().SetPeople(plist); err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", fname, err)
 		os.Exit(1)
 	}
-	if err := handler.SaveMetadata(); err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", fname, err)
+	if err := filefmts.Save(handler, fname); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 		os.Exit(1)
 	}
 }

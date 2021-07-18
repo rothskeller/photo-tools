@@ -3,9 +3,11 @@
 package filefmts
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/filefmts/jpeg"
@@ -23,6 +25,22 @@ type FileFormat interface {
 	// Save writes the entire file to the supplied writer, including all
 	// revised metadata.
 	Save(out io.Writer) error
+}
+
+// HandlerForName returns a file format handler appropriate for the type of the
+// specified file, or nil if there is no handler for the file type.  It returns
+// an error if the file cannot be read, or if the handler for its type finds a
+// problem with it.
+func HandlerForName(file string) (f FileFormat, err error) {
+	var fh *os.File
+
+	if fh, err = os.Open(file); err != nil {
+		return nil, err
+	}
+	if f, err = HandlerFor(fh); err != nil || f == nil {
+		fh.Close()
+	}
+	return f, err
 }
 
 // HandlerFor returns a file format handler appropriate for the type of the
@@ -46,6 +64,39 @@ func HandlerFor(fh *os.File) (f FileFormat, err error) {
 		return f, nil
 	}
 	return nil, nil
+}
+
+// Save saves the file represented by the handler to the specified file name.
+func Save(f FileFormat, file string) (err error) {
+	var (
+		tempfn string
+		ofh    *os.File
+		out    *bufio.Writer
+	)
+	tempfn = filepath.Dir(file) + "/." + filepath.Base(file) + ".TEMP"
+	if ofh, err = os.Create(tempfn); err != nil {
+		return err
+	}
+	out = bufio.NewWriter(ofh)
+	if err = f.Save(out); err != nil {
+		ofh.Close()
+		os.Remove(tempfn)
+		return fmt.Errorf("%s: %s", tempfn, err)
+	}
+	if err = out.Flush(); err != nil {
+		ofh.Close()
+		os.Remove(tempfn)
+		return fmt.Errorf("%s: %s", tempfn, err)
+	}
+	if err = ofh.Close(); err != nil {
+		os.Remove(tempfn)
+		return fmt.Errorf("%s: %s", tempfn, err)
+	}
+	if err = os.Rename(tempfn, file); err != nil {
+		os.Remove(tempfn)
+		return fmt.Errorf("%s: %s", file, err)
+	}
+	return nil
 }
 
 type reader struct {

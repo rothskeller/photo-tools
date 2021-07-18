@@ -3,11 +3,9 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"sort"
 
 	"github.com/rothskeller/photo-tools/md/operations"
@@ -181,46 +179,12 @@ func main() {
 	}
 	for _, file := range files {
 		if file.Handler.Dirty() {
-			var (
-				tempfn string
-				ofh    *os.File
-				out    *bufio.Writer
-			)
 			if !isWriteOp {
 				panic("file is dirty after a read operation")
 			}
-			tempfn = filepath.Dir(file.Path) + "/." + filepath.Base(file.Path) + ".TEMP"
-			if ofh, err = os.Create(tempfn); err != nil {
+			if err = filefmts.Save(file.Handler, file.Path); err != nil {
 				fmt.Fprintf(os.Stderr, "ERROR: %s\n", err)
 				sawError = true
-				continue
-			}
-			out = bufio.NewWriter(ofh)
-			if err = file.Handler.Save(out); err != nil {
-				ofh.Close()
-				os.Remove(tempfn)
-				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", tempfn, err)
-				sawError = true
-				continue
-			}
-			if err = out.Flush(); err != nil {
-				ofh.Close()
-				os.Remove(tempfn)
-				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", tempfn, err)
-				sawError = true
-				continue
-			}
-			if err = ofh.Close(); err != nil {
-				os.Remove(tempfn)
-				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", tempfn, err)
-				sawError = true
-				continue
-			}
-			if err = os.Rename(tempfn, file.Path); err != nil {
-				os.Remove(tempfn)
-				fmt.Fprintf(os.Stderr, "ERROR: %s: %s\n", file.Path, err)
-				sawError = true
-				continue
 			}
 		}
 	}

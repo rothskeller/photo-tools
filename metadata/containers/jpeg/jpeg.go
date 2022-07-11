@@ -31,11 +31,11 @@ var (
 
 // A JPEG is a container of Segments.
 type JPEG struct {
-	start  *segmentGroup
-	jfif   []*segmentGroup // multiple namespaces, so can't be one group
-	exif   *segmentGroup
-	xmp    *segmentGroup
-	xmpext *segmentGroup
+	start *segmentGroup
+	jfif  []*segmentGroup // multiple namespaces, so can't be one group
+	exif  *segmentGroup
+	xmp   *segmentGroup
+	// xmpext *segmentGroup
 	psir   *segmentGroup
 	others []*segmentGroup
 	end    *segmentGroup
@@ -75,8 +75,8 @@ func (jpeg *JPEG) Read(r metadata.Reader) (err error) {
 			jpeg.exif = jpeg.exif.merge(seg, 0)
 		case bytes.Equal(seg.namespace, nsXMP):
 			jpeg.xmp = jpeg.xmp.merge(seg, 0)
-		case bytes.Equal(seg.namespace, nsXMPext):
-			jpeg.xmpext = jpeg.xmpext.merge(seg, 40)
+		// case bytes.Equal(seg.namespace, nsXMPext):
+		// 	jpeg.xmpext = jpeg.xmpext.merge(seg, 40)
 		case bytes.Equal(seg.namespace, nsPSIR):
 			jpeg.psir = jpeg.psir.merge(seg, 0)
 		}
@@ -109,9 +109,9 @@ func (jpeg *JPEG) Layout() int64 {
 	if !jpeg.xmp.Empty() {
 		jpeg.all = append(jpeg.all, jpeg.xmp)
 	}
-	if !jpeg.xmpext.Empty() {
-		jpeg.all = append(jpeg.all, jpeg.xmpext)
-	}
+	// if !jpeg.xmpext.Empty() {
+	// 	jpeg.all = append(jpeg.all, jpeg.xmpext)
+	// }
 	if !jpeg.psir.Empty() {
 		jpeg.all = append(jpeg.all, jpeg.psir)
 	}
@@ -121,6 +121,7 @@ func (jpeg *JPEG) Layout() int64 {
 		}
 	}
 	jpeg.all = append(jpeg.all, jpeg.end)
+	jpeg.size = 0
 	for _, seg := range jpeg.all {
 		jpeg.size += seg.Layout()
 	}
@@ -179,12 +180,12 @@ func (jpeg *JPEG) XMP() metadata.Reader {
 }
 
 // XMPext returns the contents of the XMP extension segment, if any.
-func (jpeg *JPEG) XMPext() metadata.Reader {
-	if jpeg.xmpext != nil {
-		return jpeg.xmpext.reader
-	}
-	return nil
-}
+// func (jpeg *JPEG) XMPext() metadata.Reader {
+// 	if jpeg.xmpext != nil {
+// 		return jpeg.xmpext.reader
+// 	}
+// 	return nil
+// }
 
 // PSIR returns the contents of the PSIR segment, if any.
 func (jpeg *JPEG) PSIR() metadata.Reader {

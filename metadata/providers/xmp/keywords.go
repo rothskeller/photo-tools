@@ -165,9 +165,9 @@ func (p *Provider) setFilteredKeywordsHier(
 	}
 	var kwstrs = make([]string, len(kws))
 	var kwmap = make(map[string]bool)
-	for _, kw := range kws {
+	for i, kw := range kws {
 		kwstr := strings.Join(kw, sep)
-		kwstrs = append(kwstrs, kwstr)
+		kwstrs[i] = kwstr
 		kwmap[kwstr] = false
 	}
 	var changed = false

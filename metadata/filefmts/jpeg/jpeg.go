@@ -152,8 +152,8 @@ func (jh *JPEG) readPSIRSegment() (err error) {
 
 func (jh *JPEG) readXMPSegments() (err error) {
 	var (
-		xmpSeg         metadata.Reader
-		xmpExtSeg      metadata.Reader
+		xmpSeg metadata.Reader
+		// xmpExtSeg      metadata.Reader
 		xmpExtRDF      *rdf.Packet
 		xmpProvider    *xmp.Provider
 		xmpExtProvider *xmpext.Provider
@@ -170,11 +170,11 @@ func (jh *JPEG) readXMPSegments() (err error) {
 	}
 	jh.providers = append(jh.providers, xmpProvider)
 	xmpExtRDF = rdf.New()
-	if xmpExtSeg = jh.container.XMPext(); xmpExtSeg != nil {
-		if err = xmpExtRDF.Read(xmpExtSeg); err != nil {
-			return fmt.Errorf("XMPExt: %s", err)
-		}
-	}
+	// if xmpExtSeg = jh.container.XMPext(); xmpExtSeg != nil {
+	// 	if err = xmpExtRDF.Read(xmpExtSeg); err != nil {
+	// 		return fmt.Errorf("XMPExt: %s", err)
+	// 	}
+	// }
 	if xmpExtProvider, err = xmpext.New(xmpExtRDF); err != nil {
 		return err
 	}

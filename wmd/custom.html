@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Control Test</title>
+    <script>
+      class AutoCompleteTextArea extends HTMLElement {
+        static styles = `
+main {
+  position: relative;
+  display: grid;
+}
+textarea {
+  resize: none;
+  overflow: hidden;
+}
+span {
+  white-space: pre-wrap;
+  visibility: hidden;
+  border: 1px solid transparent;
+}
+textarea,
+span {
+  grid-area: 1 / 1 / 2 / 2;
+  display: block;
+  width: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1rem;
+  padding: 0.125rem;
+  line-height: 1;
+}
+.dirty {
+  background-color: orange;
+}
+div {
+  position: absolute;
+  top: calc(1.25rem + 1px);
+  left: 0;
+  border: 1px solid #767676;
+  z-index: 1;
+  background-color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+a {
+  display: block;
+  padding: 0.25rem 0.5rem;
+  text-decoration: none;
+}
+.selected {
+  background-color: #9c9cff;
+}
+`
+        // The control has three observed attributes:
+        //   - value is the value of the control.
+        //   - dirty is a boolean indicating whether the control's value has
+        //     changed from what is currently saved.
+        //   - separator is the character that separates parts of the value (if
+        //     any).
+        static get observedAttributes() { return ['dirty', 'value'] }
+        get dirty() { return this.hasAttribute('dirty') }
+        set dirty(v) {
+          if (v) this.setAttribute('dirty', 'dirty')
+          else this.removeAttribute('dirty')
+        }
+        get separator() { return this.getAttribute('separator') || ''}
+        set separator(v) {
+          if (v) this.setAttribute('separator', v)
+          else this.removeAttribute('separator')
+        }
+        get value() { return this.getAttribute('value') }
+        set value(v) { this.setAttribute('value', v) }
+
+        constructor() {
+          super()
+          this.completer = null
+        }
+
+        // When the control is mounted, create the shadow DOM and register
+        // event handlers.
+        connectedCallback() {
+          this.attachShadow({ mode: 'open' })
+          const stylesheet = document.createElement('style')
+          stylesheet.textContent = AutoCompleteTextArea.styles
+          this.shadowRoot.append(stylesheet)
+          this.wrapper = document.createElement('main')
+          this.shadowRoot.append(this.wrapper)
+          this.textarea = document.createElement('textarea')
+          this.textarea.className = this.hasAttribute('dirty') ? 'dirty' : null
+          this.textarea.rows = 1
+          this.textarea.value = this.getAttribute('value') || ''
+          this.textarea.addEventListener('input', this.onInput.bind(this))
+          this.textarea.addEventListener('keydown', this.onKeyDown.bind(this))
+          this.wrapper.append(this.textarea)
+          this.sizer = document.createElement('span')
+          this.sizer.textContent = this.textarea.value
+          this.wrapper.append(this.sizer)
+          this.dropdown = document.createElement('div')
+          this.dropdown.style.display = 'none'
+          this.wrapper.append(this.dropdown)
+          this.attributeChangedCallback()
+          this.completions = []
+          this.completion = -1
+          this.inhibitCompletion = false
+        }
+
+        // Keystrokes are handled by the onKeyDown handler below, so the only
+        // way we get an onInput event from the textarea is if the user pastes
+        // into it.  That can happen, though, so let's handle it.
+        onInput(event) {
+          this.setAttribute('value', event.target.value)
+          this.inhibitCompletion = false
+        }
+
+        // Handle a keystroke in the textarea.
+        onKeyDown(event) {
+          // If the key that was pressed is printable, insert it.
+          if (event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey) {
+            event.preventDefault()
+            let key = event.key
+            const sep = this.getAttribute('separator')
+            if (key === sep) {
+              // If the key is the separator character, accept any completion before inserting it.
+              if (this.textarea.selectionEnd === this.textarea.value.length && this.textarea.selectionStart < this.textarea.selectionEnd) {
+                this.textarea.setSelectionRange(this.textarea.value.length, this.textarea.value.length)
+              }
+              // Also, surround the separator character with spaces.
+              if (!this.textarea.value.substring(0, this.textarea.selectionStart).endsWith(' ')) key = ` ${key}`
+              key = `${key} `
+            }
+            // Insert the character, and adjust the selection location.
+            let value = this.textarea.value
+            const selAfter = this.textarea.selectionStart + key.length
+            value = value.substring(0, this.textarea.selectionStart) + key + value.substring(this.textarea.selectionEnd)
+            this.setAttribute('value', value)
+            this.textarea.setSelectionRange(selAfter, selAfter)
+            // Run completion on the new value.
+            this.inhibitCompletion = false
+            this.completeValue()
+            return
+          }
+          switch (event.key) {
+          case 'Tab':
+            // If the key was a Tab character, allow the browser to handle it.
+            this.inhibitCompletion = false
+            return
+          case 'Backspace':
+            // If the key was a backspace, handle it the way the browser does.
+            // Inhibit completion until a new character is typed.
+            event.preventDefault()
+            if (this.textarea.selectionStart !== this.textarea.selectionEnd) {
+              const selAfter = this.textarea.selectionStart
+              this.setAttribute('value', this.textarea.value.substring(0, this.textarea.selectionStart) + this.textarea.value.substring(this.textarea.selectionEnd))
+              this.textarea.setSelectionRange(selAfter, selAfter)
+            } else if (this.textarea.selectionStart > 0) {
+              const selAfter = this.textarea.selectionStart - 1
+              this.setAttribute('value', this.textarea.value.substring(0, this.textarea.selectionStart - 1) + this.textarea.value.substring(this.textarea.selectionEnd))
+              this.textarea.setSelectionRange(selAfter, selAfter)
+            }
+            this.inhibitCompletion = true
+            this.completeValue()
+            return
+          case 'ArrowLeft':
+          case 'ArrowRight':
+            // If the key was an arrow key, possibly with modifiers, handle it
+            // the way the browser does.  If the result leaves the cursor at the
+            // end of the input, run completion.
+            event.preventDefault()
+            let selStart = this.textarea.selectionStart, selEnd = this.textarea.selectionEnd
+            const size = this.textarea.value.length
+            if (event.key === 'ArrowLeft' && !event.metaKey && !event.shiftKey)
+              selStart = selEnd = selStart === selEnd ? selStart - 1 : selStart
+            if (event.key === 'ArrowLeft' && !event.metaKey && event.shiftKey)
+              selStart--
+            if (event.key === 'ArrowLeft' && event.metaKey && !event.shiftKey)
+              selStart = selEnd = 0
+            if (event.key === 'ArrowLeft' && event.metaKey && event.shiftKey)
+              selStart = 0
+            if (event.key === 'ArrowRight' && !event.metaKey && !event.shiftKey)
+              selStart = selEnd = selStart === selEnd ? selEnd + 1 : selEnd
+            if (event.key === 'ArrowRight' && !event.metaKey && event.shiftKey)
+              selEnd++
+            if (event.key === 'ArrowRight' && event.metaKey && !event.shiftKey)
+              selStart = selEnd = size
+            if (event.key === 'ArrowRight' && event.metaKey && event.shiftKey)
+              selEnd = size
+            if (selStart < 0) selStart = 0
+            if (selEnd < 0) selEnd = 0
+            if (selStart > size) selStart = size
+            if (selEnd > size) selEnd = size
+            this.textarea.setSelectionRange(selStart, selEnd)
+            this.inhibitCompletion = false
+            if (selStart === size && selEnd === size)
+              this.completeValue()
+            else
+              this.hideCompletions()
+            return
+          }
+        }
+        completeValue() {
+          const show = !this.inhibitCompletion
+          if (!this.completer) show = false
+          if (this.textarea.selectionStart !== this.textarea.selectionEnd) show = false
+          if (this.textarea.selectionStart !== this.textarea.value.length) show = false
+          this.completions = show ? this.completer(this.textarea.value) : []
+          if (!this.completions.length) {
+            this.completion = -1
+            this.dropdown.style.display = 'none'
+            return
+          }
+          const autocomplete = this.completions[0]
+          if (!autocomplete) {
+            this.completions.shift()
+            this.completion = -1
+          } else {
+            this.completion = 0
+            const lengthBefore = this.textarea.value.length
+            let value = this.completions[0]
+            if (Array.isArray(value)) value = value[0]
+            this.textarea.value += value
+            this.textarea.setSelectionRange(lengthBefore, this.textarea.value.length)
+          }
+          if (this.completions.length > 10) this.completions = this.completions.slice(0, 10)
+          for (let i = 0; i < this.completions.length; i++) {
+            let kid
+            let value = this.completions[i], label = this.completions[i]
+            if (Array.isArray(value))
+              value = value[0], label = label[1]
+            if (i < this.dropdown.children.length) {
+              kid = this.dropdown.children[i]
+            } else {
+              kid = document.createElement('a')
+              kid.href = '#'
+              this.dropdown.append(kid)
+            }
+            kid.textContent = label
+            kid.setAttribute('data-value', value)
+            if (i === this.completion) kid.classList.add('selected')
+            else kid.classList.remove('selected')
+          }
+          while (this.dropdown.children.length > this.completions.length) {
+            this.dropdown.removeChild(this.dropdown.children[this.dropdown.children.length-1])
+          }
+          this.dropdown.style.display = null
+        }
+        hideCompletions() {
+          this.completions = []
+          this.completion = -1
+          this.dropdown.style.display = 'none'
+        }
+        attributeChangedCallback(attr, oldv, newv) {
+          if (!this.textarea) return
+          if (attr === 'dirty') {
+            if (this.hasAttribute('dirty')) this.textarea.classList.add('dirty')
+            else this.textarea.classList.remove('dirty')
+          }
+          this.textarea.value = this.sizer.textContent = this.getAttribute('value') || ''
+        }
+      }
+      customElements.define('autocomplete-textarea', AutoCompleteTextArea)
+    </script>
+  </head>
+  <body>
+    <autocomplete-textarea id="input" separator="/"></autocomplete-textarea>
+    <input type=checkbox />
+    <script>
+      const completions = {
+        'h': [['ello', 'hello'], ['enry', 'henry'], ['oward', 'howard']],
+        'he': ['llo', 'nry'],
+        'hel': ['lo'],
+        'hell': ['o'],
+        'hen': ['ry'],
+        'henr': ['y'],
+        'ho': ['ward'],
+        'how': ['ard'],
+        'howa': ['rd'],
+        'howar': ['d'],
+      }
+      function completer(s) {
+        return completions[s] || []
+      }
+      document.getElementById('input').completer = completer
+    </script>
+  </body>
+</html>

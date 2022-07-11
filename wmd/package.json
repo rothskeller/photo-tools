@@ -1,0 +1,22 @@
+{
+  "name": "wmd",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build --mode development",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^1.0.0-next.30",
+    "@types/google.maps": "^3.49.2",
+    "svelte": "^3.44.0",
+    "svelte-preprocess": "^4.10.7",
+    "typescript": "^4.7.3",
+    "vite": "^2.9.9"
+  },
+  "dependencies": {
+    "@googlemaps/js-api-loader": "^1.14.3"
+  }
+}

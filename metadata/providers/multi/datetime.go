@@ -8,10 +8,21 @@ import (
 func (p Provider) DateTime() (value metadata.DateTime) {
 	for _, sp := range p {
 		if value = sp.DateTime(); !value.Empty() {
-			return value
+			break
 		}
 	}
-	return metadata.DateTime{}
+	if value.Empty() {
+		return metadata.DateTime{}
+	}
+	// We've found the date and time.  But if there's another tag that
+	// contains the same date and time, but with more precision, return that
+	// instead.
+	for _, sp := range p {
+		if v2 := sp.DateTime(); !v2.Empty() {
+			value = value.IfMorePrecise(v2)
+		}
+	}
+	return value
 }
 
 // DateTimeTags returns a list of tag names for the DateTime field, and a parallel

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"os"
 
 	"github.com/rothskeller/photo-tools/metadata"
 	"github.com/rothskeller/photo-tools/metadata/containers"
@@ -73,8 +74,10 @@ func (seg *segmentGroup) Read(r metadata.Reader) (err error) {
 		seg.namespace = nsEXIF
 	case seg.marker == markerXMP && count > len(nsXMP) && bytes.Equal(buf[:len(nsXMP)], nsXMP):
 		seg.namespace = nsXMP
-	case seg.marker == markerXMPext && count > len(nsXMPext) && bytes.Equal(buf[:len(nsXMPext)], nsXMPext):
-		seg.namespace = nsXMPext
+	// Disabling the recognition of XMPext namespaces until we can better
+	// implement handling multi-segment XMPext namespaces.
+	// case seg.marker == markerXMPext && count > len(nsXMPext) && bytes.Equal(buf[:len(nsXMPext)], nsXMPext):
+	// 	seg.namespace = nsXMPext
 	case seg.marker == markerPSIR && count > len(nsPSIR) && bytes.Equal(buf[:len(nsPSIR)], nsPSIR):
 		seg.namespace = nsPSIR
 	}
@@ -158,9 +161,15 @@ func (seg *segmentGroup) Write(w io.Writer) (count int, err error) {
 	}
 	defer func() {
 		if err == nil && seg.size != 0 && int(seg.size) != count {
+			println(seg.marker, seg.namespace, seg.size, count)
+			// TODO: problem with writing the same photo twice?
 			panic("actual size different from predicted size")
 		}
 	}()
+	// Make sure the reader (if any) is rewound.
+	if seg.reader != nil {
+		seg.reader.Seek(0, os.SEEK_SET)
+	}
 	// Handle the simple cases first.  Markers without data:
 	if seg.container == nil && seg.reader == nil {
 		buf[0] = 0xFF

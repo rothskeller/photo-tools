@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>assign-places</title>
+    <style>
+body {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+}
+img {
+  width: 50vw;
+  max-height: 100vh;
+}
+div {
+  width: 50vw;
+  background-color: pink;
+  height: 100vh;
+}
+    </style>
+    <script>
+async function updateImage() {
+  let resp = await fetch('/url');
+  let url = await resp.text();
+  let img = document.getElementById('img');
+  if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+  window.setTimeout(updateImage, 500);
+}
+window.onload = updateImage;
+    </script>
+  </head>
+  <body>
+    <img id="img" src="null">
+    <div id="gmap"></div>
+  </body>
+</html>

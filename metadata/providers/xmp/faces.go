@@ -196,7 +196,10 @@ func (p *Provider) SetFaces(values []string) error {
 	if val := p.rdf.Property(mwgrsRegionsName); val.Value != nil {
 		regions = val.Value.(rdf.Struct)
 		if val, ok := regions[mwgrsRegionListName]; ok {
-			bag = val.Value.(rdf.Bag)
+			if bag, ok = val.Value.(rdf.Bag); !ok {
+				// Some images incorrectly use an rdf:Seq here.
+				bag = rdf.Bag(val.Value.(rdf.Seq))
+			}
 		}
 	}
 	p.mwgrsNames = nil

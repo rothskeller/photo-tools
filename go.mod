@@ -1,6 +1,6 @@
 module github.com/rothskeller/photo-tools
 
-go 1.14
+go 1.18
 
 require (
 	github.com/beevik/etree v1.1.0
@@ -10,3 +10,5 @@ require (
 	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d
 	golang.org/x/text v0.3.6
 )
+
+require github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect

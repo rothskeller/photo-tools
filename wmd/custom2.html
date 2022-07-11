@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Control Test</title>
+    <script>
+      class AutoCompleteTextArea extends HTMLElement {
+        // The control has three attributes/properties:
+        //   - value is the value of the control.
+        //   - dirty is a boolean indicating whether the control's value has
+        //     changed from what is currently saved.
+        //   - separator is a boolean indicating whether special behaviors for
+        //     '/' separators are enabled.
+        // It also has a property that can only be set through Javascript and is
+        // not echoed as an attribute:
+        //   - completer is a function which, given the contents of the input,
+        //     returns a list of possible completions.
+        static styles = `
+main {
+  position: relative;
+  display: grid;
+}
+textarea {
+  resize: none;
+  overflow: hidden;
+}
+span {
+  white-space: pre-wrap;
+  visibility: hidden;
+  border: 1px solid transparent;
+}
+textarea,
+span {
+  grid-area: 1 / 1 / 2 / 2;
+  display: block;
+  width: 100%;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1rem;
+  padding: 0.125rem;
+  line-height: 1;
+}
+.dirty {
+  background-color: orange;
+}
+div {
+  position: absolute;
+  top: calc(1.25rem + 1px);
+  left: 0;
+  border: 1px solid #767676;
+  z-index: 1;
+  background-color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+a {
+  display: block;
+  padding: 0.25rem 0.5rem;
+  text-decoration: none;
+}
+.selected {
+  background-color: #9c9cff;
+}
+`
+        static get observedAttributes() { return ['dirty', 'value'] }
+        get dirty() { return this.hasAttribute('dirty') }
+        set dirty(v) {
+          if (v) this.setAttribute('dirty', 'dirty')
+          else this.removeAttribute('dirty')
+        }
+        get separator() { return this.hasAttribute('separator') }
+        set separator(v) {
+          if (v) this.setAttribute('separator', 'separator')
+          else this.removeAttribute('separator')
+        }
+        get value() { return this.getAttribute('value') || ''}
+        set value(v) { this.setAttribute('value', v) }
+
+        constructor() {
+          super()
+
+          // Initialize properties.
+          this.selStart = this.selEnd = 0
+          this.completer = null
+          this.completions = []
+          this.completion = -1
+
+          // Create shadow root.
+          const root = this.attachShadow({ mode: 'open' })
+          const stylesheet = document.createElement('style')
+          stylesheet.textContent = AutoCompleteTextArea.styles
+          root.append(stylesheet)
+          this.wrapper = document.createElement('main')
+          this.textarea = document.createElement('textarea')
+          this.textarea.rows = 1
+          this.textarea.addEventListener('input', this.onInput.bind(this))
+          this.textarea.addEventListener('keydown', this.onKeyDown.bind(this))
+          this.textarea.addEventListener('select', this.onSelect.bind(this))
+          this.textarea.addEventListener('focus', this.onFocus.bind(this))
+          this.wrapper.append(this.textarea)
+          this.sizer = document.createElement('span')
+          this.wrapper.append(this.sizer)
+          this.dropdown = document.createElement('div')
+          this.dropdown.style.display = 'none'
+          this.wrapper.addEventListener('focusout', this.onFocusOut.bind(this))
+          this.wrapper.append(this.dropdown)
+          root.append(this.wrapper)
+          this.attributeChangedCallback()
+        }
+
+        // If our parent tries to give us the focus, give it to our textarea.
+        focus() {
+          if (this.textarea) this.textarea.focus()
+        }
+
+        // When we receive focus, show completions, but don't auto-complete.
+        // Also, move the selection to the end.
+        onFocus() {
+          this.select(this.textarea.value.length, this.textarea.value.length)
+          this.showCompletions()
+        }
+
+        // When we lose focus, move the selection to the end.  Remove any
+        // trailing whitespace or separators.  Hide completions.
+        onFocusOut(event) {
+          // First, be sure the focus is moving out of our shadow root
+          // altogether, and not just to another element within it.
+          let newfocus = event.relatedTarget
+          while (newfocus) {
+            if (newfocus === this.wrapper) return
+            newfocus = newfocus.parentElement
+          }
+          this.select(this.textarea.value.length, this.textarea.value.length)
+          this.sanitizeValue('remove')
+          this.hideCompletions()
+        }
+
+        // Our handling of the 'input' event depends on knowing what was
+        // selected at the time of the input.  For that reason, we listen to the
+        // 'select' event and keep a local cache of the selection.
+        onSelect() {
+          this.selStart = this.textarea.selectionStart
+          this.selEnd = this.textarea.selectionEnd
+        }
+        select(start, end) {
+          this.textarea.setSelectionRange(start, end)
+          this.selStart = start
+          this.selEnd = end
+        }
+
+        // When the user types the separator character, while a completion is
+        // selected, we want to accept that completion before handling the
+        // input.  The up and down arrow keys change the selected completion.
+        onKeyDown(event) {
+          switch (event.key) {
+            case '/':
+              if (!this.separator || event.metaKey || event.ctrlKey || event.altKey) break
+              if (this.selEnd !== this.textarea.value.length) break
+              if (this.selStart === this.selEnd) break
+              this.select(this.selEnd, this.selEnd)
+              break
+            case 'ArrowUp':
+              event.preventDefault()
+              if (this.completion > 0)
+                this.selectCompletion(this.completion-1)
+              else if (this.completion === 0)
+                this.unselectCompletion()
+              break
+            case 'ArrowDown':
+              event.preventDefault()
+              if (this.completions.length && this.completion < this.completions.length-1)
+                this.selectCompletion(this.completion+1)
+              break
+          }
+        }
+
+        // The onInput handler does two things.  First, it sanitizes the input.
+        // Then, if the conditions are right, it triggers completions.
+        onInput(event) {
+          let showCompletions = false
+          // Was the selection at the end of the input?
+          if (this.selEnd === this.value.length) {
+            // Was a single character added to the non-selected part?
+            if (this.textarea.value.length === this.selStart+1) {
+              // Did the non-selected part remain unchanged?
+              if (this.textarea.value.startsWith(this.value.substring(0, this.selStart))) {
+                // If all of the above are true, we should show completions.
+                showCompletions = true
+              }
+            }
+          }
+          this.sanitizeValue(showCompletions ? 'add' : 'leave')
+          // Update our local information.
+          this.value = this.textarea.value
+          this.selStart = this.textarea.selectionStart
+          this.selEnd = this.textarea.selectionEnd
+          // Show completions on sanitized value if appropriate.
+          if (showCompletions) {
+            this.showCompletions()
+            if (this.completions.length && !this.startsWithSeparator(this.completions[0])) {
+              this.selectCompletion(0)
+            }
+          } else {
+            this.hideCompletions()
+          }
+        }
+
+        // sanitizeValue ensures that the value in the input complies with these
+        // rules:
+        //   1. starts with something other than a blank or a separator
+        //   2. separators are surrounded by a single blank
+        //   3. can't have two separators in a row
+        // The endTreatment argument specifies how the end of the input is
+        // handled:
+        //   - 'add' will add a blank to the value if its last character is a
+        //     separator.
+        //   - 'remove' will remove trailing blanks and separators from the
+        //     value
+        //   - 'leave' will allow the value to end with a separator without a
+        //     subsequent blank
+        // If the control does not have separators enabled, then sanitize trims
+        // leading blanks from the value, and trims trailing blanks if
+        // endTreatment is 'remove'.
+        // Note that sanitizeValue carefully maintains the selection in the
+        // input while making these changes.
+        sanitizeValue(endTreatment) {
+          let t = { v: this.textarea.value, s: this.textarea.selectionStart, e: this.textarea.selectionEnd }
+          // Rule 1: trim leading spaces and separators.
+          let idx = t.v.search(this.separator ? /[^ /]/ : /[^ ]/)
+          if (idx < 0) idx = t.v.length
+          while (idx > 0) {
+            this.removeChar(t, 0)
+            idx--
+          }
+          // Rule 2a: separators not preceded by a blank.
+          while (this.separator) {
+            idx = t.v.search(/[^ ]\//)
+            if (idx < 0) break
+            this.insertChar(t, idx+1, ' ')
+          }
+          // Rule 2b: separators preceded by multiple blanks.
+          while (this.separator) {
+            idx = t.v.search(/  \//)
+            if (idx < 0) break
+            this.removeChar(t, idx)
+          }
+          // Rule 2c: separators followed by something other than a blank.
+          while (this.separator) {
+            idx = t.v.search(/\/[^ ]/)
+            if (idx < 0) break
+            this.insertChar(t, idx+1, ' ')
+          }
+          // Rule 2d: separators followed by multiple blanks.
+          while (this.separator) {
+            idx = t.v.search(/\/  /)
+            if (idx < 0) break
+            this.removeChar(t, idx+1)
+          }
+          // Rule 2e: separators at the end that should have a blank added.
+          if (this.separator && endTreatment === 'add' && t.v.endsWith('/')) {
+            this.insertChar(t, t.v.length, ' ')
+          }
+          // Rule 3: two separators in a row.
+          while (this.separator) {
+            idx = t.v.search(/\/ \//)
+            if (idx < 0) break
+            this.removeChar(t, idx+1)
+            this.removeChar(t, idx+1)
+          }
+          // endTreatment == 'remove'
+          if (endTreatment === 'remove') {
+            idx = t.v.search(this.separator ? /[ /]+$/ : / +$/)
+            while (idx >= 0 && idx < t.v.length) this.removeChar(t, t.v.length-1)
+          }
+          // Apply the results.
+          if (t.v === this.textarea.value) return
+          this.textarea.value = t.v
+          this.textarea.setSelectionRange(t.s, t.e)
+        }
+        removeChar(t, idx) {
+          t.v = t.v.substring(0, idx) + t.v.substring(idx+1)
+          if (t.s > idx) t.s--
+          if (t.e > idx) t.e--
+        }
+        insertChar(t, idx, ch) {
+          t.v = t.v.substring(0, idx) + ch + t.v.substring(idx)
+          if (t.s >= idx) t.s++
+          if (t.e >= idx) t.e++
+        }
+
+        // showCompletions shows the dropdown box with completions for the
+        // current input if there are any.  (If there aren't, it hides the box.)
+        showCompletions() {
+          this.completions = this.completer ? this.completer(this.textarea.value) : []
+          if (!this.completions.length) {
+            this.hideCompletions()
+            return
+          }
+          if (this.completions.length > 10) this.completions = this.completions.slice(0, 10)
+          for (let i = 0; i < this.completions.length; i++) {
+            let kid
+            let value = this.completions[i], label = this.completions[i]
+            if (Array.isArray(value))
+              value = value[0], label = label[1]
+            if (i < this.dropdown.children.length) {
+              kid = this.dropdown.children[i]
+            } else {
+              kid = document.createElement('a')
+              kid.href = '#'
+              kid.addEventListener('click', this.applyCompletion.bind(this))
+              this.dropdown.append(kid)
+            }
+            kid.textContent = label
+            kid.setAttribute('data-value', value)
+            kid.classList.remove('selected')
+          }
+          while (this.dropdown.children.length > this.completions.length) {
+            this.dropdown.removeChild(this.dropdown.children[this.dropdown.children.length-1])
+          }
+          this.completion = -1
+          this.dropdown.style.display = null
+        }
+
+        // applyCompletion handles a click on a completion in the dropdown.
+        applyCompletion(event) {
+          event.preventDefault()
+          const cval = event.target.getAttribute('data-value')
+          this.value = this.textarea.value.substring(0, this.selStart) + cval
+          this.select(this.textarea.value.length, this.textarea.value.length)
+          this.textarea.focus()
+          this.showCompletions()
+        }
+
+        // selectCompletion changes which completion is currently selected.
+        selectCompletion(idx) {
+          if (this.completion >= 0)
+            this.dropdown.children[this.completion].classList.remove('selected')
+          this.completion = idx
+          this.dropdown.children[idx].classList.add('selected')
+          let completion = this.completions[idx]
+          if (Array.isArray(completion)) completion = completion[0]
+          this.value = this.textarea.value.substring(0, this.selStart) + completion
+          this.select(this.selStart, this.textarea.value.length)
+        }
+
+        // unselectCompletion removes any selected completion.
+        unselectCompletion() {
+          if (this.completion >= 0)
+            this.dropdown.children[this.completion].classList.remove('selected')
+          this.value = this.textarea.value.substring(0, this.selStart)
+          this.select(this.selStart, this.selStart)
+          this.completion = -1
+        }
+
+        // hideCompletions hides the completions drop-down.
+        hideCompletions() {
+          this.completions = []
+          this.completion = -1
+          this.dropdown.style.display = 'none'
+        }
+
+        // startsWithSeparator returns true if separators are enabled and the
+        // argument string starts with one.
+        startsWithSeparator(completion) {
+          if (!this.separator) return false
+          if (Array.isArray(completion)) completion = completion[0]
+          return completion.startsWith('/') || completion.startsWith(' /')
+        }
+
+        // attributeChangedCallback applies changes to the control attributes.
+        attributeChangedCallback(attr, oldv, newv) {
+          if (!this.textarea) return
+          if (attr === 'dirty') {
+            if (this.hasAttribute('dirty')) this.textarea.classList.add('dirty')
+            else this.textarea.classList.remove('dirty')
+          }
+          this.textarea.value = this.sizer.textContent = this.getAttribute('value') || ''
+        }
+      }
+      customElements.define('autocomplete-textarea', AutoCompleteTextArea)
+    </script>
+  </head>
+  <body>
+    <autocomplete-textarea id="input" separator="/"></autocomplete-textarea>
+    <input type=checkbox />
+    <script>
+      const completions = {
+        'h': [['ello', 'hello'], ['enry', 'henry'], ['oward', 'howard']],
+        'he': ['llo', 'nry'],
+        'hel': ['lo'],
+        'hell': ['o'],
+        'hen': ['ry'],
+        'henr': ['y'],
+        'ho': ['ward'],
+        'how': ['ard'],
+        'howa': ['rd'],
+        'howar': ['d'],
+      }
+      function completer(s) {
+        return completions[s] || []
+      }
+      document.getElementById('input').completer = completer
+    </script>
+  </body>
+</html>

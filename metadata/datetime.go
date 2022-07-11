@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -92,6 +93,24 @@ func (dt DateTime) String() string {
 	}
 	sb.WriteString(dt.zone)
 	return sb.String()
+}
+
+// AsTime returns the DateTime in Go time format, using time.Local if the
+// DateTime doesn't include a time zone.
+func (dt DateTime) AsTime() time.Time {
+	if dt.date == "" {
+		return time.Time{}
+	}
+	tval := dt.time
+	if tval == "" {
+		tval = "00:00:00"
+	}
+	if dt.zone != "" {
+		t, _ := time.Parse("2006-01-02T15:04:05-07:00", fmt.Sprintf("%sT%s.%s%s", dt.date, tval, dt.subsec, dt.zone))
+		return t
+	}
+	t, _ := time.ParseInLocation("2006-01-02T15:04:05", fmt.Sprintf("%sT%s.%s", dt.date, tval, dt.subsec), time.Local)
+	return t
 }
 
 // ParseEXIF parses a date and time as represented in EXIF metadata.  It returns
@@ -216,4 +235,24 @@ func (dt DateTime) Equivalent(other DateTime) bool {
 		return false
 	}
 	return true
+}
+
+// IfMorePrecise returns its argument if its argument is a more precise
+// rendering of the same DateTime as its receiver (i.e., the fields that are
+// filled in are the same, but the argument has more fields filled in).
+// Otherwise, it returns its receiver.
+func (dt DateTime) IfMorePrecise(other DateTime) (result DateTime) {
+	if dt.date != other.date || dt.time != other.time ||
+		(dt.zone != "" && other.zone != "" && dt.zone != other.zone) ||
+		(dt.subsec != "" && other.subsec != "" && dt.subsec != other.subsec) {
+		return dt
+	}
+	result = dt
+	if result.zone == "" {
+		result.zone = other.zone
+	}
+	if result.subsec == "" {
+		result.subsec = other.subsec
+	}
+	return result
 }

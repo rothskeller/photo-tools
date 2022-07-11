@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-// FixedFloat stores a floating point number as an signed integer scaled 100,000
-// higher, so that it always has exactly six digits of precision after the
-// decimal point.  (That's enough to get us down to hundredths of a second when
-// storing an angle in degrees, which is close enough for GPS coordinates.)
+// FixedFloat stores a floating point number as an signed integer scaled
+// 1,000,000 higher, so that it always has exactly six digits of precision after
+// the decimal point.  (That's enough to get us down to hundredths of a second
+// when storing an angle in degrees, which is close enough for GPS coordinates.)
 type FixedFloat int64
 
 // ParseFixedFloat parses a string as a fixed floating point number.
@@ -56,6 +56,14 @@ ERROR:
 	return 0, errors.New("invalid fixed floating point number")
 }
 
+// FixedFloatFromFloat returns the FixedFloat that most precisely represents the
+// supplied floating point number.
+func FixedFloatFromFloat(v float64) (f FixedFloat) {
+	f = FixedFloat(v*10000000.0 + 5.0)
+	f /= 10
+	return f
+}
+
 // FixedFloatFromFraction returns the FixedFloat that most precisely represents
 // the fraction a/b.  It panics if b is not positive.
 func FixedFloatFromFraction(a, b int) (f FixedFloat) {
@@ -90,6 +98,11 @@ func (f FixedFloat) String() (s string) {
 // fraction.
 func (f FixedFloat) AsFraction() (num, den int) {
 	return int(f), 1000000
+}
+
+// AsFloat64 returns the float as a (possibly imprecise) Go float value.
+func (f FixedFloat) AsFloat64() float64 {
+	return float64(f) / 1000000.0
 }
 
 // Int returns the integer part of the the float.

@@ -145,7 +145,7 @@ func (ifd *IFD) Write(w io.Writer) (count int, err error) {
 		if err != nil {
 			return count, err
 		}
-		if offset%2 == 1 {
+		if (offset-ifd.offset)%2 == 1 {
 			offset++
 		}
 	}

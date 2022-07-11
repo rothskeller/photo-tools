@@ -40,10 +40,12 @@ func Choose(args []string, files []MediaFile) (err error) {
 	for _, file := range files {
 		tagNames, tagValues := field.GetTags(file.Provider)
 		for i, tag := range tagNames {
-			values = append(values, tagValues[i])
-			fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.Path, tag, escapeString(field.RenderValue(tagValues[i])))
+			for _, v := range tagValues[i] {
+				values = append(values, v)
+				fmt.Fprintf(tw, "%d\t%s\t%s\t%s\n", len(values), file.Path, tag, escapeString(field.RenderValue(v)))
+			}
 		}
-		if len(tagNames) == 0 {
+		if len(values) == 0 {
 			fmt.Fprintf(tw, "\t%s\t(none)\t\n", file.Path)
 		}
 	}
@@ -106,7 +108,7 @@ func parseLineNumberSet(s string, max int) (nums []int, showedError bool) {
 		}
 	}
 	for _, num := range nums {
-		if num == 0 || num >= max {
+		if num == 0 || num > max {
 			fmt.Printf("ERROR: no such line number %d\n", num)
 			return nil, true
 		}

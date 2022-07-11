@@ -83,6 +83,24 @@ func (gc GPSCoords) String() string {
 	return sb.String()
 }
 
+// Latitude returns the latitude as a float64.
+func (gc *GPSCoords) Latitude() float64 { return gc.latitude.AsFloat64() }
+
+// Longitude returns the longitude as a float64.
+func (gc *GPSCoords) Longitude() float64 { return gc.longitude.AsFloat64() }
+
+// Altitude returns the altitude as a floa64.
+func (gc *GPSCoords) Altitude() float64 { return gc.altitude.AsFloat64() }
+
+// SetLatitude sets the latitude as a float64.
+func (gc *GPSCoords) SetLatitude(v float64) { gc.latitude = FixedFloatFromFloat(v) }
+
+// SetLongitude sets the longitude as a float64.
+func (gc *GPSCoords) SetLongitude(v float64) { gc.longitude = FixedFloatFromFloat(v) }
+
+// SetAltitude sets the altitude as a floa64.
+func (gc *GPSCoords) SetAltitude(v float64) { gc.altitude = FixedFloatFromFloat(v) }
+
 // ParseEXIF parses a set of GPS coordinates as represented in EXIF
 // It return ErrParseGPSCoords if the input data are invalid.
 func (gc *GPSCoords) ParseEXIF(latref string, lat []uint32, longref string, long []uint32, altref byte, alt []uint32) error {

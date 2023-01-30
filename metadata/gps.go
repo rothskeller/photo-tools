@@ -108,6 +108,13 @@ func (gc *GPSCoords) ParseEXIF(latref string, lat []uint32, longref string, long
 	if latref == "" && len(lat) == 0 && longref == "" && len(long) == 0 && altref == 0 && len(alt) == 0 {
 		return nil
 	}
+	if latref == "" && len(lat) == 6 && lat[0] == 0 && lat[1] == 0 && lat[2] == 0 && lat[3] == 0 && lat[4] == 0 &&
+		lat[5] == 0 && longref == "" && len(long) == 6 && long[0] == 0 && long[1] == 0 && long[2] == 0 && long[3] == 0 &&
+		long[4] == 0 && long[5] == 0 && altref == 0 && len(alt) == 2 && alt[0] == 0 && alt[1] == 0 {
+		// Empirically some cameras add all of the tags but put no data
+		// in them (e.g. Nikon Coolpix).  Ignore those.
+		return nil
+	}
 	if (latref != "N" && latref != "S") || len(lat) != 6 || (longref != "E" && longref != "W") || len(long) != 6 {
 		return ErrParseGPSCoords
 	}

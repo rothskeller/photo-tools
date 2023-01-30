@@ -30,6 +30,13 @@ func (p *Provider) getGPS() (err error) {
 	if err == nil {
 		longrat, err = longratt.AsRationals()
 	}
+	if err == nil && latref == "" && longref == "" && len(latrat) == 6 && latrat[0] == 0 && latrat[1] == 0 && latrat[2] == 0 &&
+		latrat[3] == 0 && latrat[4] == 0 && latrat[5] == 0 && len(longrat) == 6 && longrat[0] == 0 && longrat[1] == 0 &&
+		longrat[2] == 0 && longrat[3] == 0 && longrat[4] == 0 && longrat[5] == 0 {
+		// Some cameras provide all of the tags but fill them with
+		// zeros.  Ugh.
+		return nil
+	}
 	if err != nil || len(latref) != 1 || len(longref) != 1 || len(latrat) != 6 || len(longrat) != 6 {
 		return errors.New("invalid GPS tags")
 	}

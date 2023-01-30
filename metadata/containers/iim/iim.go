@@ -56,9 +56,11 @@ func (iim *IIM) Read(r metadata.Reader) (err error) {
 	}
 	for {
 		count, err = r.ReadAt(buf[0:5], offset)
-		if err == io.EOF && count == 0 || (count == 2 && buf[0] == 0 && buf[1] == 0) {
+		if err == io.EOF && count == 0 ||
+			(count == 1 && buf[0] == 0) ||
+			(count == 2 && buf[0] == 0 && buf[1] == 0) {
 			// In TIFF files, IPTC data is sometimes stored as LONGs
-			// and can have two null bytes at the end.
+			// and can have one or two null bytes at the end.
 			iim.hash = sum.Sum(nil)
 			return nil
 		}

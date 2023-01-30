@@ -188,6 +188,34 @@ func (tag *Tag) AsLongReader() (metadata.Reader, error) {
 	return bytes.NewReader(tag.data), nil
 }
 
+// AsShort decodes the short integer in the tag.  It returns an error if the tag
+// has the wrong type.
+func (tag *Tag) AsShort() (int, error) {
+	if tag.ttype != 3 {
+		return 0, errors.New("tag type is not SHORT")
+	}
+	if len(tag.data) != 2 {
+		return 0, errors.New("tag length is not 2")
+	}
+	ui := tag.ifd.t.enc.Uint16(tag.data)
+	return int(int16(ui)), nil
+}
+
+// SetShort sets the tag value to the specified short integer.
+func (tag *Tag) SetShort(v int) {
+	if old, err := tag.AsShort(); err == nil && old == v {
+		return
+	}
+	var encoded [2]byte
+	tag.ifd.t.enc.PutUint16(encoded[:], uint16(int16(v)))
+	tag.ttype = 3 // SHORT
+	tag.data = encoded[:]
+	tag.container = nil
+	tag.reader = nil
+	tag.toIFD = nil
+	tag.ifd.dirty = true
+}
+
 // AsString decodes the string in the tag.  It returns an error if the tag has
 // the wrong type or the character encoding can't be guessed.
 func (tag *Tag) AsString() (string, error) {

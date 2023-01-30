@@ -12,6 +12,7 @@ type Provider struct {
 	metadata.BaseProvider
 	artist           string
 	dateTime         metadata.DateTime
+	orientation      metadata.Orientation
 	imageDescription string
 
 	ifd *tiff.IFD
@@ -29,6 +30,9 @@ func New(ifd *tiff.IFD) (p *Provider, err error) {
 		return nil, fmt.Errorf("JPEG IFD0: %s", err)
 	}
 	if err = p.getDateTime(); err != nil {
+		return nil, fmt.Errorf("JPEG IFD0: %s", err)
+	}
+	if err = p.getOrientation(); err != nil {
 		return nil, fmt.Errorf("JPEG IFD0: %s", err)
 	}
 	return p, nil

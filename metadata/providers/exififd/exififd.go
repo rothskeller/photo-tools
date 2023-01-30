@@ -13,6 +13,7 @@ type Provider struct {
 	metadata.BaseProvider
 	dateTimeDigitized metadata.DateTime
 	dateTimeOriginal  metadata.DateTime
+	orientation       metadata.Orientation
 	userComment       string
 
 	ifd *tiff.IFD
@@ -28,6 +29,9 @@ func New(ifd *tiff.IFD, enc binary.ByteOrder) (p *Provider, err error) {
 		return nil, fmt.Errorf("EXIF IFD: %s", err)
 	}
 	if err = p.getDateTime(); err != nil {
+		return nil, fmt.Errorf("EXIF IFD: %s", err)
+	}
+	if err = p.getOrientation(); err != nil {
 		return nil, fmt.Errorf("EXIF IFD: %s", err)
 	}
 	return p, nil

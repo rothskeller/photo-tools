@@ -96,6 +96,14 @@ type Provider interface {
 	// SetLocation sets the value of the Location field.
 	SetLocation(values Location) error
 
+	// Orientation returns the value of the Orientation field.
+	Orientation() (value Orientation)
+	// OrientationTags returns a list of tag names for the Orientation
+	// field, and a parallel list of values held by those tags.
+	OrientationTags() (tags []string, values [][]Orientation)
+	// SetOrientation sets the value of the Orientation field.
+	SetOrientation(value Orientation) error
+
 	// People returns the values of the People field.
 	People() (values []string)
 	// PeopleTags returns a list of tag names for the People field, and a
@@ -218,6 +226,16 @@ func (p BaseProvider) LocationTags() ([]string, [][]Location) { return nil, nil 
 
 // SetLocation sets the value of the Location field.
 func (p BaseProvider) SetLocation(values Location) error { return ErrNotSupported }
+
+// Orientation returns the value of the Orientation field.
+func (p BaseProvider) Orientation() (value Orientation) { return Rotate0 }
+
+// OrientationTags returns a list of tag names for the Orientation
+// field, and a parallel list of values held by those tags.
+func (p BaseProvider) OrientationTags() (tags []string, values [][]Orientation) { return nil, nil }
+
+// SetOrientation sets the value of the Orientation field.
+func (p BaseProvider) SetOrientation(value Orientation) error { return ErrNotSupported }
 
 // People returns the values of the People field.
 func (p BaseProvider) People() []string { return nil }

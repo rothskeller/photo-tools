@@ -56,6 +56,7 @@ type Provider struct {
 	tiffArtist              []string
 	tiffDateTime            metadata.DateTime
 	tiffImageDescription    altString
+	tiffOrientation         metadata.Orientation
 	xmpCreateDate           metadata.DateTime
 	xmpMetadataDate         metadata.DateTime
 	xmpModifyDate           metadata.DateTime
@@ -102,6 +103,9 @@ func New(rdf *rdf.Packet) (p *Provider, err error) {
 		return nil, fmt.Errorf("XMP: %s", err)
 	}
 	if err = p.getLocation(); err != nil {
+		return nil, fmt.Errorf("XMP: %s", err)
+	}
+	if err = p.getOrientation(); err != nil {
 		return nil, fmt.Errorf("XMP: %s", err)
 	}
 	if err = p.getPeople(); err != nil {
